@@ -1,0 +1,15 @@
+{
+  "appId": "com.jenspastry.app",
+  "appName": "Jen's Pastry Shop",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#FAF6EE"
+    }
+  }
+}

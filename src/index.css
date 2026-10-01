@@ -1,0 +1,198 @@
+/* ==========================================
+   Jen's Pastry Shop - Base & Theme Stylesheet
+   Warm Pastry Shop Palette & Mobile Framework
+   ========================================== */
+
+:root {
+  /* Warm Pastry Color Palette */
+  --primary-brown: #683B1E;
+  --primary-brown-dark: #4E2811;
+  --primary-brown-light: #89522D;
+  --primary-brown-soft: #F5EBE1;
+
+  --accent-orange: #E07A2B;
+  --accent-orange-hover: #C9661B;
+  --accent-orange-soft: #FDF1E6;
+
+  --bg-cream: #FAF6EE;
+  --bg-cream-pure: #FFFDF9;
+  --bg-beige: #F4EBE0;
+  --bg-card: #FFFFFF;
+
+  --text-primary: #342214;
+  --text-muted: #7E6C5E;
+  --text-light: #A39284;
+  --text-white: #FFFFFF;
+
+  --border-light: #EFE6DA;
+  --border-medium: #DECFC0;
+
+  /* Status Colors */
+  --status-in-stock: #2E7D32;
+  --status-in-stock-bg: #E8F5E9;
+  --status-in-stock-border: #C8E6C9;
+
+  --status-low-stock: #D97706;
+  --status-low-stock-bg: #FFF7ED;
+  --status-low-stock-border: #FFEDD5;
+
+  --status-out-stock: #DC2626;
+  --status-out-stock-bg: #FEF2F2;
+  --status-out-stock-border: #FEE2E2;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
+
+  /* Elevation Shadows */
+  --shadow-sm: 0 1px 3px rgba(104, 59, 30, 0.06);
+  --shadow-md: 0 4px 12px rgba(104, 59, 30, 0.08);
+  --shadow-lg: 0 10px 25px rgba(104, 59, 30, 0.12);
+  --shadow-phone: 0 20px 40px rgba(52, 34, 20, 0.18), 0 0 0 1px rgba(104, 59, 30, 0.08);
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
+  --radius-full: 9999px;
+
+  /* Safe areas for mobile phones & Capacitor */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Box sizing and clean CSS reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background-color: #EDE4D8;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Typography Helpers */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+p {
+  color: var(--text-muted);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  outline: none;
+  transition: all 0.15s ease-in-out;
+  touch-action: manipulation;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+input, select, textarea {
+  font-family: inherit;
+  font-size: 15px;
+  outline: none;
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(104, 59, 30, 0.2);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(104, 59, 30, 0.35);
+}
+
+/* Utility Flex & Grid Classes */
+.flex { display: flex; }
+.flex-1 { flex: 1; }
+.flex-col { display: flex; flex-direction: column; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.gap-1 { gap: 4px; }
+.gap-1\.5 { gap: 6px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
+
+.space-y-1 > * + * { margin-top: 4px; }
+.space-y-2 > * + * { margin-top: 8px; }
+.space-y-3 > * + * { margin-top: 12px; }
+.space-y-4 > * + * { margin-top: 16px; }
+.space-y-5 > * + * { margin-top: 20px; }
+
+.w-full { width: 100%; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text-xs { font-size: 12px; }
+.text-2xs { font-size: 10px; }
+.text-sm { font-size: 14px; }
+.text-base { font-size: 16px; }
+.text-lg { font-size: 18px; }
+.text-xl { font-size: 20px; }
+.text-2xl { font-size: 24px; }
+
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+
+.text-primary { color: var(--primary-brown); }
+.text-secondary { color: var(--accent-orange); }
+.text-muted { color: var(--text-muted); }
+.text-success { color: var(--status-in-stock); }
+.text-warning { color: var(--status-low-stock); }
+.text-danger { color: var(--status-out-stock); }
+
+.bg-beige { background-color: var(--bg-beige); }
+.bg-cream { background-color: var(--bg-cream); }
+.rounded-lg { border-radius: var(--radius-sm); }
+.rounded-xl { border-radius: var(--radius-md); }
+.rounded-2xl { border-radius: var(--radius-lg); }
+
+.cursor-pointer { cursor: pointer; }
+.opacity-50 { opacity: 0.5; }
+.cursor-not-allowed { cursor: not-allowed; }
