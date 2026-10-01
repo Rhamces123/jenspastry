@@ -12,12 +12,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: #EDE3D6;
+  background-color: #381E10;
   background-image: 
-    radial-gradient(#DECFC0 1px, transparent 1px),
-    radial-gradient(#DECFC0 1px, #EDE3D6 1px);
-  background-size: 24px 24px;
-  background-position: 0 0, 12px 12px;
+    linear-gradient(rgba(35, 18, 10, 0.45), rgba(35, 18, 10, 0.55)),
+    url('/pastry-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   overflow: hidden;
 }
 
@@ -65,7 +66,13 @@
   max-width: 440px;
   height: 100%;
   max-height: 900px;
-  background-color: var(--bg-cream);
+  background-color: #FAF4F6;
+  background-image: 
+    linear-gradient(rgba(255, 252, 253, 0.90), rgba(250, 243, 246, 0.93)),
+    url('/pastry-bg.jpg');
+  background-size: cover, 300px auto;
+  background-repeat: no-repeat, repeat;
+  background-position: center, center;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -89,7 +96,12 @@
     display: none !important;
   }
   .app-viewport-root {
-    background: var(--bg-cream);
+    background-color: #FAF4F6;
+    background-image: 
+      linear-gradient(rgba(255, 252, 253, 0.90), rgba(250, 243, 246, 0.93)),
+      url('/pastry-bg.jpg');
+    background-size: cover, 300px auto;
+    background-repeat: no-repeat, repeat;
   }
   .mobile-phone-container {
     max-width: 100% !important;
@@ -98,6 +110,12 @@
     border-radius: 0 !important;
     border: none !important;
     box-shadow: none !important;
+    background-color: #FAF4F6;
+    background-image: 
+      linear-gradient(rgba(255, 252, 253, 0.90), rgba(250, 243, 246, 0.93)),
+      url('/pastry-bg.jpg');
+    background-size: cover, 300px auto;
+    background-repeat: no-repeat, repeat;
   }
 }
 
@@ -250,11 +268,12 @@
 
 /* Mobile Cards */
 .mobile-card {
-  background-color: var(--bg-card);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
   border-radius: var(--radius-lg);
   padding: 16px;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-light);
+  box-shadow: 0 4px 16px rgba(92, 45, 20, 0.07);
+  border: 1px solid rgba(222, 207, 192, 0.85);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -293,8 +312,9 @@
    ========================================== */
 
 .welcome-banner {
-  background: linear-gradient(135deg, #FFF8F0 0%, #F5ECE1 100%);
+  background: linear-gradient(135deg, rgba(255, 250, 244, 0.96) 0%, rgba(248, 240, 230, 0.96) 100%);
   border: 1px solid #EFE4D6;
+  box-shadow: 0 4px 14px rgba(104, 59, 30, 0.08);
 }
 
 .welcome-title {
