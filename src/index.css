@@ -14,6 +14,13 @@
   --accent-pink-hover: #DB2777;
   --accent-pink-soft: #FDF2F8;
 
+  /* Header Theme (Gray background with light pink text) */
+  --header-bg: #333842;
+  --header-bg-dark: #2D323A;
+  --header-notch: #1E2229;
+  --header-text: #FBCFE8;
+  --header-text-muted: #F9A8D4;
+
   /* Aliases for seamless component compatibility */
   --primary-brown: #9D174D;
   --primary-brown-dark: #831843;
