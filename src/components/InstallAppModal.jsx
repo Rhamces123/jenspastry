@@ -1,5 +1,5 @@
 // ==========================================
-// Jen's Pastry Shop - Install App Modal
+// BAKEOLOGY - Install App Modal
 // Enables downloading/installing the app onto Android, iOS, & Desktop
 // ==========================================
 
@@ -77,7 +77,7 @@ export default function InstallAppModal({ isOpen, onClose, deferredPrompt, onIns
               <CheckCircle size={36} className="text-success inline mb-2" />
               <h4 className="font-bold text-base text-success">App Already Installed!</h4>
               <p className="text-xs text-muted mt-1">
-                Jen's Pastry Shop is installed on this device. You can launch it directly from your home screen or app drawer.
+                BAKEOLOGY is installed on this device. You can launch it directly from your home screen or app drawer.
               </p>
             </div>
           ) : (
@@ -90,7 +90,7 @@ export default function InstallAppModal({ isOpen, onClose, deferredPrompt, onIns
                   className="w-14 h-14 rounded-2xl shadow-sm border border-border-medium"
                 />
                 <div>
-                  <h4 className="font-bold text-sm text-primary">Jen's Pastry Shop</h4>
+                  <h4 className="font-bold text-sm text-primary">BAKEOLOGY</h4>
                   <p className="text-2xs text-muted">Pastry Shop Management System</p>
                   <span className="badge badge-success text-2xs mt-1">✓ Standalone Mobile App</span>
                 </div>
@@ -125,7 +125,7 @@ export default function InstallAppModal({ isOpen, onClose, deferredPrompt, onIns
               {platform === 'android' && (
                 <div className="space-y-3">
                   <p className="text-xs text-muted">
-                    Install Jen's Pastry Shop directly to your Android phone home screen with its own icon and full-screen view:
+                    Install BAKEOLOGY directly to your Android phone home screen with its own icon and full-screen view:
                   </p>
 
                   {deferredPrompt ? (

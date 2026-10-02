@@ -1,13 +1,15 @@
 // ==========================================
-// Jen's Pastry Shop - Storage Utility
+// BAKEOLOGY - Storage Utility
 // Manages browser LocalStorage persistence
 // ==========================================
 
 // VARIABLES
 const STORAGE_KEYS = {
-  PRODUCTS: 'jens_pastry_products_v1',
-  SALES: 'jens_pastry_sales_v1',
-  SETTINGS: 'jens_pastry_settings_v1'
+  PRODUCTS: 'bakeology_products_v1',
+  SALES: 'bakeology_sales_v1',
+  SETTINGS: 'bakeology_settings_v1',
+  LEGACY_PRODUCTS: 'jens_pastry_products_v1',
+  LEGACY_SALES: 'jens_pastry_sales_v1'
 };
 
 // FUNCTIONS
@@ -34,7 +36,10 @@ export function saveProducts(products) {
  */
 export function loadProducts() {
   try {
-    const serialized = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+    let serialized = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+    if (!serialized) {
+      serialized = localStorage.getItem(STORAGE_KEYS.LEGACY_PRODUCTS);
+    }
     if (!serialized) return null;
     return JSON.parse(serialized);
   } catch (error) {
@@ -65,7 +70,10 @@ export function saveSales(sales) {
  */
 export function loadSales() {
   try {
-    const serialized = localStorage.getItem(STORAGE_KEYS.SALES);
+    let serialized = localStorage.getItem(STORAGE_KEYS.SALES);
+    if (!serialized) {
+      serialized = localStorage.getItem(STORAGE_KEYS.LEGACY_SALES);
+    }
     if (!serialized) return [];
     return JSON.parse(serialized);
   } catch (error) {
@@ -81,6 +89,8 @@ export function clearAllStorage() {
   try {
     localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
     localStorage.removeItem(STORAGE_KEYS.SALES);
+    localStorage.removeItem(STORAGE_KEYS.LEGACY_PRODUCTS);
+    localStorage.removeItem(STORAGE_KEYS.LEGACY_SALES);
     return true;
   } catch (error) {
     console.error("Error clearing LocalStorage:", error);

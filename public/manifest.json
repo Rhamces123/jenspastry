@@ -1,8 +1,8 @@
 {
   "id": "com.jenspastry.app",
-  "name": "Jen's Pastry Shop - Management System",
-  "short_name": "Jen's Pastry",
-  "description": "Mobile Pastry Shop Management System for Jen's Pastry Shop",
+  "name": "BAKEOLOGY - Management System",
+  "short_name": "BAKEOLOGY",
+  "description": "Mobile Pastry Shop Management System for BAKEOLOGY",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

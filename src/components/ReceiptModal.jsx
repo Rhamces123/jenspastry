@@ -1,5 +1,5 @@
 // ==========================================
-// Jen's Pastry Shop - Thermal Receipt Modal
+// BAKEOLOGY - Thermal Receipt Modal
 // Mobile receipt popup showing sale details
 // ==========================================
 
@@ -23,7 +23,7 @@ export default function ReceiptModal({ isOpen, onClose, sale }) {
             <div className="receipt-success-icon">
               <CheckCircle size={32} className="text-success inline" />
             </div>
-            <h2 className="receipt-brand">Jen's Pastry Shop</h2>
+            <h2 className="receipt-brand">BAKEOLOGY</h2>
             <p className="receipt-sub">Pastry Shop Management System</p>
             <p className="receipt-address">123 Bakery Lane, Sweet City</p>
             <div className="receipt-dashed-line"></div>
@@ -88,7 +88,7 @@ export default function ReceiptModal({ isOpen, onClose, sale }) {
 
           {/* Footer */}
           <div className="receipt-footer text-center mt-4">
-            <p className="text-xs text-muted">Thank you for visiting Jen's Pastry Shop!</p>
+            <p className="text-xs text-muted">Thank you for visiting BAKEOLOGY!</p>
             <p className="text-xs text-muted">Freshly Baked Every Morning ❤️</p>
           </div>
         </div>

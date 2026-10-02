@@ -1,6 +1,6 @@
 {
   "appId": "com.jenspastry.app",
-  "appName": "Jen's Pastry Shop",
+  "appName": "BAKEOLOGY",
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {

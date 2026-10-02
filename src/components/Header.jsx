@@ -17,7 +17,7 @@ export default function Header({ onResetData, onOpenInstallModal }) {
             <Croissant className="header-icon" size={24} />
           </div>
           <div className="header-titles">
-            <h1 className="header-title">Jen's Pastry Shop</h1>
+            <h1 className="header-title">BAKEOLOGY</h1>
             <p className="header-subtitle">Pastry Shop Management System</p>
           </div>
         </div>

@@ -1,5 +1,5 @@
 // ==========================================
-// Jen's Pastry Shop - Automated Test Suite
+// BAKEOLOGY - Automated Test Suite
 // Verifies Design Patterns & Business Logic
 // ==========================================
 
@@ -40,7 +40,7 @@ function assert(condition, message) {
 }
 
 console.log("==========================================");
-console.log("RUNNING JEN'S PASTRY SHOP TEST SUITE");
+console.log("RUNNING BAKEOLOGY TEST SUITE");
 console.log("==========================================\n");
 
 // ----------------------------------------------------

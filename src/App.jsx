@@ -1,5 +1,5 @@
 // ==========================================
-// Jen's Pastry Shop - Main Application Component
+// BAKEOLOGY - Main Application Component
 // College JavaScript & Design Patterns Project
 // ==========================================
 
@@ -305,7 +305,7 @@ export default function App() {
           isOpen={isInstallModalOpen}
           onClose={() => setIsInstallModalOpen(false)}
           deferredPrompt={deferredPrompt}
-          onInstallSuccess={() => showToast("App installed successfully! Welcome to Jen's Pastry Shop.", "success")}
+          onInstallSuccess={() => showToast("App installed successfully! Welcome to BAKEOLOGY.", "success")}
         />
 
         {/* In-app Toast */}

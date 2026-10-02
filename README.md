@@ -1,4 +1,4 @@
-# Jen's Pastry Shop
+# BAKEOLOGY
 
 > **Pastry Shop Management System**  
 > A mobile-first management application built with **React JS**, **Vite**, and **JavaScript**, demonstrating Gang of Four (GoF) software design patterns for a college JavaScript / Object-Oriented Programming / Design Patterns course.
@@ -7,7 +7,7 @@
 
 ## 🥐 Project Description
 
-**Jen's Pastry Shop Management System** is a mobile-first Point of Sale (POS) and inventory management web application. Specially crafted for pastry shops and bakeries, it provides bakery owners and staff with a touch-friendly interface to manage daily operations on smartphones or tablets:
+**BAKEOLOGY** is a mobile-first Point of Sale (POS) and inventory management web application. Specially crafted for pastry shops and bakeries, it provides bakery owners and staff with a touch-friendly interface to manage daily operations on smartphones or tablets:
 
 - **Dashboard:** Real-time visibility into key performance metrics (Total Products, Total Stock Units, Today's Sales in ₱, and Low Stock Alerts) alongside recent transactions.
 - **Pastry Products Catalog:** Full CRUD (Create, Read, Update, Delete) product management with instant search, category filtering (Bread, Pastry, Cake, Dessert), and mobile cards.
@@ -114,7 +114,7 @@ This project highlights three core Gang of Four (GoF) design patterns, which are
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│                   Jen's Pastry Shop                    │
+│                       BAKEOLOGY                        │
 └────────────────────────────────────────────────────────┘
           │                                     │
           ▼                                     ▼
@@ -267,14 +267,14 @@ The application will render inside a simulated mobile phone frame on desktop scr
 
 ### 4. How to Download & Install to Your Mobile Device (PWA)
 
-You can download and install Jen's Pastry Shop directly to your phone as a standalone mobile app with its own home screen icon and offline support:
+You can download and install BAKEOLOGY directly to your phone as a standalone mobile app with its own home screen icon and offline support:
 
 #### On Android Phones (Google Chrome):
 1. Connect your phone to the same Wi-Fi network as your computer.
 2. In Google Chrome on your phone, open the **Network URL** shown in your terminal (e.g., `http://192.168.1.8:5173/`).
 3. Tap the **"📲 Install"** button in the header or the **"Download to Device"** banner on the dashboard.
 4. Alternatively, tap Chrome's three dots menu (`⋮`) and select **"Install app"** or **"Add to Home screen"**.
-5. Tap **Install**. The **Jen's Pastry Shop** icon will be added to your home screen and app drawer!
+5. Tap **Install**. The **BAKEOLOGY** icon will be added to your home screen and app drawer!
 
 #### On iPhones / iPads (Apple Safari):
 1. Connect your iPhone to the same Wi-Fi network as your computer.

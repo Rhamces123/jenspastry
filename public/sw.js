@@ -1,9 +1,9 @@
 // ==========================================
-// Jen's Pastry Shop - Service Worker
+// BAKEOLOGY - Service Worker
 // Enables PWA installation and offline caching
 // ==========================================
 
-const CACHE_NAME = 'jens-pastry-cache-v1';
+const CACHE_NAME = 'bakeology-cache-v1';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
