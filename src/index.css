@@ -36,9 +36,9 @@
   --bg-beige: #FCE8EF;
   --bg-card: #FFFFFF;
 
-  --text-primary: #4A1525;
-  --text-muted: #8A5269;
-  --text-light: #B88599;
+  --text-primary: #2D323A;
+  --text-muted: #5A6270;
+  --text-light: #7E8794;
   --text-white: #FFFFFF;
 
   --border-light: #F9DAE7;
@@ -197,7 +197,7 @@ input, select, textarea {
 .font-bold { font-weight: 700; }
 .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 
-.text-primary { color: var(--primary-brown); }
+.text-primary { color: var(--text-primary); }
 .text-secondary { color: var(--accent-orange); }
 .text-muted { color: var(--text-muted); }
 .text-success { color: var(--status-in-stock); }

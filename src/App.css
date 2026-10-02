@@ -318,14 +318,14 @@
 .page-main-title {
   font-size: 20px;
   font-weight: 800;
-  color: #4A1525;
+  color: var(--text-primary);
   font-family: var(--font-serif);
   text-shadow: 0 1px 3px rgba(255, 255, 255, 0.7);
 }
 
 .page-main-sub {
   font-size: 12px;
-  color: #8A5269;
+  color: var(--text-muted);
   font-weight: 600;
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
 }
@@ -357,7 +357,7 @@
 .welcome-title {
   font-size: 17px;
   font-weight: 800;
-  color: var(--primary-brown);
+  color: var(--text-primary);
 }
 
 .welcome-sub {
@@ -414,6 +414,7 @@
   font-weight: 800;
   line-height: 1.1;
   font-family: var(--font-sans);
+  color: var(--text-primary);
 }
 
 .summary-card-subtitle {
@@ -428,7 +429,7 @@
   color: var(--primary-brown);
 }
 .summary-card-brown .summary-card-value {
-  color: var(--primary-brown);
+  color: var(--text-primary);
 }
 
 .summary-card-beige .summary-card-icon-wrap {
@@ -436,7 +437,7 @@
   color: #BE185D;
 }
 .summary-card-beige .summary-card-value {
-  color: #831843;
+  color: var(--text-primary);
 }
 
 .summary-card-orange .summary-card-icon-wrap {
@@ -444,7 +445,7 @@
   color: var(--accent-orange);
 }
 .summary-card-orange .summary-card-value {
-  color: var(--accent-orange);
+  color: var(--text-primary);
 }
 
 .summary-card-warning .summary-card-icon-wrap {
@@ -452,7 +453,7 @@
   color: var(--status-low-stock);
 }
 .summary-card-warning .summary-card-value {
-  color: var(--status-low-stock);
+  color: var(--text-primary);
 }
 
 .summary-card-success .summary-card-icon-wrap {
@@ -460,7 +461,7 @@
   color: var(--status-in-stock);
 }
 .summary-card-success .summary-card-value {
-  color: var(--status-in-stock);
+  color: var(--text-primary);
 }
 
 /* Quick Actions Bar */
@@ -586,7 +587,7 @@
 .sale-amount-text {
   font-size: 14px;
   font-weight: 800;
-  color: var(--primary-brown);
+  color: var(--text-primary);
   font-family: var(--font-sans);
 }
 
@@ -709,7 +710,7 @@
 .category-badge {
   display: inline-block;
   background: var(--bg-beige);
-  color: #8A5269;
+  color: var(--text-muted);
   font-size: 10px;
   font-weight: 600;
   padding: 2px 8px;
@@ -897,7 +898,7 @@
 .pos-product-price {
   font-size: 12px;
   font-weight: 800;
-  color: var(--primary-brown);
+  color: var(--text-primary);
 }
 
 .pos-badge-qty {
@@ -983,7 +984,7 @@
 .cart-line-total {
   font-size: 15px;
   font-weight: 800;
-  color: var(--primary-brown);
+  color: var(--text-primary);
 }
 
 .stock-limit-warning {
@@ -1074,7 +1075,7 @@
   font-size: 11px;
   font-weight: 600;
   background: var(--bg-beige);
-  color: #8A5269;
+  color: var(--text-muted);
   padding: 3px 8px;
   border-radius: var(--radius-full);
 }
@@ -1099,7 +1100,7 @@
   border-top: 1px dashed var(--border-medium);
   font-size: 15px;
   font-weight: 800;
-  color: var(--primary-brown);
+  color: var(--text-primary);
 }
 
 .sale-items-container {
@@ -1307,7 +1308,7 @@
 }
 
 .nav-item-active {
-  color: var(--primary-brown);
+  color: var(--text-primary);
 }
 
 .nav-item-active .nav-icon {
@@ -1317,7 +1318,7 @@
 
 .nav-item-active .nav-label {
   font-weight: 800;
-  color: var(--primary-brown);
+  color: var(--text-primary);
 }
 
 /* ==========================================
@@ -1451,7 +1452,7 @@
   border: 1px dashed #F4BED5;
   border-radius: var(--radius-md);
   padding: 10px 12px;
-  color: #8A5269;
+  color: var(--text-muted);
 }
 
 .modal-actions {
@@ -1471,7 +1472,7 @@
 .pattern-title {
   font-size: 13px;
   font-weight: 800;
-  color: var(--primary-brown);
+  color: var(--text-primary);
 }
 
 .pattern-code {
@@ -1536,18 +1537,18 @@
 .receipt-brand {
   font-size: 18px;
   font-weight: 800;
-  color: var(--primary-brown);
+  color: var(--text-primary);
   font-family: var(--font-serif);
 }
 
 .receipt-sub {
   font-size: 10px;
-  color: #8A5269;
+  color: var(--text-muted);
 }
 
 .receipt-address {
   font-size: 9px;
-  color: #B88599;
+  color: var(--text-light);
 }
 
 .receipt-meta {
