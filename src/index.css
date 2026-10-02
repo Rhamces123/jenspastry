@@ -4,37 +4,47 @@
    ========================================== */
 
 :root {
-  /* Warm Pastry Color Palette */
-  --primary-brown: #683B1E;
-  --primary-brown-dark: #4E2811;
-  --primary-brown-light: #89522D;
-  --primary-brown-soft: #F5EBE1;
+  /* Pink Pastry Color Palette */
+  --primary-pink: #9D174D;
+  --primary-pink-dark: #831843;
+  --primary-pink-light: #BE185D;
+  --primary-pink-soft: #FCE7F3;
 
-  --accent-orange: #E07A2B;
-  --accent-orange-hover: #C9661B;
-  --accent-orange-soft: #FDF1E6;
+  --accent-pink: #EC4899;
+  --accent-pink-hover: #DB2777;
+  --accent-pink-soft: #FDF2F8;
 
-  --bg-cream: #FAF6EE;
-  --bg-cream-pure: #FFFDF9;
-  --bg-beige: #F4EBE0;
+  /* Aliases for seamless component compatibility */
+  --primary-brown: #9D174D;
+  --primary-brown-dark: #831843;
+  --primary-brown-light: #BE185D;
+  --primary-brown-soft: #FCE7F3;
+
+  --accent-orange: #EC4899;
+  --accent-orange-hover: #DB2777;
+  --accent-orange-soft: #FDF2F8;
+
+  --bg-cream: #FFF5F8;
+  --bg-cream-pure: #FFF9FA;
+  --bg-beige: #FCE8EF;
   --bg-card: #FFFFFF;
 
-  --text-primary: #342214;
-  --text-muted: #7E6C5E;
-  --text-light: #A39284;
+  --text-primary: #4A1525;
+  --text-muted: #8A5269;
+  --text-light: #B88599;
   --text-white: #FFFFFF;
 
-  --border-light: #EFE6DA;
-  --border-medium: #DECFC0;
+  --border-light: #F9DAE7;
+  --border-medium: #F4BED5;
 
   /* Status Colors */
-  --status-in-stock: #2E7D32;
-  --status-in-stock-bg: #E8F5E9;
-  --status-in-stock-border: #C8E6C9;
+  --status-in-stock: #16A34A;
+  --status-in-stock-bg: #F0FDF4;
+  --status-in-stock-border: #BBF7D0;
 
-  --status-low-stock: #D97706;
-  --status-low-stock-bg: #FFF7ED;
-  --status-low-stock-border: #FFEDD5;
+  --status-low-stock: #E11D48;
+  --status-low-stock-bg: #FFF1F2;
+  --status-low-stock-border: #FECDD3;
 
   --status-out-stock: #DC2626;
   --status-out-stock-bg: #FEF2F2;
@@ -45,10 +55,10 @@
   --font-serif: 'Playfair Display', Georgia, serif;
 
   /* Elevation Shadows */
-  --shadow-sm: 0 1px 3px rgba(104, 59, 30, 0.06);
-  --shadow-md: 0 4px 12px rgba(104, 59, 30, 0.08);
-  --shadow-lg: 0 10px 25px rgba(104, 59, 30, 0.12);
-  --shadow-phone: 0 20px 40px rgba(52, 34, 20, 0.18), 0 0 0 1px rgba(104, 59, 30, 0.08);
+  --shadow-sm: 0 1px 3px rgba(157, 23, 77, 0.06);
+  --shadow-md: 0 4px 12px rgba(157, 23, 77, 0.08);
+  --shadow-lg: 0 10px 25px rgba(157, 23, 77, 0.12);
+  --shadow-phone: 0 20px 40px rgba(74, 21, 37, 0.22), 0 0 0 1px rgba(157, 23, 77, 0.08);
 
   /* Radius */
   --radius-sm: 8px;
@@ -72,7 +82,7 @@
 html, body {
   width: 100%;
   height: 100%;
-  background-color: #EDE4D8;
+  background-color: #FCE8EF;
   font-family: var(--font-sans);
   color: var(--text-primary);
   line-height: 1.5;
@@ -130,11 +140,11 @@ input, select, textarea {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(104, 59, 30, 0.2);
+  background: rgba(157, 23, 77, 0.2);
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(104, 59, 30, 0.35);
+  background: rgba(157, 23, 77, 0.35);
 }
 
 /* Utility Flex & Grid Classes */
