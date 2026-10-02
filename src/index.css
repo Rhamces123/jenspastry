@@ -10,8 +10,8 @@
   --primary-pink-light: #BE185D;
   --primary-pink-soft: #FCE7F3;
 
-  --accent-pink: #EC4899;
-  --accent-pink-hover: #DB2777;
+  --accent-pink: #F472B6;
+  --accent-pink-hover: #EC4899;
   --accent-pink-soft: #FDF2F8;
 
   /* Header Theme (Gray background with light pink text) */
@@ -20,6 +20,9 @@
   --header-notch: #1E2229;
   --header-text: #FBCFE8;
   --header-text-muted: #F9A8D4;
+  --header-pastel-pink: #F9A8D4;
+  --header-pastel-pink-light: #FBCFE8;
+  --header-pastel-pink-dark: #F497B6;
 
   /* Aliases for seamless component compatibility */
   --primary-brown: #9D174D;
@@ -27,8 +30,8 @@
   --primary-brown-light: #BE185D;
   --primary-brown-soft: #FCE7F3;
 
-  --accent-orange: #EC4899;
-  --accent-orange-hover: #DB2777;
+  --accent-orange: #F472B6;
+  --accent-orange-hover: #EC4899;
   --accent-orange-soft: #FDF2F8;
 
   --bg-cream: #FFF5F8;
