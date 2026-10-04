@@ -4,7 +4,7 @@
 // ==========================================
 
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/useAuth.js';
 import { 
   Croissant, 
@@ -25,6 +25,9 @@ export default function Header({ onResetData, onOpenInstallModal, isInstalled = 
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/forgot-password';
 
   const handleLogout = async () => {
     setShowUserMenu(false);
@@ -53,26 +56,37 @@ export default function Header({ onResetData, onOpenInstallModal, isInstalled = 
         </Link>
 
         <div className="header-actions flex items-center gap-1.5">
-          {/* Unauthenticated: Login & Sign Up buttons */}
+          {/* Unauthenticated: Login & Sign Up buttons (or Store link when on auth pages) */}
           {!currentUser ? (
-            <div className="flex items-center gap-1">
+            isAuthPage ? (
               <Link 
-                to="/login"
+                to="/"
                 className="btn-header-auth btn-header-login"
-                title="Customer Sign In"
+                title="Return to Storefront"
               >
-                <LogIn size={13} className="shrink-0" />
-                <span>Login</span>
+                <Croissant size={13} className="shrink-0" />
+                <span>Store</span>
               </Link>
-              <Link 
-                to="/signup"
-                className="btn-header-auth btn-header-signup"
-                title="Create Account"
-              >
-                <UserPlus size={13} className="shrink-0" />
-                <span>Sign Up</span>
-              </Link>
-            </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                <Link 
+                  to="/login"
+                  className="btn-header-auth btn-header-login"
+                  title="Customer Sign In"
+                >
+                  <LogIn size={13} className="shrink-0" />
+                  <span>Login</span>
+                </Link>
+                <Link 
+                  to="/signup"
+                  className="btn-header-auth btn-header-signup"
+                  title="Create Account"
+                >
+                  <UserPlus size={13} className="shrink-0" />
+                  <span>Sign Up</span>
+                </Link>
+              </div>
+            )
           ) : (
             /* Authenticated: Customer Profile Menu Dropdown */
             <div className="relative">

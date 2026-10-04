@@ -425,12 +425,14 @@ export default function App() {
           </Routes>
         </div>
 
-        {/* Fixed Mobile Bottom Navigation */}
-        <BottomNavigation
-          currentTab={location.pathname === '/' ? currentTab : ''}
-          onSelectTab={handleSelectTab}
-          cartCount={totalCartCount}
-        />
+        {/* Fixed Mobile Bottom Navigation (Only visible on main store tabs) */}
+        {location.pathname === '/' && (
+          <BottomNavigation
+            currentTab={currentTab}
+            onSelectTab={handleSelectTab}
+            cartCount={totalCartCount}
+          />
+        )}
 
         {/* Modals & Overlays */}
         {isFormModalOpen && (

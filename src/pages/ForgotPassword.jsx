@@ -1,5 +1,5 @@
 // ==========================================
-// BAKEOLOGY - Forgot Password Page
+// BAKEOLOGY - Forgot Password Page (100x Modern Upgrade)
 // Sends password reset email instructions via Firebase Authentication
 // ==========================================
 
@@ -53,34 +53,29 @@ export default function ForgotPassword() {
 
   return (
     <div className="auth-page-container">
-      {/* Back to Login Link */}
-      <div className="auth-back-link mb-3">
-        <Link to="/login" className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
-          <ArrowLeft size={16} /> Back to Sign In
+      {/* Top Bar Navigation */}
+      <div className="auth-top-bar">
+        <Link to="/login" className="auth-back-btn">
+          <ArrowLeft size={14} />
+          <span>Back to Sign In</span>
         </Link>
       </div>
 
-      <div className="auth-card mobile-card">
-        {/* Header */}
-        <div className="text-center mb-5">
-          <div className="auth-icon-badge mx-auto mb-2.5">
-            <KeyRound size={22} />
+      <div className="auth-card-modern">
+        {/* Brand Header */}
+        <div className="auth-header-center">
+          <div className="auth-pastry-badge">
+            <KeyRound size={24} />
           </div>
-          <h2 className="text-xl font-bold font-serif text-primary">Reset Password</h2>
-          <p className="text-xs text-muted mt-1">
-            Enter your registered email address and we'll send you instructions to reset your password.
+          <h2 className="auth-title">Reset Password</h2>
+          <p className="auth-subtitle">
+            Enter your email and we'll send you a link to reset your password
           </p>
-
-          {!isLiveFirebase && (
-            <div className="mt-2.5 p-2 bg-pink-50 border border-primary-soft rounded-lg text-2xs text-primary font-medium">
-              💡 Demo Mode active (configure Firebase credentials in <code>.env</code> for live email dispatch).
-            </div>
-          )}
         </div>
 
         {/* Success Confirmation State */}
         {isSubmitted ? (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-center space-y-3">
+          <div className="p-4 bg-green-50 border border-green-200 rounded-2xl text-center space-y-3">
             <div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 size={24} />
             </div>
@@ -92,35 +87,38 @@ export default function ForgotPassword() {
             </div>
             <Link
               to="/login"
-              className="btn-primary w-full py-2.5 flex items-center justify-center gap-2 font-bold text-xs shadow-sm mt-3"
+              className="btn-auth-primary"
+              style={{ textDecoration: 'none' }}
             >
               Return to Sign In
             </Link>
           </div>
         ) : (
           <>
-            {/* Error Notification */}
+            {/* Error Notification Alert */}
             {errorMessage && (
-              <div className="auth-error-box flex items-start gap-2 mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">
+              <div className="auth-alert-box auth-alert-error">
                 <AlertCircle size={16} className="shrink-0 mt-0.5" />
                 <span>{errorMessage}</span>
               </div>
             )}
 
             {/* Reset Request Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="input-label" htmlFor="reset-email">
-                  Registered Email Address
-                </label>
-                <div className="relative">
+            <form onSubmit={handleSubmit} noValidate>
+              <div className="auth-form-group">
+                <div className="auth-label-row">
+                  <label className="auth-form-label" htmlFor="reset-email">
+                    <span>Registered Email Address</span>
+                  </label>
+                </div>
+                <div className="auth-input-wrapper">
                   <span className="auth-input-icon">
                     <Mail size={16} />
                   </span>
                   <input
                     id="reset-email"
                     type="email"
-                    className="input-field auth-input"
+                    className="auth-input-field"
                     placeholder="baker@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -133,7 +131,7 @@ export default function ForgotPassword() {
 
               <button
                 type="submit"
-                className="btn-primary w-full py-2.5 flex items-center justify-center gap-2 font-bold text-sm shadow-md"
+                className="btn-auth-primary"
                 disabled={loading}
               >
                 {loading ? (
@@ -149,13 +147,20 @@ export default function ForgotPassword() {
           </>
         )}
 
-        {/* Back Link */}
-        <div className="text-center mt-5 text-xs text-muted">
-          Remember your password?{' '}
-          <Link to="/login" className="text-primary font-bold hover:underline">
+        {/* Footer Link */}
+        <div className="auth-card-footer">
+          <span>Remember your password?</span>
+          <Link to="/login" className="auth-link-bold">
             Sign In here
           </Link>
         </div>
+
+        {/* Subtle Demo Mode Badge */}
+        {!isLiveFirebase && (
+          <div className="auth-demo-badge">
+            <span>💡 Demo Mode active (instant local test)</span>
+          </div>
+        )}
       </div>
     </div>
   );
