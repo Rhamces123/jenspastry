@@ -435,7 +435,7 @@ export default function CustomerDashboard() {
                       {categoryName}
                     </h3>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {items.map(product => {
                       const isFav = favorites.includes(product.id);
                       return (
