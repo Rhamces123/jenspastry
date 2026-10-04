@@ -163,6 +163,7 @@ export default function AdminDashboard() {
           itemMap[id] = {
             id,
             name: item.name,
+            category: item.category || 'Pastry',
             totalQuantity: 0,
             totalRevenue: 0
           };
@@ -179,7 +180,6 @@ export default function AdminDashboard() {
   // Sales Analytics Chart Data: Daily, Weekly, Monthly
   const chartData = useMemo(() => {
     if (analyticsTimeframe === 'daily') {
-      // Last 7 days
       const days = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
@@ -196,7 +196,6 @@ export default function AdminDashboard() {
       }
       return days;
     } else if (analyticsTimeframe === 'weekly') {
-      // 4 weeks
       return [
         { label: 'Week 1', amount: totalRevenue * 0.22 },
         { label: 'Week 2', amount: totalRevenue * 0.28 },
@@ -204,7 +203,6 @@ export default function AdminDashboard() {
         { label: 'Week 4 (Current)', amount: totalRevenue * 0.26 }
       ];
     } else {
-      // Monthly
       return [
         { label: 'Jan', amount: totalRevenue * 0.7 },
         { label: 'Feb', amount: totalRevenue * 0.85 },
@@ -331,9 +329,21 @@ export default function AdminDashboard() {
     return methods;
   }, [orders]);
 
-  // Print Report Handler
   const handlePrintReport = () => {
     window.print();
+  };
+
+  // Helper for Status Badge class
+  const getStatusBadgeClass = (status = 'Completed') => {
+    switch (status.toLowerCase()) {
+      case 'completed': return 'status-completed';
+      case 'confirmed': return 'status-confirmed';
+      case 'preparing': return 'status-preparing';
+      case 'ready': 
+      case 'ready for pickup': return 'status-ready';
+      case 'cancelled': return 'status-cancelled';
+      default: return 'status-pending';
+    }
   };
 
   // Navigation Items for DashboardLayout
@@ -356,163 +366,177 @@ export default function AdminDashboard() {
       activeItem={activeTab}
       onSelectItem={setActiveTab}
       headerActions={
-        <div className="flex items-center gap-2">
+        <>
           <button
             type="button"
-            className="btn btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+            className="btn-admin-secondary"
             onClick={() => {
               setEditingProduct(null);
               setIsProductModalOpen(true);
             }}
           >
-            <Plus size={14} />
+            <Plus size={15} />
             <span>Add Pastry</span>
           </button>
           <button
             type="button"
-            className="btn btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
+            className="btn-admin-primary"
             onClick={() => setIsStaffModalOpen(true)}
           >
-            <UserPlus size={14} />
+            <UserPlus size={15} />
             <span>New Staff</span>
           </button>
-        </div>
+        </>
       }
     >
       {/* TAB 1: EXECUTIVE OVERVIEW */}
       {activeTab === 'overview' && (
-        <div className="space-y-6">
+        <div>
           {/* Executive KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div className="card p-4 bg-white border border-border-light rounded-xl flex flex-col justify-between shadow-xs">
-              <div className="flex items-center justify-between text-muted text-xs font-semibold uppercase">
-                <span>Total Revenue</span>
-                <DollarSign size={16} className="text-secondary" />
+          <div className="admin-kpi-grid">
+            {/* Card 1: Revenue */}
+            <div className="admin-kpi-card kpi-revenue">
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">Total Revenue</span>
+                <div className="admin-kpi-icon-wrap icon-revenue">
+                  <DollarSign size={18} />
+                </div>
               </div>
-              <p className="text-xl font-extrabold text-foreground mt-2">{formatCurrency(totalRevenue)}</p>
-              <span className="text-2xs text-muted mt-1">All recorded transactions</span>
+              <div className="admin-kpi-value">{formatCurrency(totalRevenue)}</div>
+              <div className="admin-kpi-subtext">All recorded sales</div>
             </div>
 
-            <div className="card p-4 bg-white border border-border-light rounded-xl flex flex-col justify-between shadow-xs">
-              <div className="flex items-center justify-between text-muted text-xs font-semibold uppercase">
-                <span>Total Orders</span>
-                <ShoppingBag size={16} className="text-primary" />
+            {/* Card 2: Orders */}
+            <div className="admin-kpi-card kpi-orders">
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">Total Orders</span>
+                <div className="admin-kpi-icon-wrap icon-orders">
+                  <ShoppingBag size={18} />
+                </div>
               </div>
-              <p className="text-xl font-extrabold text-foreground mt-2">{totalOrdersCount}</p>
-              <span className="text-2xs text-muted mt-1">Avg Val: {formatCurrency(aov)}</span>
+              <div className="admin-kpi-value">{totalOrdersCount}</div>
+              <div className="admin-kpi-subtext">Avg Ticket: {formatCurrency(aov)}</div>
             </div>
 
-            <div className="card p-4 bg-white border border-border-light rounded-xl flex flex-col justify-between shadow-xs">
-              <div className="flex items-center justify-between text-muted text-xs font-semibold uppercase">
-                <span>Catalog Items</span>
-                <Package size={16} className="text-accent" />
+            {/* Card 3: Products */}
+            <div className="admin-kpi-card kpi-products">
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">Catalog Items</span>
+                <div className="admin-kpi-icon-wrap icon-products">
+                  <Package size={18} />
+                </div>
               </div>
-              <p className="text-xl font-extrabold text-foreground mt-2">{activeProductsCount}</p>
-              <span className="text-2xs text-muted mt-1">Active baked products</span>
+              <div className="admin-kpi-value">{activeProductsCount}</div>
+              <div className="admin-kpi-subtext">Active baked pastries</div>
             </div>
 
-            <div className="card p-4 bg-white border border-border-light rounded-xl flex flex-col justify-between shadow-xs">
-              <div className="flex items-center justify-between text-muted text-xs font-semibold uppercase">
-                <span>Low Stock</span>
-                <AlertTriangle size={16} className={lowStockCount > 0 ? "text-amber-500" : "text-emerald-500"} />
+            {/* Card 4: Low Stock */}
+            <div className="admin-kpi-card kpi-lowstock">
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">Low Stock</span>
+                <div className="admin-kpi-icon-wrap icon-lowstock">
+                  <AlertTriangle size={18} />
+                </div>
               </div>
-              <p className="text-xl font-extrabold text-foreground mt-2">
-                {lowStockCount} {outOfStockCount > 0 && <span className="text-xs text-red-500 font-normal">({outOfStockCount} out)</span>}
-              </p>
-              <span className="text-2xs text-muted mt-1">Items ≤ 5 units</span>
+              <div className="admin-kpi-value" style={{ color: lowStockCount > 0 ? '#DC2626' : '#10B981' }}>
+                {lowStockCount} {outOfStockCount > 0 && <span style={{ fontSize: '14px', color: '#DC2626' }}>({outOfStockCount} out)</span>}
+              </div>
+              <div className="admin-kpi-subtext">{lowStockCount > 0 ? 'Requires baking queue' : 'Stock is healthy'}</div>
             </div>
 
-            <div className="card p-4 bg-white border border-border-light rounded-xl flex flex-col justify-between shadow-xs col-span-2 md:col-span-1">
-              <div className="flex items-center justify-between text-muted text-xs font-semibold uppercase">
-                <span>Total Users</span>
-                <Users size={16} className="text-purple-600" />
+            {/* Card 5: Users */}
+            <div className="admin-kpi-card kpi-users">
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">Total Accounts</span>
+                <div className="admin-kpi-icon-wrap icon-users">
+                  <Users size={18} />
+                </div>
               </div>
-              <p className="text-xl font-extrabold text-foreground mt-2">{totalUsersCount}</p>
-              <span className="text-2xs text-muted mt-1">Customers & staff</span>
+              <div className="admin-kpi-value">{totalUsersCount}</div>
+              <div className="admin-kpi-subtext">Staff & customers</div>
             </div>
           </div>
 
-          {/* Sales Analytics Chart & Top Products Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Sales Analytics Chart & Top Selling Pastries */}
+          <div className="admin-analytics-grid">
             {/* Sales Chart Section */}
-            <div className="lg:col-span-2 card p-5 bg-white border border-border-light rounded-2xl shadow-xs">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
+            <div className="admin-card">
+              <div className="admin-card-header">
                 <div>
-                  <h3 className="font-serif font-bold text-base text-foreground flex items-center gap-2">
-                    <TrendingUp size={18} className="text-secondary" />
+                  <h3 className="admin-card-title">
+                    <TrendingUp size={20} style={{ color: '#BE185D' }} />
                     Sales Revenue Analytics
                   </h3>
-                  <p className="text-xs text-muted mt-0.5">Interactive performance tracking across periods</p>
+                  <p className="admin-card-subtitle">Interactive performance tracking across periods</p>
                 </div>
-                <div className="flex items-center bg-cream-dark p-1 rounded-lg border border-border-light text-xs font-medium">
+                <div className="admin-timeframe-switch">
                   {['daily', 'weekly', 'monthly'].map(tf => (
                     <button
                       key={tf}
                       type="button"
-                      className={`px-3 py-1 rounded-md capitalize transition-colors ${
-                        analyticsTimeframe === tf ? 'bg-primary text-white shadow-xs font-bold' : 'text-muted hover:text-foreground'
-                      }`}
+                      className={`timeframe-btn ${analyticsTimeframe === tf ? 'active' : ''}`}
                       onClick={() => setAnalyticsTimeframe(tf)}
                     >
-                      {tf}
+                      {tf === 'daily' ? '7 Days' : tf === 'weekly' ? '4 Weeks' : 'Monthly'}
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Bar Chart Visualization */}
-              <div className="pt-4 pb-2">
-                <div className="h-48 flex items-end gap-3 sm:gap-6 border-b border-border-light pb-2">
-                  {chartData.map((bar, i) => {
-                    const heightPercent = maxChartAmount > 0 ? Math.max(12, Math.round((bar.amount / maxChartAmount) * 100)) : 10;
-                    return (
-                      <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group">
-                        <div className="text-2xs font-semibold text-muted mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {formatCurrency(bar.amount)}
-                        </div>
-                        <div 
-                          className="w-full bg-gradient-to-t from-pink-500 to-rose-400 rounded-t-lg transition-all duration-300 group-hover:brightness-110 shadow-xs"
-                          style={{ height: `${heightPercent}%` }}
-                        />
-                        <span className="text-xs text-muted mt-2 font-medium truncate w-full text-center">
-                          {bar.label}
-                        </span>
+              <div className="admin-bar-chart-container">
+                {chartData.map((bar, i) => {
+                  const heightPercent = maxChartAmount > 0 ? Math.max(14, Math.round((bar.amount / maxChartAmount) * 100)) : 14;
+                  return (
+                    <div key={i} className="admin-bar-col">
+                      <div className="admin-bar-tooltip">
+                        {formatCurrency(bar.amount)}
                       </div>
-                    );
-                  })}
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted mt-3">
-                  <span>Total Sales: <strong>{formatCurrency(totalRevenue)}</strong></span>
-                  <span>Average per Order: <strong>{formatCurrency(aov)}</strong></span>
-                </div>
+                      <div 
+                        className="admin-bar-fill"
+                        style={{ height: `${heightPercent}%` }}
+                      />
+                      <span className="admin-bar-label">
+                        {bar.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="admin-chart-footer">
+                <span>Total Period Sales: <strong style={{ color: '#1F242E' }}>{formatCurrency(totalRevenue)}</strong></span>
+                <span>Average per Order: <strong style={{ color: '#1F242E' }}>{formatCurrency(aov)}</strong></span>
               </div>
             </div>
 
-            {/* Top Selling Pastries Card */}
-            <div className="card p-5 bg-white border border-border-light rounded-2xl shadow-xs flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-serif font-bold text-base text-foreground flex items-center gap-2">
-                  <ShoppingBag size={18} className="text-primary" />
+            {/* Top Selling Pastries */}
+            <div className="admin-card">
+              <div className="admin-card-header">
+                <h3 className="admin-card-title">
+                  <ShoppingBag size={20} style={{ color: '#9D174D' }} />
                   Top Selling Pastries
                 </h3>
               </div>
 
               {topSellingProducts.length === 0 ? (
-                <p className="text-xs text-muted my-auto text-center py-6">No sales recorded yet.</p>
+                <div style={{ textAlign: 'center', padding: '30px 0', color: '#8A92A0', fontSize: '13px' }}>
+                  No pastry sales recorded yet.
+                </div>
               ) : (
-                <div className="space-y-3 flex-1 flex flex-col justify-around">
+                <div className="admin-top-list">
                   {topSellingProducts.map((item, idx) => (
-                    <div key={item.id} className="flex items-center justify-between p-2 rounded-xl bg-cream-light border border-border-light/60">
-                      <div className="flex items-center gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-secondary-light/40 text-secondary text-xs font-bold flex items-center justify-center">
-                          {idx + 1}
-                        </span>
-                        <div>
-                          <p className="text-xs font-bold text-foreground leading-tight">{item.name}</p>
-                          <p className="text-2xs text-muted">{item.totalQuantity} units sold</p>
+                    <div key={item.id} className="admin-top-item">
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <div className="admin-top-rank">
+                          {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
+                        </div>
+                        <div className="admin-top-info">
+                          <p className="admin-top-name">{item.name}</p>
+                          <p className="admin-top-qty">{item.totalQuantity} units sold • {item.category}</p>
                         </div>
                       </div>
-                      <span className="text-xs font-extrabold text-primary">
+                      <span className="admin-top-revenue">
                         {formatCurrency(item.totalRevenue)}
                       </span>
                     </div>
@@ -523,73 +547,70 @@ export default function AdminDashboard() {
           </div>
 
           {/* Recent Orders Preview */}
-          <div className="card p-5 bg-white border border-border-light rounded-2xl shadow-xs">
-            <div className="flex items-center justify-between mb-4">
+          <div className="admin-card">
+            <div className="admin-card-header">
               <div>
-                <h3 className="font-serif font-bold text-base text-foreground">Recent Bakery Orders</h3>
-                <p className="text-xs text-muted">Latest transactions processed at cashier or online</p>
+                <h3 className="admin-card-title">Recent Bakery Orders</h3>
+                <p className="admin-card-subtitle">Latest transactions processed at cashier or online</p>
               </div>
               <button
                 type="button"
-                className="text-xs font-bold text-primary hover:underline"
+                style={{ background: 'none', border: 'none', color: '#9D174D', fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}
                 onClick={() => setActiveTab('orders')}
               >
                 View All Orders →
               </button>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+            <div className="admin-table-container">
+              <table className="admin-table">
                 <thead>
-                  <tr className="border-b border-border-light text-muted uppercase text-2xs">
-                    <th className="py-2 px-3">Order #</th>
-                    <th className="py-2 px-3">Customer</th>
-                    <th className="py-2 px-3">Date</th>
-                    <th className="py-2 px-3">Items</th>
-                    <th className="py-2 px-3">Total</th>
-                    <th className="py-2 px-3">Status</th>
-                    <th className="py-2 px-3 text-right">Receipt</th>
+                  <tr>
+                    <th>Order #</th>
+                    <th>Customer</th>
+                    <th>Date & Time</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Receipt</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border-light">
+                <tbody>
                   {orders.slice(0, 5).map(order => (
-                    <tr key={order.id} className="hover:bg-cream-light/60 transition-colors">
-                      <td className="py-2.5 px-3 font-mono font-bold text-primary">
+                    <tr key={order.id}>
+                      <td style={{ fontFamily: 'monospace', fontWeight: 800, color: '#9D174D' }}>
                         {formatSaleNumber(order.saleNumber)}
                       </td>
-                      <td className="py-2.5 px-3 font-medium text-foreground">
+                      <td style={{ fontWeight: 600 }}>
                         {order.customerName || 'Walk-in Customer'}
                       </td>
-                      <td className="py-2.5 px-3 text-muted">
-                        {formatDate(order.date)}
+                      <td style={{ color: '#717A88' }}>
+                        {formatDateTime(order.date)}
                       </td>
-                      <td className="py-2.5 px-3 text-muted">
+                      <td style={{ color: '#555E68' }}>
                         {(order.items || []).length} items
                       </td>
-                      <td className="py-2.5 px-3 font-bold text-foreground">
+                      <td style={{ fontWeight: 800, color: '#1F242E' }}>
                         {formatCurrency(order.total)}
                       </td>
-                      <td className="py-2.5 px-3">
-                        <span className={`px-2 py-0.5 rounded-full text-2xs font-bold ${
-                          order.orderStatus === 'Completed' ? 'bg-emerald-100 text-emerald-700' :
-                          order.orderStatus === 'Preparing' ? 'bg-amber-100 text-amber-700' :
-                          order.orderStatus === 'Cancelled' ? 'bg-rose-100 text-rose-700' :
-                          'bg-blue-100 text-blue-700'
-                        }`}>
+                      <td>
+                        <span className={`admin-status-badge ${getStatusBadgeClass(order.orderStatus)}`}>
                           {order.orderStatus || 'Completed'}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-right">
+                      <td style={{ textAlign: 'right' }}>
                         <button
                           type="button"
-                          className="p-1 hover:text-primary transition-colors"
+                          className="btn-admin-secondary"
+                          style={{ padding: '4px 8px', fontSize: '11px' }}
                           onClick={() => {
                             setActiveReceiptSale(order);
                             setIsReceiptModalOpen(true);
                           }}
                           title="View Receipt"
                         >
-                          <Eye size={15} />
+                          <Eye size={13} />
+                          <span>View</span>
                         </button>
                       </td>
                     </tr>
@@ -603,531 +624,580 @@ export default function AdminDashboard() {
 
       {/* TAB 2: ORDER MANAGEMENT */}
       {activeTab === 'orders' && (
-        <div className="space-y-4">
+        <div>
           {/* Controls & Filter Bar */}
-          <div className="card p-4 bg-white border border-border-light rounded-xl shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
-            <div className="relative w-full md:w-72">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-              <input
-                type="text"
-                placeholder="Search order # or customer..."
-                value={orderSearchQuery}
-                onChange={e => setOrderSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-border-light bg-cream-light focus:outline-none focus:border-primary"
-              />
-            </div>
+          <div className="admin-card" style={{ marginBottom: '18px', padding: '16px 20px' }}>
+            <div className="admin-filter-bar" style={{ margin: 0 }}>
+              <div className="admin-search-wrap">
+                <Search size={15} />
+                <input
+                  type="text"
+                  placeholder="Search order #, customer, or ID..."
+                  value={orderSearchQuery}
+                  onChange={e => setOrderSearchQuery(e.target.value)}
+                  className="admin-search-input"
+                />
+              </div>
 
-            {/* Status pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 text-xs">
-              {['ALL', 'Pending', 'Confirmed', 'Preparing', 'Ready', 'Completed', 'Cancelled'].map(st => (
-                <button
-                  key={st}
-                  type="button"
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                    orderStatusFilter.toUpperCase() === st.toUpperCase()
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'bg-cream-dark text-muted hover:text-foreground'
-                  }`}
-                  onClick={() => setOrderStatusFilter(st)}
-                >
-                  {st}
-                </button>
-              ))}
+              {/* Status pills */}
+              <div className="admin-pills-wrap">
+                {['ALL', 'Pending', 'Confirmed', 'Preparing', 'Ready', 'Completed', 'Cancelled'].map(st => (
+                  <button
+                    key={st}
+                    type="button"
+                    className={`admin-pill ${orderStatusFilter.toUpperCase() === st.toUpperCase() ? 'active' : ''}`}
+                    onClick={() => setOrderStatusFilter(st)}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Orders Table */}
-          <div className="card bg-white border border-border-light rounded-xl shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-cream-light border-b border-border-light text-muted uppercase text-2xs">
-                    <th className="py-3 px-4">Order ID</th>
-                    <th className="py-3 px-4">Customer</th>
-                    <th className="py-3 px-4">Items Summary</th>
-                    <th className="py-3 px-4">Total</th>
-                    <th className="py-3 px-4">Payment</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-center">Update Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+          <div className="admin-table-container">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Customer</th>
+                  <th>Items Summary</th>
+                  <th>Total</th>
+                  <th>Payment</th>
+                  <th>Current Status</th>
+                  <th style={{ textAlign: 'center' }}>Update Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '36px 0', color: '#8A92A0' }}>
+                      No orders found matching the filter criteria.
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border-light">
-                  {filteredOrders.length === 0 ? (
-                    <tr>
-                      <td colSpan="8" className="py-8 text-center text-muted">
-                        No orders found matching the filter criteria.
+                ) : (
+                  filteredOrders.map(order => (
+                    <tr key={order.id}>
+                      <td>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#9D174D', display: 'block' }}>
+                          {formatSaleNumber(order.saleNumber)}
+                        </span>
+                        <span style={{ fontSize: '10px', color: '#8A92A0' }}>{formatDateTime(order.date)}</span>
+                      </td>
+                      <td>
+                        <p style={{ fontWeight: 700, color: '#1F242E' }}>{order.customerName || 'Walk-in Customer'}</p>
+                        {order.customerEmail && <span style={{ fontSize: '11px', color: '#8A92A0' }}>{order.customerEmail}</span>}
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: 600 }}>{(order.items || []).length} items</span>
+                        <span style={{ display: 'block', fontSize: '11px', color: '#717A88', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {(order.items || []).map(i => `${i.quantity}x ${i.name}`).join(', ')}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 800, color: '#1F242E', fontSize: '13px' }}>
+                        {formatCurrency(order.total)}
+                      </td>
+                      <td style={{ color: '#555E68' }}>
+                        {order.paymentMethod || 'Cash'}
+                      </td>
+                      <td>
+                        <span className={`admin-status-badge ${getStatusBadgeClass(order.orderStatus)}`}>
+                          {order.orderStatus || 'Completed'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <select
+                          value={order.orderStatus || 'Completed'}
+                          onChange={e => handleUpdateOrderStatus(order.id, e.target.value)}
+                          className="admin-form-select"
+                          style={{ width: 'auto', padding: '5px 10px', fontSize: '11px', fontWeight: 700 }}
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Confirmed">Confirmed</option>
+                          <option value="Preparing">Preparing</option>
+                          <option value="Ready">Ready</option>
+                          <option value="Completed">Completed</option>
+                          <option value="Cancelled">Cancelled</option>
+                        </select>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          className="btn-admin-secondary"
+                          style={{ padding: '6px 12px', fontSize: '11px' }}
+                          onClick={() => {
+                            setActiveReceiptSale(order);
+                            setIsReceiptModalOpen(true);
+                          }}
+                        >
+                          <Receipt size={13} />
+                          <span>Receipt</span>
+                        </button>
                       </td>
                     </tr>
-                  ) : (
-                    filteredOrders.map(order => (
-                      <tr key={order.id} className="hover:bg-cream-light/50 transition-colors">
-                        <td className="py-3 px-4 font-mono font-bold text-primary">
-                          {formatSaleNumber(order.saleNumber)}
-                          <span className="block text-2xs font-normal text-muted">{formatDateTime(order.date)}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <p className="font-semibold text-foreground">{order.customerName || 'Walk-in Customer'}</p>
-                          {order.customerEmail && <span className="text-2xs text-muted">{order.customerEmail}</span>}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="font-medium text-foreground">{(order.items || []).length} items</span>
-                          <span className="block text-2xs text-muted truncate max-w-xs">
-                            {(order.items || []).map(i => `${i.quantity}x ${i.name}`).join(', ')}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-bold text-foreground">
-                          {formatCurrency(order.total)}
-                        </td>
-                        <td className="py-3 px-4 text-muted">
-                          {order.paymentMethod || 'Cash'}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`px-2.5 py-1 rounded-full text-2xs font-extrabold uppercase ${
-                            order.orderStatus === 'Completed' ? 'bg-emerald-100 text-emerald-800' :
-                            order.orderStatus === 'Preparing' ? 'bg-amber-100 text-amber-800' :
-                            order.orderStatus === 'Ready' ? 'bg-purple-100 text-purple-800' :
-                            order.orderStatus === 'Cancelled' ? 'bg-rose-100 text-rose-800' :
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {order.orderStatus || 'Completed'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <select
-                            value={order.orderStatus || 'Completed'}
-                            onChange={e => handleUpdateOrderStatus(order.id, e.target.value)}
-                            className="text-xs bg-cream-light border border-border-light rounded-md px-2 py-1 font-semibold text-foreground focus:outline-none focus:border-primary"
-                          >
-                            <option value="Pending">Pending</option>
-                            <option value="Confirmed">Confirmed</option>
-                            <option value="Preparing">Preparing</option>
-                            <option value="Ready">Ready</option>
-                            <option value="Completed">Completed</option>
-                            <option value="Cancelled">Cancelled</option>
-                          </select>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            type="button"
-                            className="btn btn-secondary text-2xs py-1 px-2.5 flex items-center gap-1 ml-auto"
-                            onClick={() => {
-                              setActiveReceiptSale(order);
-                              setIsReceiptModalOpen(true);
-                            }}
-                          >
-                            <Receipt size={13} />
-                            <span>Receipt</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {/* TAB 3: PRODUCT MANAGEMENT (CRUD) */}
       {activeTab === 'products' && (
-        <div className="space-y-4">
+        <div>
           {/* Controls */}
-          <div className="card p-4 bg-white border border-border-light rounded-xl shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="relative w-full md:w-64">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                <input
-                  type="text"
-                  placeholder="Search pastries..."
-                  value={productSearch}
-                  onChange={e => setProductSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-border-light bg-cream-light focus:outline-none"
-                />
+          <div className="admin-card" style={{ marginBottom: '18px', padding: '16px 20px' }}>
+            <div className="admin-filter-bar" style={{ margin: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <div className="admin-search-wrap">
+                  <Search size={15} />
+                  <input
+                    type="text"
+                    placeholder="Search pastries..."
+                    value={productSearch}
+                    onChange={e => setProductSearch(e.target.value)}
+                    className="admin-search-input"
+                  />
+                </div>
+
+                <select
+                  value={productCategory}
+                  onChange={e => setProductCategory(e.target.value)}
+                  className="admin-form-select"
+                  style={{ width: 'auto', padding: '8px 12px', fontSize: '12px' }}
+                >
+                  {categories.map(c => (
+                    <option key={c} value={c}>{c === 'ALL' ? 'All Categories' : c}</option>
+                  ))}
+                </select>
               </div>
 
-              <select
-                value={productCategory}
-                onChange={e => setProductCategory(e.target.value)}
-                className="text-xs px-2.5 py-1.5 rounded-lg border border-border-light bg-cream-light font-medium"
+              <button
+                type="button"
+                className="btn-admin-primary"
+                onClick={() => {
+                  setEditingProduct(null);
+                  setIsProductModalOpen(true);
+                }}
               >
-                {categories.map(c => (
-                  <option key={c} value={c}>{c === 'ALL' ? 'All Categories' : c}</option>
-                ))}
-              </select>
+                <Plus size={15} />
+                <span>Add New Pastry</span>
+              </button>
             </div>
-
-            <button
-              type="button"
-              className="btn btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 w-full md:w-auto justify-center"
-              onClick={() => {
-                setEditingProduct(null);
-                setIsProductModalOpen(true);
-              }}
-            >
-              <Plus size={15} />
-              <span>Add New Pastry</span>
-            </button>
           </div>
 
           {/* Product Table */}
-          <div className="card bg-white border border-border-light rounded-xl shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-cream-light border-b border-border-light text-muted uppercase text-2xs">
-                    <th className="py-3 px-4">Pastry</th>
-                    <th className="py-3 px-4">Category</th>
-                    <th className="py-3 px-4">Price</th>
-                    <th className="py-3 px-4">Stock Status</th>
-                    <th className="py-3 px-4">Stock Count</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+          <div className="admin-table-container">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Pastry Details</th>
+                  <th>Category</th>
+                  <th>Unit Price</th>
+                  <th>Stock Status</th>
+                  <th>Available Stock</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProducts.map(prod => (
+                  <tr key={prod.id}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <img
+                          src={prod.image || 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=120&q=80'}
+                          alt={prod.name}
+                          style={{ width: '42px', height: '42px', borderRadius: '10px', objectFit: 'cover', border: '1px solid #EDE4DC' }}
+                        />
+                        <div>
+                          <p style={{ fontWeight: 700, color: '#1F242E', fontSize: '13px' }}>{prod.name}</p>
+                          <span style={{ fontSize: '10px', color: '#8A92A0', fontFamily: 'monospace' }}>ID: {prod.id}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span style={{ padding: '3px 8px', borderRadius: '6px', background: '#F4EFEB', color: '#555E68', fontWeight: 600, fontSize: '11px' }}>
+                        {prod.category}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 800, color: '#1F242E', fontSize: '13px' }}>
+                      {formatCurrency(prod.price)}
+                    </td>
+                    <td>
+                      {prod.stock === 0 ? (
+                        <span className="admin-status-badge status-cancelled">Out of Stock</span>
+                      ) : prod.stock <= 5 ? (
+                        <span className="admin-status-badge status-preparing">Low Stock</span>
+                      ) : (
+                        <span className="admin-status-badge status-completed">In Stock</span>
+                      )}
+                    </td>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '13px', color: '#1F242E' }}>
+                      {prod.stock} units
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                        <button
+                          type="button"
+                          className="btn-admin-secondary"
+                          style={{ padding: '5px 10px', fontSize: '11px' }}
+                          onClick={() => {
+                            setEditingProduct(prod);
+                            setIsProductModalOpen(true);
+                          }}
+                          title="Edit Pastry"
+                        >
+                          <Edit3 size={13} />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          style={{
+                            padding: '5px 10px',
+                            fontSize: '11px',
+                            background: '#FFF1F2',
+                            color: '#BE123C',
+                            border: '1px solid #FECDD3',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontWeight: 700
+                          }}
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to delete '${prod.name}'?`)) {
+                              deleteProduct(prod.id);
+                            }
+                          }}
+                          title="Delete Pastry"
+                        >
+                          <Trash2 size={13} />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border-light">
-                  {filteredProducts.map(prod => (
-                    <tr key={prod.id} className="hover:bg-cream-light/50 transition-colors">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={prod.image || 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=120&q=80'}
-                            alt={prod.name}
-                            className="w-10 h-10 rounded-lg object-cover border border-border-light"
-                          />
-                          <div>
-                            <p className="font-bold text-foreground">{prod.name}</p>
-                            <span className="text-2xs text-muted">{prod.id}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="px-2 py-0.5 rounded-md bg-cream-dark text-muted font-medium text-2xs">
-                          {prod.category}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-bold text-foreground">
-                        {formatCurrency(prod.price)}
-                      </td>
-                      <td className="py-3 px-4">
-                        {prod.stock === 0 ? (
-                          <span className="px-2 py-0.5 rounded-full text-2xs font-extrabold bg-rose-100 text-rose-700">
-                            Out of Stock
-                          </span>
-                        ) : prod.stock <= 5 ? (
-                          <span className="px-2 py-0.5 rounded-full text-2xs font-extrabold bg-amber-100 text-amber-700">
-                            Low Stock
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-2xs font-extrabold bg-emerald-100 text-emerald-700">
-                            In Stock
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 font-mono font-bold text-foreground">
-                        {prod.stock} units
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            className="p-1.5 hover:text-primary rounded hover:bg-cream-light transition-colors"
-                            onClick={() => {
-                              setEditingProduct(prod);
-                              setIsProductModalOpen(true);
-                            }}
-                            title="Edit Pastry"
-                          >
-                            <Edit3 size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            className="p-1.5 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors"
-                            onClick={() => {
-                              if (window.confirm(`Are you sure you want to delete '${prod.name}'?`)) {
-                                deleteProduct(prod.id);
-                              }
-                            }}
-                            title="Delete Pastry"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {/* TAB 4: INVENTORY OVERVIEW */}
       {activeTab === 'inventory' && (
-        <div className="space-y-4">
-          <div className="card p-4 bg-white border border-border-light rounded-xl shadow-xs flex items-center justify-between">
-            <div>
-              <h3 className="font-serif font-bold text-base text-foreground">Inventory Levels & Restock</h3>
-              <p className="text-xs text-muted">Monitor fresh batches and low stock thresholds</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800">
-                {lowStockCount} Low Items
+        <div>
+          <div className="admin-card" style={{ marginBottom: '20px' }}>
+            <div className="admin-card-header" style={{ margin: 0 }}>
+              <div>
+                <h3 className="admin-card-title">Inventory Levels & Restock Management</h3>
+                <p className="admin-card-subtitle">Real-time inventory levels, low stock alerts, and quick batch restock</p>
+              </div>
+              <span className="admin-status-badge status-preparing">
+                {lowStockCount} Low Items Needing Baking
               </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {products.map(prod => (
-              <div 
-                key={prod.id}
-                className={`card p-4 bg-white border rounded-xl shadow-xs flex flex-col justify-between ${
-                  prod.stock <= 5 ? 'border-amber-300 ring-1 ring-amber-100' : 'border-border-light'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+            {products.map(prod => {
+              const maxUnits = 100;
+              const stockPercent = Math.min(100, Math.round((prod.stock / maxUnits) * 100));
+              return (
+                <div 
+                  key={prod.id}
+                  className="admin-card"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    border: prod.stock <= 5 ? '1px solid #FCD34D' : '1px solid #EDE4DC',
+                    boxShadow: prod.stock <= 5 ? '0 4px 12px rgba(245, 158, 11, 0.12)' : '0 2px 8px rgba(0,0,0,0.03)'
+                  }}
+                >
                   <div>
-                    <span className="text-2xs uppercase tracking-wider text-muted font-bold">{prod.category}</span>
-                    <h4 className="font-bold text-sm text-foreground">{prod.name}</h4>
-                    <p className="text-xs text-muted mt-0.5">{formatCurrency(prod.price)} / unit</p>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded-full text-2xs font-extrabold ${
-                    prod.stock === 0 ? 'bg-rose-100 text-rose-700' :
-                    prod.stock <= 5 ? 'bg-amber-100 text-amber-700' :
-                    'bg-emerald-100 text-emerald-700'
-                  }`}>
-                    {prod.stock} in stock
-                  </span>
-                </div>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 800, color: '#8A92A0' }}>
+                        {prod.category}
+                      </span>
+                      <span className={`admin-status-badge ${prod.stock === 0 ? 'status-cancelled' : prod.stock <= 5 ? 'status-preparing' : 'status-completed'}`}>
+                        {prod.stock} in stock
+                      </span>
+                    </div>
 
-                <div className="mt-4 pt-3 border-t border-border-light flex items-center justify-between">
-                  <span className="text-2xs text-muted">
-                    {prod.stock <= 5 ? '⚠ Baking needed soon' : '✓ Good stock level'}
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn-secondary text-2xs py-1 px-3 flex items-center gap-1 font-bold"
-                    onClick={() => {
-                      setRestockingProduct(prod);
-                      setIsRestockModalOpen(true);
-                    }}
-                  >
-                    <Plus size={13} />
-                    <span>Quick Restock</span>
-                  </button>
+                    <h4 style={{ fontSize: '15px', fontWeight: 800, color: '#1F242E', marginBottom: '4px' }}>
+                      {prod.name}
+                    </h4>
+                    <p style={{ fontSize: '12px', color: '#717A88', marginBottom: '14px' }}>
+                      {formatCurrency(prod.price)} / unit
+                    </p>
+
+                    {/* Stock level bar */}
+                    <div style={{ width: '100%', height: '6px', background: '#F1EBE6', borderRadius: '4px', overflow: 'hidden', marginBottom: '16px' }}>
+                      <div 
+                        style={{
+                          width: `${stockPercent}%`,
+                          height: '100%',
+                          background: prod.stock <= 5 ? '#DC2626' : '#10B981',
+                          borderRadius: '4px',
+                          transition: 'width 0.3s ease'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #F1EBE6', paddingTop: '12px' }}>
+                    <span style={{ fontSize: '11px', color: '#8A92A0', fontWeight: 600 }}>
+                      {prod.stock <= 5 ? '⚠ Bake soon' : '✓ In stock'}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-admin-primary"
+                      style={{ padding: '6px 12px', fontSize: '11px' }}
+                      onClick={() => {
+                        setRestockingProduct(prod);
+                        setIsRestockModalOpen(true);
+                      }}
+                    >
+                      <Plus size={13} />
+                      <span>Quick Restock</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
       {/* TAB 5: USER & STAFF MANAGEMENT */}
       {activeTab === 'users' && (
-        <div className="space-y-4">
+        <div>
           {/* Header Controls */}
-          <div className="card p-4 bg-white border border-border-light rounded-xl shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="relative w-full md:w-64">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                <input
-                  type="text"
-                  placeholder="Search user name or email..."
-                  value={userSearchQuery}
-                  onChange={e => setUserSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-border-light bg-cream-light focus:outline-none"
-                />
+          <div className="admin-card" style={{ marginBottom: '18px', padding: '16px 20px' }}>
+            <div className="admin-filter-bar" style={{ margin: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <div className="admin-search-wrap">
+                  <Search size={15} />
+                  <input
+                    type="text"
+                    placeholder="Search name or email..."
+                    value={userSearchQuery}
+                    onChange={e => setUserSearchQuery(e.target.value)}
+                    className="admin-search-input"
+                  />
+                </div>
+
+                <div className="admin-pills-wrap">
+                  {['ALL', ROLES.CUSTOMER, ROLES.CASHIER, ROLES.BAKER, ROLES.ADMIN].map(r => (
+                    <button
+                      key={r}
+                      type="button"
+                      className={`admin-pill ${userRoleFilter === r ? 'active' : ''}`}
+                      onClick={() => setUserRoleFilter(r)}
+                    >
+                      {r === 'ALL' ? 'All Roles' : ROLE_LABELS[r] || r}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <select
-                value={userRoleFilter}
-                onChange={e => setUserRoleFilter(e.target.value)}
-                className="text-xs px-2.5 py-1.5 rounded-lg border border-border-light bg-cream-light font-medium"
+              <button
+                type="button"
+                className="btn-admin-primary"
+                onClick={() => setIsStaffModalOpen(true)}
               >
-                <option value="ALL">All Roles</option>
-                <option value={ROLES.CUSTOMER}>Customers</option>
-                <option value={ROLES.CASHIER}>Cashiers</option>
-                <option value={ROLES.BAKER}>Bakers</option>
-                <option value={ROLES.ADMIN}>Admins</option>
-              </select>
+                <UserPlus size={15} />
+                <span>Create Staff Account</span>
+              </button>
             </div>
-
-            <button
-              type="button"
-              className="btn btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 w-full md:w-auto justify-center"
-              onClick={() => setIsStaffModalOpen(true)}
-            >
-              <UserPlus size={15} />
-              <span>Create Staff Account</span>
-            </button>
           </div>
 
           {/* User Table */}
-          <div className="card bg-white border border-border-light rounded-xl shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-cream-light border-b border-border-light text-muted uppercase text-2xs">
-                    <th className="py-3 px-4">User</th>
-                    <th className="py-3 px-4">Email</th>
-                    <th className="py-3 px-4">Current Role</th>
-                    <th className="py-3 px-4">Provider</th>
-                    <th className="py-3 px-4">Registered</th>
-                    <th className="py-3 px-4 text-right">Assign Role</th>
+          <div className="admin-table-container">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>User Profile</th>
+                  <th>Email Address</th>
+                  <th>Current Role</th>
+                  <th>Auth Provider</th>
+                  <th>Registration Date</th>
+                  <th style={{ textAlign: 'right' }}>Reassign Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {userListLoading ? (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '36px 0', color: '#8A92A0' }}>
+                      Loading bakery accounts...
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border-light">
-                  {userListLoading ? (
-                    <tr>
-                      <td colSpan="6" className="py-8 text-center text-muted">
-                        Loading bakery accounts...
-                      </td>
-                    </tr>
-                  ) : filteredUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="py-8 text-center text-muted">
-                        No accounts found matching filter.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredUsers.map(user => {
-                      const userRole = user.role || ROLES.CUSTOMER;
-                      return (
-                        <tr key={user.uid || user.id || user.email} className="hover:bg-cream-light/50 transition-colors">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-full bg-secondary-light/30 flex items-center justify-center text-xs font-bold text-secondary">
-                                {(user.fullName || user.email || 'U')[0].toUpperCase()}
-                              </div>
-                              <div>
-                                <p className="font-bold text-foreground">{user.fullName || 'Registered User'}</p>
-                                <span className="text-2xs text-muted font-mono">{user.uid || user.id}</span>
-                              </div>
+                ) : filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '36px 0', color: '#8A92A0' }}>
+                      No accounts found matching filter.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map(user => {
+                    const userRole = user.role || ROLES.CUSTOMER;
+                    return (
+                      <tr key={user.uid || user.id || user.email}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div className="dashboard-user-avatar" style={{ width: '32px', height: '32px' }}>
+                              {(user.fullName || user.email || 'U')[0].toUpperCase()}
                             </div>
-                          </td>
-                          <td className="py-3 px-4 font-mono text-muted">
-                            {user.email}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2.5 py-1 rounded-full text-2xs font-extrabold uppercase ${
-                              userRole === ROLES.ADMIN ? 'bg-purple-100 text-purple-800' :
-                              userRole === ROLES.CASHIER ? 'bg-blue-100 text-blue-800' :
-                              userRole === ROLES.BAKER ? 'bg-amber-100 text-amber-800' :
-                              'bg-pink-100 text-pink-800'
-                            }`}>
-                              {ROLE_LABELS[userRole] || userRole}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 capitalize text-muted">
-                            {user.provider || 'email'}
-                          </td>
-                          <td className="py-3 px-4 text-muted">
-                            {formatDate(user.createdAt)}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <select
-                              value={userRole}
-                              onChange={e => handleRoleChange(user.uid || user.id, e.target.value)}
-                              className="text-xs bg-cream-light border border-border-light rounded-md px-2 py-1 font-semibold text-foreground focus:outline-none focus:border-primary"
-                            >
-                              <option value={ROLES.CUSTOMER}>Customer</option>
-                              <option value={ROLES.CASHIER}>Cashier</option>
-                              <option value={ROLES.BAKER}>Baker</option>
-                              <option value={ROLES.ADMIN}>Store Owner / Admin</option>
-                            </select>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                            <div>
+                              <p style={{ fontWeight: 700, color: '#1F242E', fontSize: '13px' }}>{user.fullName || 'Registered User'}</p>
+                              <span style={{ fontSize: '10px', color: '#8A92A0', fontFamily: 'monospace' }}>{user.uid || user.id}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ fontFamily: 'monospace', color: '#555E68', fontSize: '12px' }}>
+                          {user.email}
+                        </td>
+                        <td>
+                          <span className={`dashboard-role-pill ${
+                            userRole === ROLES.ADMIN ? 'role-admin' :
+                            userRole === ROLES.CASHIER ? 'role-cashier' :
+                            userRole === ROLES.BAKER ? 'role-baker' : 'role-customer'
+                          }`}>
+                            {ROLE_LABELS[userRole] || userRole}
+                          </span>
+                        </td>
+                        <td style={{ textTransform: 'capitalize', color: '#717A88' }}>
+                          {user.provider || 'email'}
+                        </td>
+                        <td style={{ color: '#717A88' }}>
+                          {formatDate(user.createdAt)}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <select
+                            value={userRole}
+                            onChange={e => handleRoleChange(user.uid || user.id, e.target.value)}
+                            className="admin-form-select"
+                            style={{ width: 'auto', padding: '5px 10px', fontSize: '11px', fontWeight: 700 }}
+                          >
+                            <option value={ROLES.CUSTOMER}>Customer</option>
+                            <option value={ROLES.CASHIER}>Cashier</option>
+                            <option value={ROLES.BAKER}>Baker</option>
+                            <option value={ROLES.ADMIN}>Store Owner / Admin</option>
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {/* TAB 6: SALES REPORTS & ANALYTICS */}
       {activeTab === 'reports' && (
-        <div className="space-y-6">
-          <div className="card p-4 bg-white border border-border-light rounded-xl shadow-xs flex items-center justify-between">
-            <div>
-              <h3 className="font-serif font-bold text-base text-foreground">Sales & Revenue Reports</h3>
-              <p className="text-xs text-muted">Detailed financial analytics and payment breakdown</p>
+        <div>
+          <div className="admin-card" style={{ marginBottom: '20px' }}>
+            <div className="admin-card-header" style={{ margin: 0 }}>
+              <div>
+                <h3 className="admin-card-title">Bakery Sales & Revenue Audits</h3>
+                <p className="admin-card-subtitle">Comprehensive breakdown by payment channels and audited totals</p>
+              </div>
+              <button
+                type="button"
+                className="btn-admin-primary"
+                onClick={handlePrintReport}
+              >
+                <Printer size={15} />
+                <span>Print Audit Report</span>
+              </button>
             </div>
-            <button
-              type="button"
-              className="btn btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
-              onClick={handlePrintReport}
-            >
-              <Printer size={15} />
-              <span>Print Report</span>
-            </button>
           </div>
 
           {/* Payment Methods Breakdown Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="card p-4 bg-white border border-border-light rounded-xl shadow-xs">
-              <div className="flex items-center justify-between text-muted text-xs font-semibold">
-                <span>Cash Receipts</span>
-                <DollarSign size={16} className="text-emerald-600" />
+          <div className="admin-kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className="admin-kpi-card kpi-revenue">
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">Cash Register</span>
+                <div className="admin-kpi-icon-wrap icon-revenue">
+                  <DollarSign size={18} />
+                </div>
               </div>
-              <p className="text-xl font-extrabold text-foreground mt-2">{formatCurrency(paymentBreakdown.Cash)}</p>
-              <span className="text-2xs text-muted">Direct counter transactions</span>
+              <div className="admin-kpi-value">{formatCurrency(paymentBreakdown.Cash)}</div>
+              <div className="admin-kpi-subtext">Direct counter payments</div>
             </div>
 
-            <div className="card p-4 bg-white border border-border-light rounded-xl shadow-xs">
-              <div className="flex items-center justify-between text-muted text-xs font-semibold">
-                <span>GCash / E-Wallet</span>
-                <CreditCard size={16} className="text-blue-600" />
+            <div className="admin-kpi-card kpi-orders">
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">GCash / QR</span>
+                <div className="admin-kpi-icon-wrap icon-orders">
+                  <CreditCard size={18} />
+                </div>
               </div>
-              <p className="text-xl font-extrabold text-foreground mt-2">{formatCurrency(paymentBreakdown.GCash)}</p>
-              <span className="text-2xs text-muted">Digital wallet QR payments</span>
+              <div className="admin-kpi-value">{formatCurrency(paymentBreakdown.GCash)}</div>
+              <div className="admin-kpi-subtext">Digital mobile wallets</div>
             </div>
 
-            <div className="card p-4 bg-white border border-border-light rounded-xl shadow-xs">
-              <div className="flex items-center justify-between text-muted text-xs font-semibold">
-                <span>Card Payments</span>
-                <CreditCard size={16} className="text-purple-600" />
+            <div className="admin-kpi-card kpi-users">
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">Card Terminal</span>
+                <div className="admin-kpi-icon-wrap icon-users">
+                  <CreditCard size={18} />
+                </div>
               </div>
-              <p className="text-xl font-extrabold text-foreground mt-2">{formatCurrency(paymentBreakdown.Card)}</p>
-              <span className="text-2xs text-muted">Debit and Credit cards</span>
+              <div className="admin-kpi-value">{formatCurrency(paymentBreakdown.Card)}</div>
+              <div className="admin-kpi-subtext">Debit & credit cards</div>
             </div>
           </div>
 
           {/* Detailed Summary Table */}
-          <div className="card p-5 bg-white border border-border-light rounded-2xl shadow-xs">
-            <h4 className="font-serif font-bold text-sm text-foreground mb-3">Audited Sales Summary</h4>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+          <div className="admin-card">
+            <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '16px', fontWeight: 800, color: '#1F242E', marginBottom: '16px' }}>
+              Audited Financial Summary
+            </h4>
+            <div className="admin-table-container">
+              <table className="admin-table">
                 <thead>
-                  <tr className="border-b border-border-light text-muted uppercase text-2xs">
-                    <th className="py-2 px-3">Metric</th>
-                    <th className="py-2 px-3">Value</th>
-                    <th className="py-2 px-3">Description</th>
+                  <tr>
+                    <th>Financial Metric</th>
+                    <th>Recorded Value</th>
+                    <th>Auditing Description</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border-light">
+                <tbody>
                   <tr>
-                    <td className="py-2.5 px-3 font-semibold text-foreground">Gross Sales Revenue</td>
-                    <td className="py-2.5 px-3 font-mono font-bold text-primary">{formatCurrency(totalRevenue)}</td>
-                    <td className="py-2.5 px-3 text-muted">Total sum of all confirmed orders</td>
+                    <td style={{ fontWeight: 700, color: '#1F242E' }}>Gross Sales Revenue</td>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '14px', color: '#9D174D' }}>
+                      {formatCurrency(totalRevenue)}
+                    </td>
+                    <td style={{ color: '#717A88' }}>Total gross receipts across all confirmed bakery orders</td>
                   </tr>
                   <tr>
-                    <td className="py-2.5 px-3 font-semibold text-foreground">Total Transactions</td>
-                    <td className="py-2.5 px-3 font-mono font-bold text-foreground">{totalOrdersCount}</td>
-                    <td className="py-2.5 px-3 text-muted">Combined online and POS tickets</td>
+                    <td style={{ fontWeight: 700, color: '#1F242E' }}>Total Completed Transactions</td>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '14px', color: '#1F242E' }}>
+                      {totalOrdersCount} orders
+                    </td>
+                    <td style={{ color: '#717A88' }}>Combined online orders and counter POS sales</td>
                   </tr>
                   <tr>
-                    <td className="py-2.5 px-3 font-semibold text-foreground">Average Order Value (AOV)</td>
-                    <td className="py-2.5 px-3 font-mono font-bold text-foreground">{formatCurrency(aov)}</td>
-                    <td className="py-2.5 px-3 text-muted">Average spend per bakery ticket</td>
+                    <td style={{ fontWeight: 700, color: '#1F242E' }}>Average Order Value (AOV)</td>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '14px', color: '#1F242E' }}>
+                      {formatCurrency(aov)}
+                    </td>
+                    <td style={{ color: '#717A88' }}>Average customer spend per bakery ticket</td>
                   </tr>
                   <tr>
-                    <td className="py-2.5 px-3 font-semibold text-foreground">Estimated 12% VAT Included</td>
-                    <td className="py-2.5 px-3 font-mono font-bold text-muted">{formatCurrency(totalRevenue * (0.12 / 1.12))}</td>
-                    <td className="py-2.5 px-3 text-muted">Statutory Value Added Tax portion</td>
+                    <td style={{ fontWeight: 700, color: '#1F242E' }}>12% VAT Included Portion</td>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 700, color: '#717A88' }}>
+                      {formatCurrency(totalRevenue * (0.12 / 1.12))}
+                    </td>
+                    <td style={{ color: '#717A88' }}>Statutory Value Added Tax portion included in pricing</td>
                   </tr>
                 </tbody>
               </table>
@@ -1138,62 +1208,64 @@ export default function AdminDashboard() {
 
       {/* TAB 7: STORE SETTINGS */}
       {activeTab === 'settings' && (
-        <div className="space-y-6 max-w-3xl">
-          <div className="card p-5 bg-white border border-border-light rounded-2xl shadow-xs space-y-4">
-            <div className="flex items-center gap-2 border-b border-border-light pb-3">
-              <Store size={20} className="text-primary" />
-              <h3 className="font-serif font-bold text-base text-foreground">Jen's Pastry Shop Information</h3>
+        <div style={{ maxWidth: '800px' }}>
+          <div className="admin-card" style={{ marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid #EDE4DC', paddingBottom: '14px', marginBottom: '18px' }}>
+              <Store size={22} style={{ color: '#9D174D' }} />
+              <h3 className="admin-card-title">Jen's Pastry Shop Official Details</h3>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div>
-                <label className="text-muted font-semibold block mb-1">Bakery Brand Name</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Bakery Brand Name</label>
                 <input
                   type="text"
                   readOnly
                   value="Jen's Pastry Shop (BAKEOLOGY)"
-                  className="w-full p-2 bg-cream-light border border-border-light rounded-lg text-foreground font-medium"
+                  className="admin-form-input"
+                  style={{ background: '#FAF5F2', fontWeight: 700 }}
                 />
               </div>
 
-              <div>
-                <label className="text-muted font-semibold block mb-1">Currency Code</label>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Currency Standard</label>
                 <input
                   type="text"
                   readOnly
                   value="PHP (₱ Philippine Peso)"
-                  className="w-full p-2 bg-cream-light border border-border-light rounded-lg text-foreground font-medium"
+                  className="admin-form-input"
+                  style={{ background: '#FAF5F2', fontWeight: 700 }}
                 />
               </div>
 
-              <div>
-                <label className="text-muted font-semibold block mb-1">Store Address</label>
-                <div className="flex items-center gap-1.5 p-2 bg-cream-light border border-border-light rounded-lg text-foreground">
-                  <MapPin size={14} className="text-primary shrink-0" />
+              <div className="admin-form-group">
+                <label className="admin-form-label">Bakery Address</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', background: '#FAF5F2', border: '1px solid #D8CFCA', borderRadius: '8px', fontSize: '12px' }}>
+                  <MapPin size={15} style={{ color: '#9D174D', flexShrink: 0 }} />
                   <span>123 Baker Street, Sweet City, Metro Manila</span>
                 </div>
               </div>
 
-              <div>
-                <label className="text-muted font-semibold block mb-1">Contact Hotline</label>
-                <div className="flex items-center gap-1.5 p-2 bg-cream-light border border-border-light rounded-lg text-foreground">
-                  <Phone size={14} className="text-secondary shrink-0" />
+              <div className="admin-form-group">
+                <label className="admin-form-label">Customer Hotline</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', background: '#FAF5F2', border: '1px solid #D8CFCA', borderRadius: '8px', fontSize: '12px' }}>
+                  <Phone size={15} style={{ color: '#059669', flexShrink: 0 }} />
                   <span>+63 (917) 555-BAKE (2253)</span>
                 </div>
               </div>
 
-              <div>
-                <label className="text-muted font-semibold block mb-1">Operating Hours</label>
-                <div className="flex items-center gap-1.5 p-2 bg-cream-light border border-border-light rounded-lg text-foreground">
-                  <Clock size={14} className="text-accent shrink-0" />
-                  <span>Daily: 7:00 AM – 9:00 PM</span>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Daily Operating Hours</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', background: '#FAF5F2', border: '1px solid #D8CFCA', borderRadius: '8px', fontSize: '12px' }}>
+                  <Clock size={15} style={{ color: '#D97706', flexShrink: 0 }} />
+                  <span>7:00 AM – 9:00 PM (Monday - Sunday)</span>
                 </div>
               </div>
 
-              <div>
-                <label className="text-muted font-semibold block mb-1">Tax Configuration</label>
-                <div className="flex items-center gap-1.5 p-2 bg-cream-light border border-border-light rounded-lg text-foreground">
-                  <Percent size={14} className="text-emerald-600 shrink-0" />
+              <div className="admin-form-group">
+                <label className="admin-form-label">Tax Configuration</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', background: '#FAF5F2', border: '1px solid #D8CFCA', borderRadius: '8px', fontSize: '12px' }}>
+                  <Percent size={15} style={{ color: '#7E22CE', flexShrink: 0 }} />
                   <span>12% Philippine VAT (Prices Inclusive)</span>
                 </div>
               </div>
@@ -1201,17 +1273,26 @@ export default function AdminDashboard() {
           </div>
 
           {/* Reset Pastry Data Card */}
-          <div className="card p-5 bg-white border border-rose-200 rounded-2xl shadow-xs">
-            <h4 className="font-serif font-bold text-sm text-rose-800 flex items-center gap-2">
-              <RefreshCw size={16} className="text-rose-600" />
-              Reset System Catalog to Default
+          <div className="admin-card" style={{ borderColor: '#FECDD3', background: '#FFF9FA' }}>
+            <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '15px', fontWeight: 800, color: '#BE123C', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <RefreshCw size={17} style={{ color: '#E11D48' }} />
+              Reset System Catalog to Factory Defaults
             </h4>
-            <p className="text-xs text-muted mt-1">
+            <p style={{ fontSize: '12px', color: '#717A88', marginBottom: '14px' }}>
               Restores all default artisan breads, cakes, and pastries created via Factory Pattern to their factory default stock and pricing.
             </p>
             <button
               type="button"
-              className="mt-4 px-4 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-300 rounded-xl text-xs font-bold transition-colors"
+              style={{
+                background: '#FFF1F2',
+                color: '#BE123C',
+                border: '1px solid #FECDD3',
+                padding: '9px 16px',
+                borderRadius: '10px',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
               onClick={() => {
                 if (window.confirm("Are you sure you want to reset all product items to default data? Any custom pastries will be removed.")) {
                   resetToDefaultData();
@@ -1227,81 +1308,81 @@ export default function AdminDashboard() {
 
       {/* CREATE STAFF MODAL */}
       {isStaffModalOpen && (
-        <div className="modal-backdrop" onClick={() => setIsStaffModalOpen(false)}>
+        <div className="admin-modal-backdrop" onClick={() => setIsStaffModalOpen(false)}>
           <div 
-            className="modal-content mobile-card max-w-md w-full"
+            className="admin-modal-card"
             onClick={e => e.stopPropagation()}
             role="dialog"
           >
-            <div className="modal-header">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={20} className="text-purple-600" />
-                <h3 className="modal-title">Create Staff Account</h3>
+            <div className="admin-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShieldCheck size={20} style={{ color: '#7E22CE' }} />
+                <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#1F242E' }}>Create Staff Account</h3>
               </div>
               <button 
                 type="button" 
                 className="close-btn"
                 onClick={() => setIsStaffModalOpen(false)}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateStaff} className="space-y-4">
+            <form onSubmit={handleCreateStaff} className="admin-modal-body">
               {staffErrorMsg && (
-                <div className="p-3 bg-rose-50 text-rose-700 text-xs rounded-lg border border-rose-200">
+                <div style={{ padding: '10px 14px', background: '#FFF1F2', color: '#BE123C', fontSize: '12px', borderRadius: '8px', border: '1px solid #FECDD3', marginBottom: '12px' }}>
                   {staffErrorMsg}
                 </div>
               )}
 
               {staffSuccessMsg && (
-                <div className="p-3 bg-emerald-50 text-emerald-700 text-xs rounded-lg border border-emerald-200">
+                <div style={{ padding: '10px 14px', background: '#ECFDF5', color: '#047857', fontSize: '12px', borderRadius: '8px', border: '1px solid #A7F3D0', marginBottom: '12px' }}>
                   {staffSuccessMsg}
                 </div>
               )}
 
-              <div className="form-group">
-                <label className="form-label">Staff Full Name</label>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Staff Full Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Maria Santos"
                   value={staffForm.fullName}
                   onChange={e => setStaffForm(prev => ({ ...prev, fullName: e.target.value }))}
-                  className="form-input text-xs"
+                  className="admin-form-input"
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Staff Email Address</label>
                 <input
                   type="email"
                   required
                   placeholder="e.g. cashier2@jenspastry.com"
                   value={staffForm.email}
                   onChange={e => setStaffForm(prev => ({ ...prev, email: e.target.value }))}
-                  className="form-input text-xs"
+                  className="admin-form-input"
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Temporary Password</label>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Initial Password</label>
                 <input
                   type="password"
                   required
                   placeholder="At least 6 characters"
                   value={staffForm.password}
                   onChange={e => setStaffForm(prev => ({ ...prev, password: e.target.value }))}
-                  className="form-input text-xs"
+                  className="admin-form-input"
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Staff Role</label>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Designated Staff Role</label>
                 <select
                   value={staffForm.role}
                   onChange={e => setStaffForm(prev => ({ ...prev, role: e.target.value }))}
-                  className="form-input text-xs"
+                  className="admin-form-select"
                 >
                   <option value={ROLES.CASHIER}>Cashier (POS & Orders)</option>
                   <option value={ROLES.BAKER}>Baker (Kitchen & Production Queue)</option>
@@ -1309,10 +1390,10 @@ export default function AdminDashboard() {
                 </select>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '18px' }}>
                 <button
                   type="button"
-                  className="btn btn-secondary text-xs"
+                  className="btn-admin-secondary"
                   onClick={() => setIsStaffModalOpen(false)}
                 >
                   Cancel
@@ -1320,7 +1401,7 @@ export default function AdminDashboard() {
                 <button
                   type="submit"
                   disabled={staffSubmitting}
-                  className="btn btn-primary text-xs flex items-center gap-1.5"
+                  className="btn-admin-primary"
                 >
                   {staffSubmitting ? 'Creating...' : 'Create Account'}
                 </button>

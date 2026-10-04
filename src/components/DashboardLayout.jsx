@@ -5,7 +5,7 @@
 // ==========================================
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/useAuth.js';
 import { ROLE_LABELS, ROLES } from '../constants/roles.js';
 import { 
@@ -13,10 +13,9 @@ import {
   Menu, 
   X, 
   LogOut, 
-  User as UserIcon, 
   ChevronRight,
-  Shield,
-  Sparkles
+  Sparkles,
+  ExternalLink
 } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -45,144 +44,138 @@ export default function DashboardLayout({
   const displayName = userProfile?.fullName || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
   const roleLabel = ROLE_LABELS[role] || role;
 
-  const getRoleBadgeClass = () => {
+  const getRolePillClass = () => {
     switch (role) {
       case ROLES.ADMIN:
-        return 'bg-purple-100 text-purple-700 border-purple-200';
+        return 'role-admin';
       case ROLES.CASHIER:
-        return 'bg-blue-100 text-blue-700 border-blue-200';
+        return 'role-cashier';
       case ROLES.BAKER:
-        return 'bg-amber-100 text-amber-700 border-amber-200';
+        return 'role-baker';
       default:
-        return 'bg-pink-100 text-primary border-border-light';
+        return 'role-customer';
     }
   };
 
   return (
-    <div className="dashboard-shell flex flex-col h-full bg-cream">
+    <div className="dashboard-shell">
       {/* Top Navbar */}
-      <header className="dashboard-topbar flex items-center justify-between px-4 py-3 bg-[#333842] text-white shadow-sm z-30 shrink-0">
-        <div className="flex items-center gap-3">
+      <header className="dashboard-topbar">
+        <div className="dashboard-brand">
           <button
             type="button"
-            className="md:hidden text-white/80 hover:text-white p-1"
+            className="header-btn"
+            style={{ display: 'none', background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-200 to-pink-300 flex items-center justify-center text-primary-dark shadow-sm">
-              <Croissant size={18} className="text-[#831843]" />
+          <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="dashboard-brand-logo">
+              <Croissant size={20} />
             </div>
             <div>
-              <span className="font-extrabold text-sm tracking-tight text-[#FBCFE8] font-serif block leading-none">
-                BAKEOLOGY
-              </span>
-              <span className="text-2xs text-[#F9A8D4] block mt-0.5 font-sans">
-                Jen's Pastry Shop
-              </span>
+              <span className="dashboard-brand-title">BAKEOLOGY</span>
+              <span className="dashboard-brand-subtitle" style={{ display: 'block' }}>Jen's Pastry Shop</span>
             </div>
-          </div>
+          </Link>
         </div>
 
-        {/* User Badge & Logout */}
-        <div className="flex items-center gap-2">
-          <div className="hidden sm:flex flex-col text-right">
-            <span className="text-xs font-bold text-white truncate max-w-[130px]">
-              {displayName}
-            </span>
-            <span className="text-2xs text-pink-200">
-              {roleLabel}
-            </span>
+        {/* User Profile Badge & Logout */}
+        <div className="dashboard-topbar-actions">
+          <div className="dashboard-user-badge">
+            <div className="dashboard-user-avatar">
+              {displayName[0]?.toUpperCase() || 'U'}
+            </div>
+            <div className="dashboard-user-text">
+              <span className="dashboard-user-name">{displayName}</span>
+              <span className="dashboard-user-role">{roleLabel}</span>
+            </div>
           </div>
 
-          <span className={`text-2xs font-extrabold px-2 py-0.5 rounded-full border ${getRoleBadgeClass()} shadow-2xs capitalize`}>
+          <span className={`dashboard-role-pill ${getRolePillClass()}`}>
             {role}
           </span>
 
           <button
             type="button"
-            className="text-white/70 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors"
+            className="dashboard-logout-btn"
             onClick={handleLogout}
-            title="Log Out"
+            title="Log Out of Bakery"
             aria-label="Log Out"
           >
-            <LogOut size={16} />
+            <LogOut size={14} />
+            <span>Logout</span>
           </button>
         </div>
       </header>
 
-      {/* Main Body with Sidebar + Workspace */}
-      <div className="dashboard-container flex flex-1 overflow-hidden relative">
-        {/* Mobile Backdrop Overlay */}
+      {/* Main Body (Sidebar + Content Area) */}
+      <div className="dashboard-container">
+        {/* Mobile Backdrop */}
         {mobileMenuOpen && (
           <div
-            className="mobile-drawer-backdrop md:hidden absolute inset-0 bg-black/50 z-20 transition-opacity"
+            className="mobile-drawer-backdrop"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              zIndex: 35
+            }}
             onClick={() => setMobileMenuOpen(false)}
           />
         )}
 
         {/* Sidebar Navigation */}
-        <aside
-          className={`dashboard-sidebar w-64 bg-card border-r border-border-light flex flex-col justify-between z-30 transition-transform duration-200 absolute md:relative inset-y-0 left-0 ${
-            mobileMenuOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full md:translate-x-0'
-          }`}
-        >
-          {/* Navigation Items */}
-          <div className="py-4 px-3 space-y-1 overflow-y-auto flex-1">
-            <div className="px-3 pb-2 text-2xs font-bold uppercase tracking-wider text-muted flex items-center justify-between">
+        <aside className={`dashboard-sidebar ${mobileMenuOpen ? 'sidebar-open' : ''}`}>
+          <div>
+            <div className="dashboard-sidebar-header">
               <span>{roleLabel} Menu</span>
-              <Sparkles size={11} className="text-primary" />
+              <Sparkles size={12} style={{ color: '#BE185D' }} />
             </div>
 
-            {navigationItems.map((item) => {
-              const Icon = item.icon || ChevronRight;
-              const isActive = activeItem === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-primary text-white shadow-sm font-bold'
-                      : 'text-text-primary hover:bg-beige text-muted hover:text-primary'
-                  }`}
-                  onClick={() => {
-                    onSelectItem(item.id);
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon size={16} className={isActive ? 'text-white' : 'text-primary'} />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge !== undefined && (
-                    <span
-                      className={`text-2xs px-2 py-0.5 rounded-full font-bold ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-pink-100 text-primary'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+            <nav className="dashboard-nav-list">
+              {navigationItems.map((item) => {
+                const Icon = item.icon || ChevronRight;
+                const isActive = activeItem === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`dashboard-nav-btn ${isActive ? 'active' : ''}`}
+                    onClick={() => {
+                      onSelectItem(item.id);
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <div className="dashboard-nav-btn-content">
+                      <Icon size={17} style={{ color: isActive ? '#FFFFFF' : '#9D174D' }} />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge !== undefined && item.badge !== null && (
+                      <span className="dashboard-nav-badge">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
 
           {/* Sidebar Footer User Info */}
-          <div className="p-3 border-t border-border-light bg-cream-pure">
-            <div className="flex items-center gap-2.5 p-2 rounded-xl bg-card border border-border-light">
-              <div className="w-8 h-8 rounded-full bg-pink-100 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+          <div className="dashboard-sidebar-footer">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div className="dashboard-user-avatar" style={{ width: '32px', height: '32px' }}>
                 {displayName[0]?.toUpperCase() || 'U'}
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-primary truncate leading-tight">
+              <div style={{ minWidth: 0, flex: 1, lineHeight: '1.2' }}>
+                <p style={{ fontSize: '12px', fontWeight: 700, color: '#1F242E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {displayName}
                 </p>
-                <p className="text-2xs text-muted truncate">
+                <p style={{ fontSize: '10px', color: '#717A88', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {currentUser?.email}
                 </p>
               </div>
@@ -190,31 +183,25 @@ export default function DashboardLayout({
           </div>
         </aside>
 
-        {/* Dynamic Content Workspace */}
-        <main className="dashboard-content-area flex-1 flex flex-col overflow-y-auto bg-cream">
-          {/* Header Banner */}
+        {/* Content Workspace */}
+        <main className="dashboard-content-area">
+          {/* Header Sub-bar */}
           {(title || headerActions) && (
-            <div className="dashboard-content-header px-4 py-3 bg-card border-b border-border-light flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <div className="dashboard-content-header">
               <div>
-                <h1 className="text-base font-extrabold text-primary font-serif">
-                  {title}
-                </h1>
-                {subtitle && (
-                  <p className="text-2xs text-muted">
-                    {subtitle}
-                  </p>
-                )}
+                <h1 className="dashboard-header-title">{title}</h1>
+                {subtitle && <p className="dashboard-header-subtitle">{subtitle}</p>}
               </div>
               {headerActions && (
-                <div className="flex items-center gap-2">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   {headerActions}
                 </div>
               )}
             </div>
           )}
 
-          {/* Scrollable Children Canvas */}
-          <div className="p-4 flex-1">
+          {/* Scrollable Children */}
+          <div className="dashboard-content-body">
             {children}
           </div>
         </main>

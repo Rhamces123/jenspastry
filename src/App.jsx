@@ -336,7 +336,7 @@ export default function App() {
       )}
 
       {/* Main Mobile App Container */}
-      <main className={`mobile-phone-container ${isDashboardRoute ? 'dashboard-container' : ''}`}>
+      <main className={`mobile-phone-container ${isDashboardRoute ? 'dashboard-view-mode' : ''}`}>
         {/* Device Notch & Status Bar (Simulated Phone Feel - only on storefront) */}
         {!isDashboardRoute && (
           <>
