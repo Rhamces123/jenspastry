@@ -2554,4 +2554,366 @@
   border-radius: 9999px;
 }
 
+/* ==========================================
+   INSTALL APP MODAL (PWA) STYLES
+   ========================================== */
+
+.install-modal-content {
+  width: 100%;
+  max-width: 420px;
+  max-height: 85vh;
+  margin: 0 auto;
+  overflow-y: auto;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--bg-card);
+  padding: 20px;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.25s ease-out;
+}
+
+.install-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.install-header-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary-pink-soft), var(--bg-cream));
+  color: var(--primary-pink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 2px 6px rgba(157, 23, 77, 0.08);
+}
+
+.install-header-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+/* App Preview Card */
+.install-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #FFF9FA, #FFF5F8);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(157, 23, 77, 0.05);
+  margin-bottom: 14px;
+}
+
+.install-preview-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  min-height: 56px;
+  max-width: 56px;
+  max-height: 56px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #FFFFFF;
+  border: 1px solid var(--border-medium);
+  box-shadow: 0 3px 8px rgba(157, 23, 77, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.install-preview-icon {
+  width: 56px !important;
+  height: 56px !important;
+  max-width: 56px !important;
+  max-height: 56px !important;
+  min-width: 56px !important;
+  min-height: 56px !important;
+  object-fit: cover !important;
+  display: block !important;
+  border-radius: 13px;
+  flex-shrink: 0 !important;
+}
+
+.install-preview-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.install-preview-brand {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-family: var(--font-serif);
+  line-height: 1.2;
+}
+
+.install-preview-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.install-preview-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+
+.install-badge-pwa {
+  font-size: 10px;
+  font-weight: 700;
+  color: #15803D;
+  background: #DCFCE7;
+  border: 1px solid #BBF7D0;
+  border-radius: 999px;
+  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.install-badge-offline {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary-pink);
+  background: var(--primary-pink-soft);
+  border: 1px solid var(--border-medium);
+  border-radius: 999px;
+  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Platform Selector Tabs */
+.install-platform-tabs {
+  display: flex;
+  background: var(--bg-beige);
+  padding: 4px;
+  border-radius: 12px;
+  gap: 4px;
+  border: 1px solid var(--border-light);
+  margin-bottom: 14px;
+}
+
+.install-platform-tab {
+  flex: 1;
+  padding: 8px 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.install-platform-tab:hover {
+  color: var(--primary-pink);
+}
+
+.install-platform-tab.active {
+  background: #FFFFFF;
+  color: var(--primary-pink);
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(157, 23, 77, 0.12);
+}
+
+/* Install Sections & Instruction Steps */
+.install-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.install-section-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.install-primary-action-btn {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary-pink), var(--primary-pink-dark));
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(157, 23, 77, 0.28);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.install-primary-action-btn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.install-steps-card {
+  background: var(--bg-cream-pure);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.install-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.install-step-badge {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  background: var(--primary-pink-soft);
+  color: var(--primary-pink);
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.install-step-body {
+  flex: 1;
+}
+
+.install-inline-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 2px;
+  color: var(--primary-pink);
+}
+
+.install-tip-box {
+  padding: 10px 12px;
+  background: var(--bg-beige);
+  border-radius: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  border: 1px dashed var(--border-medium);
+  line-height: 1.4;
+}
+
+/* Desktop QR Code Card */
+.install-qr-card {
+  padding: 16px 14px;
+  background: var(--bg-cream-pure);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.install-qr-heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-pink);
+}
+
+.install-qr-box {
+  padding: 6px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 1px solid var(--border-medium);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  margin: 4px 0;
+  width: 142px;
+  height: 142px;
+}
+
+.install-qr-img {
+  width: 130px !important;
+  height: 130px !important;
+  max-width: 130px !important;
+  max-height: 130px !important;
+  display: block;
+  object-fit: contain;
+}
+
+.install-qr-url {
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-muted);
+  word-break: break-all;
+  margin-top: 2px;
+}
+
+.install-qr-hint {
+  font-size: 11px;
+  color: var(--text-light);
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+/* Success Banner when already installed */
+.install-success-banner {
+  text-align: center;
+  padding: 24px 16px;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.install-success-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #15803D;
+  margin-top: 4px;
+}
+
+.install-success-desc {
+  font-size: 12px;
+  color: #166534;
+  line-height: 1.45;
+  max-width: 280px;
+}
+
 

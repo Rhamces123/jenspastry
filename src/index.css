@@ -89,6 +89,11 @@
   padding: 0;
 }
 
+img {
+  max-width: 100%;
+  height: auto;
+}
+
 html, body {
   width: 100%;
   height: 100%;
@@ -266,18 +271,53 @@ input, select, textarea {
 .w-full { width: 100%; }
 .w-4 { width: 16px; }
 .h-4 { height: 16px; }
+.w-5 { width: 20px; }
+.h-5 { height: 20px; }
+.w-6 { width: 24px; }
+.h-6 { height: 24px; }
+.w-7 { width: 28px; }
+.h-7 { height: 28px; }
 .w-8 { width: 32px; }
 .h-8 { height: 32px; }
 .w-10 { width: 40px; }
 .h-10 { height: 40px; }
+.w-12 { width: 48px; }
+.h-12 { height: 48px; }
+.w-14 { width: 56px; }
+.h-14 { height: 56px; }
+.w-16 { width: 64px; }
+.h-16 { height: 64px; }
+.w-32 { width: 128px; }
+.h-32 { height: 128px; }
 .rounded-full { border-radius: 9999px; }
 .border { border-width: 1px; border-style: solid; }
 .border-2 { border-width: 2px; border-style: solid; }
+.border-3 { border-width: 3px; border-style: solid; }
 .border-4 { border-width: 4px; border-style: solid; }
+.border-b { border-bottom-width: 1px; border-bottom-style: solid; }
+.border-t { border-top-width: 1px; border-top-style: solid; }
 .border-white { border-color: #FFFFFF; }
 .border-primary { border-color: var(--primary-pink); }
 .border-primary-light { border-color: var(--primary-pink-light); }
+.border-border-light { border-color: var(--border-light); }
+.border-border-medium { border-color: var(--border-medium); }
 .border-t-transparent { border-top-color: transparent !important; }
+
+/* Backgrounds & Colors */
+.bg-card { background-color: var(--bg-card); }
+.bg-cream-pure { background-color: var(--bg-cream-pure); }
+.bg-accent-soft { background-color: var(--accent-pink-soft); }
+.bg-success-soft { background-color: var(--status-in-stock-bg); }
+.bg-pink-50 { background-color: #FDF2F8; }
+.bg-pink-100 { background-color: #FCE7F3; }
+.bg-green-100 { background-color: #DCFCE7; }
+.text-green-600 { color: #16A34A; }
+.text-accent { color: var(--accent-pink); }
+
+/* Elevation Shadows */
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
 
 /* Effects & Transitions */
 .hover\:underline:hover { text-decoration: underline; }
