@@ -380,7 +380,14 @@ export default function CashierDashboard() {
           </div>
 
           {/* RIGHT: Order Tray & Payment Terminal */}
-          <div className="pos-tray-panel">
+          <div 
+            className="pos-tray-panel"
+            style={{ 
+              maxHeight: 'calc(100vh - 90px)', 
+              overflowY: 'auto', 
+              WebkitOverflowScrolling: 'touch' 
+            }}
+          >
             {/* Tray Header */}
             <div className="flex justify-between items-center border-b border-border-light pb-2.5 mb-2">
               <div className="flex items-center gap-2">

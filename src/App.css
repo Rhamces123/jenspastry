@@ -3346,6 +3346,12 @@
 }
 
 @media (max-width: 768px) {
+  .dashboard-content-header {
+    padding: 14px 16px;
+  }
+  .dashboard-content-body {
+    padding: 16px 12px 60px 12px;
+  }
   .admin-kpi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -3861,6 +3867,12 @@
 @media (max-width: 1024px) {
   .pos-terminal-layout {
     grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .pos-tray-panel {
+    position: static !important;
+    max-height: none !important;
+    overflow-y: visible !important;
   }
 }
 
@@ -4027,13 +4039,38 @@
   background: #FFFFFF;
   border: 1px solid #EDE4DC;
   border-radius: 20px;
-  padding: 20px;
+  padding: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
   position: sticky;
-  top: 88px;
+  top: 16px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #D8CECE transparent;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+}
+
+.pos-tray-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.pos-tray-panel::-webkit-scrollbar-track {
+  background: #F8F5F2;
+  border-radius: 6px;
+}
+
+.pos-tray-panel::-webkit-scrollbar-thumb {
+  background: #D8CECE;
+  border-radius: 6px;
+}
+
+.pos-tray-panel::-webkit-scrollbar-thumb:hover {
+  background: #9D174D;
 }
 
 .pos-tray-header {
@@ -4079,12 +4116,13 @@
 }
 
 .pos-items-scroll {
-  max-height: 240px;
+  max-height: 180px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   padding-right: 4px;
+  flex-shrink: 0;
 }
 
 .pos-item-row {
