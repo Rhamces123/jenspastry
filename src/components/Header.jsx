@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth.js';
+import { getDashboardPathForRole } from '../constants/roles.js';
 import { 
   Croissant, 
   Info, 
@@ -14,7 +15,8 @@ import {
   User, 
   ChevronDown, 
   ShoppingBag, 
-  LogOut 
+  LogOut,
+  LayoutDashboard
 } from 'lucide-react';
 
 export default function Header({ onResetData }) {
@@ -88,6 +90,15 @@ export default function Header({ onResetData }) {
                     </div>
 
                     <div className="dropdown-divider" />
+
+                    <Link 
+                      to={getDashboardPathForRole(userProfile?.role)} 
+                      className="dropdown-item" 
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      <LayoutDashboard size={14} className="text-primary" />
+                      <span>My Dashboard</span>
+                    </Link>
 
                     <Link 
                       to="/account" 

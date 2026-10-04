@@ -235,6 +235,60 @@ try {
   console.error("PWA Tests error:", e);
 }
 
+// ----------------------------------------------------
+// 5. ROLE-BASED ACCESS CONTROL (RBAC) TESTS
+// ----------------------------------------------------
+console.log("\n5. Testing RBAC Roles, Dashboards, and Permissions...");
+
+import { ROLES, ROLE_LABELS, ROLE_DASHBOARDS, getDashboardPathForRole, hasPermission, PERMISSIONS } from '../src/constants/roles.js';
+
+try {
+  // Test 4 Exact Roles
+  assert(ROLES.CUSTOMER === 'customer', "ROLES.CUSTOMER is 'customer'");
+  assert(ROLES.CASHIER === 'cashier', "ROLES.CASHIER is 'cashier'");
+  assert(ROLES.BAKER === 'baker', "ROLES.BAKER is 'baker'");
+  assert(ROLES.ADMIN === 'admin', "ROLES.ADMIN is 'admin'");
+  assert(Object.keys(ROLES).length === 4, "Exactly 4 roles are defined");
+
+  // Test Role Labels
+  assert(ROLE_LABELS[ROLES.CUSTOMER] === 'Customer', "Customer role label is 'Customer'");
+  assert(ROLE_LABELS[ROLES.CASHIER] === 'Cashier', "Cashier role label is 'Cashier'");
+  assert(ROLE_LABELS[ROLES.BAKER] === 'Baker', "Baker role label is 'Baker'");
+  assert(ROLE_LABELS[ROLES.ADMIN] === 'Store Owner / Admin', "Admin role label is 'Store Owner / Admin'");
+
+  // Test Role Dashboard Paths
+  assert(getDashboardPathForRole('customer') === '/customer/dashboard', "Customer routes to /customer/dashboard");
+  assert(getDashboardPathForRole('cashier') === '/cashier/dashboard', "Cashier routes to /cashier/dashboard");
+  assert(getDashboardPathForRole('baker') === '/baker/dashboard', "Baker routes to /baker/dashboard");
+  assert(getDashboardPathForRole('admin') === '/admin/dashboard', "Admin routes to /admin/dashboard");
+  assert(getDashboardPathForRole('unknown_role') === '/customer/dashboard', "Unknown role safely defaults to /customer/dashboard");
+
+  // Test Permissions Matrix
+  assert(hasPermission(ROLES.CUSTOMER, PERMISSIONS.BROWSE_PRODUCTS) === true, "Customer can browse products");
+  assert(hasPermission(ROLES.CUSTOMER, PERMISSIONS.PLACE_ORDER) === true, "Customer can place order");
+  assert(hasPermission(ROLES.CUSTOMER, PERMISSIONS.POS) === false, "Customer cannot access POS");
+  assert(hasPermission(ROLES.CUSTOMER, PERMISSIONS.PRODUCTION_QUEUE) === false, "Customer cannot access production queue");
+  assert(hasPermission(ROLES.CUSTOMER, PERMISSIONS.PRODUCT_MANAGEMENT) === false, "Customer cannot access product management");
+
+  assert(hasPermission(ROLES.CASHIER, PERMISSIONS.POS) === true, "Cashier has POS permission");
+  assert(hasPermission(ROLES.CASHIER, PERMISSIONS.PROCESS_PAYMENTS) === true, "Cashier can process payments");
+  assert(hasPermission(ROLES.CASHIER, PERMISSIONS.PRODUCTION_QUEUE) === false, "Cashier cannot modify kitchen production queue");
+  assert(hasPermission(ROLES.CASHIER, PERMISSIONS.PRODUCT_MANAGEMENT) === false, "Cashier cannot create/delete catalog products");
+
+  assert(hasPermission(ROLES.BAKER, PERMISSIONS.PRODUCTION_QUEUE) === true, "Baker has production queue permission");
+  assert(hasPermission(ROLES.BAKER, PERMISSIONS.INVENTORY_VIEW) === true, "Baker can view inventory");
+  assert(hasPermission(ROLES.BAKER, PERMISSIONS.POS) === false, "Baker cannot access POS");
+  assert(hasPermission(ROLES.BAKER, PERMISSIONS.USER_MANAGEMENT) === false, "Baker cannot manage users");
+
+  assert(hasPermission(ROLES.ADMIN, PERMISSIONS.PRODUCT_MANAGEMENT) === true, "Admin has product management permission");
+  assert(hasPermission(ROLES.ADMIN, PERMISSIONS.USER_MANAGEMENT) === true, "Admin has user management permission");
+  assert(hasPermission(ROLES.ADMIN, PERMISSIONS.SALES_REPORTS_FULL) === true, "Admin has full sales reports permission");
+  assert(hasPermission(ROLES.ADMIN, PERMISSIONS.SYSTEM_SETTINGS) === true, "Admin has system settings permission");
+} catch (e) {
+  console.error("RBAC Tests error:", e);
+}
+
 console.log("\n==========================================");
 console.log(`TEST RESULTS: ${passedTests} / ${totalTests} PASSED`);
 console.log("==========================================");
+

@@ -2916,4 +2916,36 @@
   max-width: 280px;
 }
 
+/* Dashboard View Mode & Responsive Fullscreen Layout */
+.is-dashboard-route {
+  padding: 0 !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  background-color: #FAF5F0 !important;
+}
+
+.is-dashboard-route .mobile-phone-container {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  height: 100% !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  background-color: #FAF5F0 !important;
+}
+
+.is-dashboard-route .mobile-phone-container::before {
+  display: none !important;
+}
+
+.is-dashboard-route .mobile-scrollable-body {
+  padding: 0 !important;
+  overflow-y: auto !important;
+  height: 100% !important;
+  background-color: #FAF5F0;
+}
+
+
 

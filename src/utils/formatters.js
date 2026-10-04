@@ -53,3 +53,21 @@ export function formatDateTime(dateInput) {
     hour12: true
   });
 }
+
+/**
+ * Formats an ISO date string or timestamp into a readable date string.
+ * @param {string|Date} dateInput
+ * @returns {string} e.g. "Oct 1, 2026"
+ */
+export function formatDate(dateInput) {
+  if (!dateInput) return '';
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return String(dateInput);
+
+  return date.toLocaleDateString('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
+

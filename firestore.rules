@@ -7,12 +7,18 @@ service cloud.firestore {
     // CORE SECURITY INVARIANTS & POSTURE
     // =========================================================================
     // 1. Default Deny: All collections and documents are closed by default.
-    // 2. Least Privilege: Access is strictly scoped to resource owners and verified roles.
-    // 3. Validator Function Pattern: Data shape, boundary limits, and types are enforced
-    //    on BOTH create and update operations to eliminate the Update Bypass vulnerability.
-    // 4. Immutable Audit Fields: Critical fields (user IDs, order IDs, totals, order status)
-    //    cannot be tampered with or escalated by client updates.
-    // 5. Resource Exhaustion / DoS Prevention: Bounded string lengths and array sizes.
+    // 2. Least Privilege & 4-Role RBAC:
+    //    - Customer: Places orders, tracks own orders, edits profile details.
+    //    - Cashier: Manages POS orders, processes payments, advances status.
+    //    - Baker: Kitchen production queue, advances baking status (Preparing, Ready).
+    //    - Admin: Full management of catalog, users/staff, orders, and roles.
+    // 3. Authority Source: Derived from custom claims or verified server-side profile,
+    //    never trusting client-supplied request payload for role checks.
+    // 4. Validator Function Pattern: Data shape, types, and constraints are enforced
+    //    on BOTH create and update operations to eliminate Update Bypass attacks.
+    // 5. Immutable Audit Fields: IDs, creation timestamps, and ownership fields
+    //    cannot be modified or escalated.
+    // 6. Resource Exhaustion / DoS Prevention: Strict string length and list bounds.
     // =========================================================================
 
     // Root Catch-All: Deny all operations unless explicitly permitted.
@@ -21,7 +27,7 @@ service cloud.firestore {
     }
 
     // =========================================================================
-    // HELPER FUNCTIONS
+    // HELPER FUNCTIONS & ROLE-BASED ACCESS CONTROL (RBAC)
     // =========================================================================
 
     // Checks whether the incoming request is authenticated.
@@ -34,9 +40,52 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Role-based helper: derives authority from custom claims, never client payload.
+    // Checks if the user's profile document exists in Firestore.
+    function userDocExists() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Retrieves the user's profile document from Firestore.
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Resolves caller's role with defense-in-depth precedence:
+    // 1. Firebase Auth custom claim (request.auth.token.role)
+    // 2. Custom claim boolean admin (request.auth.token.admin == true)
+    // 3. User document role field (/users/{uid})
+    // 4. Fallback default: 'customer'
+    function getUserRole() {
+      return !isAuthenticated() ? '' :
+        request.auth.token.get('role', '') != '' ? request.auth.token.role :
+        request.auth.token.get('admin', false) == true ? 'admin' :
+        userDocExists() ? getUserDoc().get('role', 'customer') : 'customer';
+    }
+
+    // Checks if the caller is an Administrator.
     function isAdmin() {
-      return isAuthenticated() && request.auth.token.get('admin', false) == true;
+      return isAuthenticated() && (
+        getUserRole() == 'admin' ||
+        request.auth.token.get('admin', false) == true
+      );
+    }
+
+    // Checks if the caller is a Cashier.
+    function isCashier() {
+      return isAuthenticated() && getUserRole() == 'cashier';
+    }
+
+    // Checks if the caller is a Baker.
+    function isBaker() {
+      return isAuthenticated() && getUserRole() == 'baker';
+    }
+
+    // Checks if the caller is a Staff member (Admin, Cashier, or Baker).
+    function isStaff() {
+      return isAuthenticated() && (
+        getUserRole() in ['admin', 'cashier', 'baker'] ||
+        request.auth.token.get('admin', false) == true
+      );
     }
 
     // Validates non-empty string with maximum length bound (DoS prevention).
@@ -64,25 +113,35 @@ service cloud.firestore {
     }
 
     // =========================================================================
-    // USER DOMAIN VALIDATORS
+    // DOMAIN VALIDATORS
     // =========================================================================
 
-    // Validates schema and domain invariants for registered customer accounts.
+    // Validates schema and domain invariants for user account documents.
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'fullName', 'email', 'createdAt']) &&
-        data.keys().hasOnly(['uid', 'fullName', 'email', 'createdAt', 'updatedAt']) &&
+      return data.keys().hasAll(['uid', 'fullName', 'email', 'role', 'createdAt']) &&
+        data.keys().hasOnly([
+          'uid',
+          'fullName',
+          'email',
+          'role',
+          'provider',
+          'photoURL',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
         isNonEmptyString(data.uid, 128) &&
         data.fullName is string &&
         data.fullName.size() >= 1 &&
         data.fullName.size() <= 100 &&
         isValidEmail(data.email) &&
+        data.role in ['customer', 'cashier', 'baker', 'admin'] &&
+        (!('provider' in data) || (data.provider is string && data.provider.size() <= 50)) &&
+        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 2000)) &&
+        (!('status' in data) || (data.status is string && data.status.size() <= 50)) &&
         isValidDate(data.createdAt) &&
         (!('updatedAt' in data) || isValidDate(data.updatedAt));
     }
-
-    // =========================================================================
-    // ORDER DOMAIN VALIDATORS
-    // =========================================================================
 
     // Validates allowed lifecycle statuses for pastry shop orders.
     function isValidOrderStatus(status) {
@@ -90,6 +149,7 @@ service cloud.firestore {
         'Pending',
         'Confirmed',
         'Preparing',
+        'Ready',
         'Ready for Pickup',
         'Out for Delivery',
         'Completed',
@@ -127,7 +187,11 @@ service cloud.firestore {
           'discount',
           'discountStrategyId',
           'discountRate',
-          'customerType'
+          'customerType',
+          'paymentMethod',
+          'amountReceived',
+          'changeDue',
+          'change'
         ]) &&
         isNonEmptyString(data.id, 128) &&
         isPositiveNumber(data.saleNumber) &&
@@ -139,9 +203,8 @@ service cloud.firestore {
         isValidDate(data.date) &&
         data.items is list &&
         data.items.size() >= 1 &&
-        data.items.size() <= 100 &&
-        (data.total is int || data.total is float) &&
-        data.total >= 0 &&
+        data.items.size() <= 50 &&
+        isPositiveNumber(data.total) &&
         data.total <= 1000000 &&
         isValidOrderStatus(data.orderStatus) &&
         (!('deliveryNotes' in data) || (data.deliveryNotes is string && data.deliveryNotes.size() <= 500)) &&
@@ -151,92 +214,200 @@ service cloud.firestore {
         (!('discount' in data) || isPositiveNumber(data.discount)) &&
         (!('discountStrategyId' in data) || (data.discountStrategyId is string && data.discountStrategyId.size() <= 50)) &&
         (!('discountRate' in data) || isPositiveNumber(data.discountRate)) &&
-        (!('customerType' in data) || (data.customerType is string && data.customerType.size() <= 100));
+        (!('customerType' in data) || (data.customerType is string && data.customerType.size() <= 100)) &&
+        (!('paymentMethod' in data) || (data.paymentMethod is string && data.paymentMethod.size() <= 50)) &&
+        (!('amountReceived' in data) || isPositiveNumber(data.amountReceived)) &&
+        (!('changeDue' in data) || isPositiveNumber(data.changeDue)) &&
+        (!('change' in data) || isPositiveNumber(data.change));
+    }
+
+    // Validates schema, types, and domain invariants for pastry catalog products.
+    function isValidProduct(data) {
+      return data.keys().hasAll(['name', 'category', 'price', 'stock']) &&
+        data.keys().hasOnly([
+          'id',
+          'name',
+          'category',
+          'price',
+          'stock',
+          'icon',
+          'shelfLifeDays',
+          'description',
+          'imageUrl',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isNonEmptyString(data.name, 100) &&
+        isNonEmptyString(data.category, 50) &&
+        isPositiveNumber(data.price) &&
+        data.price <= 1000000 &&
+        isPositiveNumber(data.stock) &&
+        data.stock <= 1000000 &&
+        (!('id' in data) || (data.id is string || data.id is int)) &&
+        (!('icon' in data) || (data.icon is string && data.icon.size() <= 20)) &&
+        (!('shelfLifeDays' in data) || (data.shelfLifeDays is int && data.shelfLifeDays >= 1 && data.shelfLifeDays <= 365)) &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 1000)) &&
+        (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 2000)) &&
+        (!('createdAt' in data) || isValidDate(data.createdAt)) &&
+        (!('updatedAt' in data) || isValidDate(data.updatedAt));
     }
 
     // =========================================================================
     // COLLECTION ACCESS RULES
     // =========================================================================
 
-    // 1. Registered Customer Accounts (/users/{userId})
+    // 1. Registered Accounts (/users/{userId})
     match /users/{userId} {
-      // Read: Only the authenticated account owner (or admin) can access their profile
-      allow read: if isOwner(userId) || isAdmin();
+      // Read: Authenticated user reading own profile OR staff (admin, cashier, baker) reading profiles
+      allow read: if isOwner(userId) || isStaff();
 
-      // Create: Authenticated customer creating their own document
-      allow create: if isOwner(userId)
-                    && request.resource.data.uid == userId
-                    && isValidUser(request.resource.data);
+      // Create:
+      // - Authenticated user creating own profile (role must strictly be 'customer')
+      // - OR Admin provisioning staff or customer accounts with designated role
+      // In both paths, UID must match document key and schema must be valid
+      allow create: if (
+        (isOwner(userId) && request.resource.data.uid == userId && request.resource.data.role == 'customer') ||
+        (isAdmin() && request.resource.data.uid == userId)
+      ) && isValidUser(request.resource.data);
 
       // Update:
-      // - Authenticated customer where request.auth.uid == userId
-      // - uid and email cannot be changed
-      // - createdAt timestamp is immutable
-      // - Affected keys restricted strictly to profile fields (fullName, updatedAt)
-      // - Domain validator pattern applied on updated document
-      allow update: if isOwner(userId)
-                    && request.resource.data.uid == resource.data.uid
-                    && request.resource.data.email == resource.data.email
-                    && (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fullName', 'updatedAt'])
-                    && isValidUser(request.resource.data);
+      // Path 1 (Account Owner):
+      // - Cannot change uid, email, or role (strictly prevents privilege escalation)
+      // - Creation timestamp is immutable
+      // - Affected keys restricted to safe profile fields (fullName, photoURL, provider, updatedAt)
+      // Path 2 (Admin):
+      // - Can update user profile details and change role
+      // - User ID and createdAt remain immutable
+      // BOTH paths execute isValidUser() to eliminate Update Bypass vulnerability
+      allow update: if (
+        // Non-admin owner updating own profile
+        (
+          isOwner(userId) &&
+          request.resource.data.uid == resource.data.uid &&
+          request.resource.data.email == resource.data.email &&
+          request.resource.data.role == resource.data.role &&
+          (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fullName', 'photoURL', 'provider', 'updatedAt'])
+        ) ||
+        // Store Owner / Admin management path
+        (
+          isAdmin() &&
+          request.resource.data.uid == resource.data.uid &&
+          (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        )
+      ) && isValidUser(request.resource.data);
 
-      // Delete: Disallowed for customers to preserve account and audit integrity
-      allow delete: if false;
+      // Delete: Disallowed for customers and staff; allowed only for administrators
+      allow delete: if isAdmin();
     }
 
     // 2. Pastry Shop Orders (/orders/{orderId})
     match /orders/{orderId} {
-      // Read: Only the authenticated customer who placed the order (or admin) can read
-      allow read: if isOwner(resource.data.userId) || isAdmin();
+      // Read: Customer reading own order OR staff (admin, cashier, baker)
+      allow read: if (isAuthenticated() && request.auth.uid == resource.data.userId) || isStaff();
 
       // Create:
+      // Path 1 (Customer placing order):
       // - Authenticated customer must match order's userId
       // - Initial order status must strictly be 'Pending' or 'Confirmed'
-      // - Domain validator pattern applied (items list, numeric total, email, bounds)
-      allow create: if isOwner(request.resource.data.userId)
-                    && request.resource.data.orderStatus in ['Pending', 'Confirmed']
-                    && isValidOrder(request.resource.data);
+      // Path 2 (Cashier or Admin creating orders):
+      // - Counter sales and POS transactions
+      // BOTH paths enforce isValidOrder()
+      allow create: if (
+        (
+          isAuthenticated() &&
+          request.auth.uid == request.resource.data.userId &&
+          request.resource.data.orderStatus in ['Pending', 'Confirmed']
+        ) ||
+        isCashier() ||
+        isAdmin()
+      ) && isValidOrder(request.resource.data);
 
       // Update:
       // Path 1 (Customer Owner):
-      // - Can only update delivery notes and updatedAt timestamp
-      // - STRICTLY disallowed from modifying orderStatus, total, items, saleNumber, id, date, or userId
-      // Path 2 (Bakery Admin):
-      // - Authorized administrative user updating order lifecycle (preparing, pickup, etc.)
-      // BOTH paths execute isValidOrder() to eliminate the Update Bypass vulnerability
+      // - Can only update delivery notes and updatedAt
+      // - Strictly disallowed from modifying orderStatus, total, items, saleNumber, id, date, or userId
+      // Path 2 (Baker):
+      // - Kitchen production workflow: can update orderStatus (e.g. Preparing, Ready) and updatedAt
+      // - Cannot modify order financial totals, items, customerEmail, or core metadata
+      // Path 3 (Cashier):
+      // - Counter / POS operations: can update orderStatus, payment details, items, or totals
+      // - Preserves order id, userId, and creation date
+      // Path 4 (Admin):
+      // - Full management oversight: can update order fields while preserving id, userId, and date
+      // ALL paths execute isValidOrder() to eliminate Update Bypass vulnerability
       allow update: if (
-                      // Customer Owner path
-                      isOwner(resource.data.userId)
-                      && request.resource.data.userId == resource.data.userId
-                      && request.resource.data.id == resource.data.id
-                      && request.resource.data.saleNumber == resource.data.saleNumber
-                      && request.resource.data.customerEmail == resource.data.customerEmail
-                      && request.resource.data.date == resource.data.date
-                      && request.resource.data.items == resource.data.items
-                      && request.resource.data.total == resource.data.total
-                      && request.resource.data.orderStatus == resource.data.orderStatus
-                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deliveryNotes', 'notes', 'updatedAt'])
-                      && isValidOrder(request.resource.data)
-                    ) || (
-                      // Bakery Administrator path
-                      isAdmin()
-                      && request.resource.data.userId == resource.data.userId
-                      && request.resource.data.id == resource.data.id
-                      && isValidOrder(request.resource.data)
-                    );
+        // Customer Owner path
+        (
+          isOwner(resource.data.userId) &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.saleNumber == resource.data.saleNumber &&
+          request.resource.data.customerEmail == resource.data.customerEmail &&
+          request.resource.data.date == resource.data.date &&
+          request.resource.data.items == resource.data.items &&
+          request.resource.data.total == resource.data.total &&
+          request.resource.data.orderStatus == resource.data.orderStatus &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deliveryNotes', 'notes', 'updatedAt'])
+        ) ||
+        // Baker path (kitchen lifecycle transitions)
+        (
+          isBaker() &&
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.saleNumber == resource.data.saleNumber &&
+          request.resource.data.customerEmail == resource.data.customerEmail &&
+          request.resource.data.date == resource.data.date &&
+          request.resource.data.items == resource.data.items &&
+          request.resource.data.total == resource.data.total &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['orderStatus', 'updatedAt', 'notes'])
+        ) ||
+        // Cashier path (POS payments, item adjustments, lifecycle advancement)
+        (
+          isCashier() &&
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.date == resource.data.date &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'orderStatus',
+            'items',
+            'total',
+            'subtotal',
+            'discount',
+            'discountRate',
+            'discountStrategyId',
+            'paymentMethod',
+            'amountReceived',
+            'changeDue',
+            'change',
+            'notes',
+            'deliveryNotes',
+            'updatedAt'
+          ])
+        ) ||
+        // Store Owner / Admin path (administrative updates)
+        (
+          isAdmin() &&
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.date == resource.data.date
+        )
+      ) && isValidOrder(request.resource.data);
 
-      // Delete: Disallowed for customers to preserve sales and inventory history
-      allow delete: if false;
+      // Delete: Disallowed for customers, allowed only for administrators
+      allow delete: if isAdmin();
     }
 
     // 3. Products Catalog (/products/{productId}) [Catalog Protection]
     match /products/{productId} {
-      // Pastry catalog is publicly viewable by all customers and guests
+      // Pastry catalog is publicly viewable by all customers, staff, and guests
       allow read: if true;
 
-      // Only administrators can create, update, or remove pastry catalog products
-      allow write: if isAdmin();
+      // Only administrators can create or update pastry catalog items
+      allow create, update: if isAdmin() && isValidProduct(request.resource.data);
+
+      // Only administrators can remove products
+      allow delete: if isAdmin();
     }
   }
 }

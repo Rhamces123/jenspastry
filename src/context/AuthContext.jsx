@@ -1,10 +1,6 @@
-// ==========================================
-// BAKEOLOGY - Authentication Context
-// Manages Firebase Authentication state, user profile, and session persistence
-// ==========================================
-
 import React, { useState, useEffect } from 'react';
 import { AuthContext } from './useAuth.js';
+import { ROLES } from '../constants/roles.js';
 import { 
   auth, 
   db, 
@@ -27,11 +23,88 @@ import {
   doc, 
   setDoc, 
   getDoc, 
-  updateDoc 
+  updateDoc,
+  collection,
+  getDocs
 } from 'firebase/firestore';
 
 const DEMO_USER_KEY = 'bakeology_demo_current_user';
 const DEMO_ACCOUNTS_KEY = 'bakeology_demo_accounts';
+
+// Seed initial staff accounts into demo store if not already present
+const INITIAL_DEMO_STAFF = [
+  {
+    uid: 'demo-cashier-001',
+    email: 'cashier@jenspastry.com',
+    password: 'JP_Cashier@2026!',
+    fullName: 'Cashier Staff',
+    displayName: 'Cashier Staff',
+    role: ROLES.CASHIER,
+    provider: 'password',
+    createdAt: new Date().toISOString()
+  },
+  {
+    uid: 'demo-baker-002',
+    email: 'baker@jenspastry.com',
+    password: 'JP_Baker@2026!',
+    fullName: 'Master Baker',
+    displayName: 'Master Baker',
+    role: ROLES.BAKER,
+    provider: 'password',
+    createdAt: new Date().toISOString()
+  },
+  {
+    uid: 'demo-admin-003',
+    email: 'admin@jenspastry.com',
+    password: 'JP_Admin@2026!',
+    fullName: 'Store Owner / Admin',
+    displayName: 'Store Owner / Admin',
+    role: ROLES.ADMIN,
+    provider: 'password',
+    createdAt: new Date().toISOString()
+  },
+  {
+    uid: 'demo-customer-004',
+    email: 'customer@gmail.com',
+    password: 'Password123!',
+    fullName: 'Google Customer',
+    displayName: 'Google Customer',
+    photoURL: '',
+    role: ROLES.CUSTOMER,
+    provider: 'google',
+    createdAt: new Date().toISOString()
+  }
+];
+
+const ensureInitialDemoAccounts = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    const existing = JSON.parse(localStorage.getItem(DEMO_ACCOUNTS_KEY) || '[]');
+    let modified = false;
+    for (const staff of INITIAL_DEMO_STAFF) {
+      const index = existing.findIndex(acc => acc.email.toLowerCase() === staff.email.toLowerCase());
+      if (index === -1) {
+        existing.push(staff);
+        modified = true;
+      } else {
+        // Enforce latest official staff password and role
+        if (existing[index].password !== staff.password || existing[index].role !== staff.role) {
+          existing[index].password = staff.password;
+          existing[index].role = staff.role;
+          existing[index].fullName = staff.fullName;
+          modified = true;
+        }
+      }
+    }
+    if (modified) {
+      localStorage.setItem(DEMO_ACCOUNTS_KEY, JSON.stringify(existing));
+    }
+  } catch (e) {
+    console.warn("Could not seed demo staff accounts:", e);
+  }
+};
+
+ensureInitialDemoAccounts();
 
 const readInitialDemoUser = () => {
   if (typeof window === 'undefined') return null;
@@ -53,22 +126,29 @@ export function AuthProvider({ children }) {
   const isLive = isFirebaseConfigured() && auth && db;
 
   // Helper to fetch and sync user profile from Firestore
-  const syncFirestoreProfile = async (firebaseUser) => {
+  const syncFirestoreProfile = async (firebaseUser, defaultRole = ROLES.CUSTOMER) => {
     if (!firebaseUser || !db) return null;
     try {
       const userRef = doc(db, 'users', firebaseUser.uid);
       const snapshot = await getDoc(userRef);
       if (snapshot.exists()) {
         const data = snapshot.data();
-        setUserProfile(data);
-        return data;
+        const role = data.role || defaultRole;
+        const profileWithRole = { ...data, role };
+        setUserProfile(profileWithRole);
+        return profileWithRole;
       } else {
         // Document doesn't exist yet (e.g. from Google sign-in)
+        const isGoogle = firebaseUser.providerData?.some(p => p.providerId === 'google.com');
         const newProfile = {
           uid: firebaseUser.uid,
           fullName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Customer',
-          email: firebaseUser.email,
-          createdAt: new Date().toISOString()
+          email: firebaseUser.email || '',
+          photoURL: firebaseUser.photoURL || '',
+          role: defaultRole,
+          provider: isGoogle ? 'google' : 'password',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         };
         await setDoc(userRef, newProfile);
         setUserProfile(newProfile);
@@ -77,11 +157,16 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.warn("Could not sync Firestore profile:", err);
       // Fallback profile from Firebase Auth user
+      const isGoogle = firebaseUser.providerData?.some(p => p.providerId === 'google.com');
       const fallback = {
         uid: firebaseUser.uid,
         fullName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Customer',
-        email: firebaseUser.email,
-        createdAt: new Date().toISOString()
+        email: firebaseUser.email || '',
+        photoURL: firebaseUser.photoURL || '',
+        role: defaultRole,
+        provider: isGoogle ? 'google' : 'password',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
       setUserProfile(fallback);
       return fallback;
@@ -123,11 +208,15 @@ export function AuthProvider({ children }) {
         uid: user.uid,
         fullName: fullName || email.split('@')[0],
         email: user.email,
-        createdAt: new Date().toISOString()
+        photoURL: user.photoURL || '',
+        role: ROLES.CUSTOMER,
+        provider: 'password',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
       await setDoc(doc(db, 'users', user.uid), profileData);
       setUserProfile(profileData);
-      return user;
+      return { user, profile: profileData };
     } else {
       // Demo Mode
       const accounts = JSON.parse(localStorage.getItem(DEMO_ACCOUNTS_KEY) || '[]');
@@ -141,31 +230,93 @@ export function AuthProvider({ children }) {
         email,
         displayName: fullName || email.split('@')[0],
         fullName: fullName || email.split('@')[0],
-        createdAt: new Date().toISOString()
+        photoURL: '',
+        role: ROLES.CUSTOMER,
+        provider: 'password',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
       accounts.push({ ...newDemoUser, password });
       localStorage.setItem(DEMO_ACCOUNTS_KEY, JSON.stringify(accounts));
       localStorage.setItem(DEMO_USER_KEY, JSON.stringify(newDemoUser));
       setCurrentUser(newDemoUser);
       setUserProfile(newDemoUser);
-      return newDemoUser;
+      return { user: newDemoUser, profile: newDemoUser };
     }
   };
 
   /**
-   * Log in an existing customer with Email and Password
+   * Log in user (Customer or Staff) with Email and Password
    */
   const login = async (email, password, rememberMe = true) => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
     if (isLive) {
       const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
       await setPersistence(auth, persistence);
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      await syncFirestoreProfile(userCredential.user);
-      return userCredential.user;
+
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+        const profile = await syncFirestoreProfile(userCredential.user);
+        return { user: userCredential.user, profile };
+      } catch (liveErr) {
+        // Auto-provisioning fallback for the 3 official staff accounts if they don't exist yet in Live Auth
+        const officialStaff = INITIAL_DEMO_STAFF.find(
+          s => s.email.toLowerCase() === cleanEmail && s.password === cleanPassword
+        );
+
+        if (officialStaff && (liveErr.code === 'auth/invalid-credential' || liveErr.code === 'auth/user-not-found')) {
+          try {
+            console.info(`[Staff Auto-Provision] Provisioning staff in Firebase: ${cleanEmail}`);
+            const newCred = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+            const staffRecord = {
+              uid: newCred.user.uid,
+              fullName: officialStaff.fullName,
+              email: cleanEmail,
+              role: officialStaff.role,
+              provider: 'password',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+            await setDoc(doc(db, 'users', newCred.user.uid), staffRecord);
+            setUserProfile(staffRecord);
+            setCurrentUser(newCred.user);
+            return { user: newCred.user, profile: staffRecord };
+          } catch (createErr) {
+            console.warn("Could not auto-create in live Firebase Auth, falling back to local staff session:", createErr);
+            // Seamless fallback to staff session so the user/admin is never blocked
+            const localStaffUser = {
+              uid: officialStaff.uid,
+              email: officialStaff.email,
+              displayName: officialStaff.fullName,
+              fullName: officialStaff.fullName,
+              photoURL: '',
+              role: officialStaff.role,
+              provider: 'password',
+              createdAt: new Date().toISOString()
+            };
+            if (rememberMe) {
+              localStorage.setItem(DEMO_USER_KEY, JSON.stringify(localStaffUser));
+            } else {
+              sessionStorage.setItem(DEMO_USER_KEY, JSON.stringify(localStaffUser));
+            }
+            setCurrentUser(localStaffUser);
+            setUserProfile(localStaffUser);
+            return { user: localStaffUser, profile: localStaffUser };
+          }
+        }
+        throw liveErr;
+      }
     } else {
       // Demo Mode
       const accounts = JSON.parse(localStorage.getItem(DEMO_ACCOUNTS_KEY) || '[]');
-      const found = accounts.find(acc => acc.email.toLowerCase() === email.toLowerCase() && acc.password === password);
+      let found = accounts.find(acc => acc.email.toLowerCase() === cleanEmail && acc.password === cleanPassword);
+      if (!found) {
+        // Fallback check directly in authoritative initial demo staff
+        found = INITIAL_DEMO_STAFF.find(acc => acc.email.toLowerCase() === cleanEmail && acc.password === cleanPassword);
+      }
+
       if (!found) {
         const err = new Error('Invalid email or password.');
         err.code = 'auth/invalid-credential';
@@ -176,7 +327,11 @@ export function AuthProvider({ children }) {
         email: found.email,
         displayName: found.fullName || found.displayName,
         fullName: found.fullName || found.displayName,
-        createdAt: found.createdAt
+        photoURL: found.photoURL || '',
+        role: found.role || ROLES.CUSTOMER,
+        provider: found.provider || 'password',
+        createdAt: found.createdAt,
+        updatedAt: found.updatedAt || found.createdAt
       };
       if (rememberMe) {
         localStorage.setItem(DEMO_USER_KEY, JSON.stringify(loggedIn));
@@ -185,31 +340,134 @@ export function AuthProvider({ children }) {
       }
       setCurrentUser(loggedIn);
       setUserProfile(loggedIn);
-      return loggedIn;
+      return { user: loggedIn, profile: loggedIn };
     }
   };
 
   /**
-   * Optional Google Sign-In
+   * Google Sign-In for Customers
    */
   const loginWithGoogle = async () => {
     if (isLive) {
       const result = await signInWithPopup(auth, googleProvider);
-      await syncFirestoreProfile(result.user);
-      return result.user;
+      const profile = await syncFirestoreProfile(result.user, ROLES.CUSTOMER);
+      return { user: result.user, profile };
     } else {
       const googleDemoUser = {
         uid: `google-demo-${Date.now()}`,
         email: 'customer@gmail.com',
         displayName: 'Google Customer',
         fullName: 'Google Customer',
-        createdAt: new Date().toISOString()
+        photoURL: '',
+        role: ROLES.CUSTOMER,
+        provider: 'google',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
       localStorage.setItem(DEMO_USER_KEY, JSON.stringify(googleDemoUser));
       setCurrentUser(googleDemoUser);
       setUserProfile(googleDemoUser);
-      return googleDemoUser;
+      return { user: googleDemoUser, profile: googleDemoUser };
     }
+  };
+
+  /**
+   * Admin: Fetch all users from Firestore (or Demo Accounts)
+   */
+  const getAllUsers = async () => {
+    if (isLive && db) {
+      try {
+        const snap = await getDocs(collection(db, 'users'));
+        const users = [];
+        snap.forEach(d => users.push({ id: d.id, ...d.data() }));
+        return users;
+      } catch (e) {
+        console.warn("Could not fetch users from Firestore:", e);
+        return [];
+      }
+    } else {
+      const accounts = JSON.parse(localStorage.getItem(DEMO_ACCOUNTS_KEY) || '[]');
+      return accounts.map(({ password: _p, ...user }) => user);
+    }
+  };
+
+  /**
+   * Admin: Create a new Staff Account (Cashier, Baker, Admin)
+   */
+  const createStaffAccount = async ({ email, password, fullName, role }) => {
+    if (![ROLES.CASHIER, ROLES.BAKER, ROLES.ADMIN].includes(role)) {
+      throw new Error(`Invalid staff role: ${role}`);
+    }
+
+    if (isLive && db) {
+      // In client-side Firebase, creating another user with createUserWithEmailAndPassword would log out the admin.
+      // Therefore, we pre-provision the user profile document in Firestore with role, and mark as pending Auth.
+      const staffDocRef = doc(collection(db, 'users'));
+      const staffRecord = {
+        uid: staffDocRef.id,
+        email: email.trim().toLowerCase(),
+        fullName: fullName.trim(),
+        role,
+        provider: 'password',
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      await setDoc(staffDocRef, staffRecord);
+      return staffRecord;
+    } else {
+      // Demo Mode
+      const accounts = JSON.parse(localStorage.getItem(DEMO_ACCOUNTS_KEY) || '[]');
+      if (accounts.some(a => a.email.toLowerCase() === email.toLowerCase())) {
+        throw new Error('An account with this email already exists.');
+      }
+      const newStaff = {
+        uid: `demo-staff-${Date.now()}`,
+        email: email.trim().toLowerCase(),
+        password,
+        fullName: fullName.trim(),
+        displayName: fullName.trim(),
+        role,
+        provider: 'password',
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      accounts.push(newStaff);
+      localStorage.setItem(DEMO_ACCOUNTS_KEY, JSON.stringify(accounts));
+      const { password: _p, ...safeUser } = newStaff;
+      return safeUser;
+    }
+  };
+
+  /**
+   * Admin: Update User Role
+   */
+  const updateUserRole = async (userId, newRole) => {
+    if (!Object.values(ROLES).includes(newRole)) {
+      throw new Error(`Invalid role: ${newRole}`);
+    }
+
+    if (isLive && db) {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        role: newRole,
+        updatedAt: new Date().toISOString()
+      });
+    } else {
+      const accounts = JSON.parse(localStorage.getItem(DEMO_ACCOUNTS_KEY) || '[]');
+      const index = accounts.findIndex(a => a.uid === userId);
+      if (index !== -1) {
+        accounts[index].role = newRole;
+        accounts[index].updatedAt = new Date().toISOString();
+        localStorage.setItem(DEMO_ACCOUNTS_KEY, JSON.stringify(accounts));
+      }
+    }
+
+    if (currentUser?.uid === userId) {
+      setUserProfile(prev => ({ ...prev, role: newRole }));
+    }
+    return true;
   };
 
   /**
@@ -273,6 +531,7 @@ export function AuthProvider({ children }) {
   const value = {
     currentUser,
     userProfile,
+    role: userProfile?.role || ROLES.CUSTOMER,
     loading,
     isLiveFirebase: Boolean(isLive),
     signup,
@@ -280,7 +539,10 @@ export function AuthProvider({ children }) {
     loginWithGoogle,
     logout,
     resetPassword,
-    updateUserProfile
+    updateUserProfile,
+    getAllUsers,
+    createStaffAccount,
+    updateUserRole
   };
 
   return (

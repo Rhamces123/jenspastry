@@ -22,7 +22,13 @@ import ForgotPassword from './pages/ForgotPassword.jsx';
 import MyAccount from './pages/MyAccount.jsx';
 import MyOrders from './pages/MyOrders.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import RoleRoute from './components/RoleRoute.jsx';
 import WelcomeGateway from './components/WelcomeGateway.jsx';
+import CustomerDashboard from './pages/dashboards/CustomerDashboard.jsx';
+import CashierDashboard from './pages/dashboards/CashierDashboard.jsx';
+import BakerDashboard from './pages/dashboards/BakerDashboard.jsx';
+import AdminDashboard from './pages/dashboards/AdminDashboard.jsx';
+import { ROLES, getDashboardPathForRole } from './constants/roles.js';
 
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from './context/useAuth.js';
@@ -300,51 +306,58 @@ export default function App() {
   };
 
   const totalCartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const isDashboardRoute = location.pathname.includes('/dashboard');
 
   return (
-    <div className={`app-viewport-root ${deviceFrameMode ? 'mode-phone-frame' : 'mode-expanded'}`}>
-      {/* Desktop Helper Bar: Allows toggling between Phone Frame & Full Width */}
-      <aside className="desktop-helper-bar" aria-label="Desktop Preview Controls">
-        <div className="desktop-helper-content">
-          <span className="text-xs text-muted font-medium">Mobile Viewport Simulator:</span>
-          <button
-            type="button"
-            className={`btn-view-toggle ${deviceFrameMode ? 'btn-view-toggle-active' : ''}`}
-            onClick={() => setDeviceFrameMode(true)}
-            title="Simulate iPhone / Android Phone Frame"
-          >
-            <Smartphone size={14} /> Phone Frame
-          </button>
-          <button
-            type="button"
-            className={`btn-view-toggle ${!deviceFrameMode ? 'btn-view-toggle-active' : ''}`}
-            onClick={() => setDeviceFrameMode(false)}
-            title="Expand to Full Width"
-          >
-            <Monitor size={14} /> Full Width
-          </button>
-        </div>
-      </aside>
+    <div className={`app-viewport-root ${deviceFrameMode && !isDashboardRoute ? 'mode-phone-frame' : 'mode-expanded'} ${isDashboardRoute ? 'is-dashboard-route' : ''}`}>
+      {/* Desktop Helper Bar: Allows toggling between Phone Frame & Full Width (Storefront only) */}
+      {!isDashboardRoute && (
+        <aside className="desktop-helper-bar" aria-label="Desktop Preview Controls">
+          <div className="desktop-helper-content">
+            <span className="text-xs text-muted font-medium">Mobile Viewport Simulator:</span>
+            <button
+              type="button"
+              className={`btn-view-toggle ${deviceFrameMode ? 'btn-view-toggle-active' : ''}`}
+              onClick={() => setDeviceFrameMode(true)}
+              title="Simulate iPhone / Android Phone Frame"
+            >
+              <Smartphone size={14} /> Phone Frame
+            </button>
+            <button
+              type="button"
+              className={`btn-view-toggle ${!deviceFrameMode ? 'btn-view-toggle-active' : ''}`}
+              onClick={() => setDeviceFrameMode(false)}
+              title="Expand to Full Width"
+            >
+              <Monitor size={14} /> Full Width
+            </button>
+          </div>
+        </aside>
+      )}
 
       {/* Main Mobile App Container */}
-      <main className="mobile-phone-container">
-        {/* Device Notch & Status Bar (Simulated Phone Feel) */}
-        <div className="mobile-status-bar">
-          <span className="status-time">9:41</span>
-          <div className="phone-camera-notch"></div>
-          <div className="status-icons">
-            <span className="text-2xs font-bold mr-1">5G</span>
-            <span>🔋</span>
-          </div>
-        </div>
+      <main className={`mobile-phone-container ${isDashboardRoute ? 'dashboard-container' : ''}`}>
+        {/* Device Notch & Status Bar (Simulated Phone Feel - only on storefront) */}
+        {!isDashboardRoute && (
+          <>
+            <div className="mobile-status-bar">
+              <span className="status-time">9:41</span>
+              <div className="phone-camera-notch"></div>
+              <div className="status-icons">
+                <span className="text-2xs font-bold mr-1">5G</span>
+                <span>🔋</span>
+              </div>
+            </div>
 
-        {/* Application Header */}
-        <Header onResetData={resetToDefaultData} />
+            {/* Application Header */}
+            <Header onResetData={resetToDefaultData} />
+          </>
+        )}
 
         {/* Dynamic Main Body Content & Routes */}
-        <div className="mobile-scrollable-body">
+        <div className={`mobile-scrollable-body ${isDashboardRoute ? 'p-0 h-full overflow-y-auto' : ''}`}>
           <Routes>
-            {/* Storefront Home & Core Tabs */}
+            {/* Storefront Home: If logged in, redirect to user role's dedicated dashboard */}
             <Route path="/" element={
               !currentUser ? (
                 <WelcomeGateway
@@ -352,58 +365,7 @@ export default function App() {
                   isInstalled={isAppInstalled}
                 />
               ) : (
-                <>
-                  {currentTab === 'dashboard' && (
-                    <Dashboard
-                      summary={summary}
-                      onNavigateTab={handleSelectTab}
-                      onOpenAddModal={() => {
-                        setEditingProduct(null);
-                        setIsFormModalOpen(true);
-                      }}
-                      onViewReceipt={handleViewReceipt}
-                      onOpenInstallModal={() => setIsInstallModalOpen(true)}
-                      isInstalled={isAppInstalled}
-                    />
-                  )}
-
-                  {currentTab === 'products' && (
-                    <Products
-                      products={products}
-                      onOpenAddModal={() => {
-                        setEditingProduct(null);
-                        setIsFormModalOpen(true);
-                      }}
-                      onEditProduct={(product) => {
-                        setEditingProduct(product);
-                        setIsFormModalOpen(true);
-                      }}
-                      onDeleteProduct={handleDeleteProduct}
-                      onQuickAddToCart={handleQuickAddToCart}
-                    />
-                  )}
-
-                  {currentTab === 'inventory' && (
-                    <Inventory
-                      products={products}
-                      onOpenRestockModal={(product) => {
-                        setRestockingProduct(product);
-                        setIsRestockModalOpen(true);
-                      }}
-                    />
-                  )}
-
-                  {currentTab === 'sales' && (
-                    <Sales
-                      products={products}
-                      sales={sales}
-                      cart={cart}
-                      setCart={setCart}
-                      onCompleteSale={handleCompleteSale}
-                      onViewReceipt={handleViewReceipt}
-                    />
-                  )}
-                </>
+                <Navigate to={getDashboardPathForRole(userProfile?.role)} replace />
               )
             } />
 
@@ -412,14 +374,36 @@ export default function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
 
+            {/* 4 Dedicated Role-Based Dashboards */}
+            <Route path="/customer/dashboard" element={
+              <RoleRoute allowedRoles={[ROLES.CUSTOMER]}>
+                <CustomerDashboard />
+              </RoleRoute>
+            } />
+            <Route path="/cashier/dashboard" element={
+              <RoleRoute allowedRoles={[ROLES.CASHIER, ROLES.ADMIN]}>
+                <CashierDashboard />
+              </RoleRoute>
+            } />
+            <Route path="/baker/dashboard" element={
+              <RoleRoute allowedRoles={[ROLES.BAKER, ROLES.ADMIN]}>
+                <BakerDashboard />
+              </RoleRoute>
+            } />
+            <Route path="/admin/dashboard" element={
+              <RoleRoute allowedRoles={[ROLES.ADMIN]}>
+                <AdminDashboard />
+              </RoleRoute>
+            } />
+
             {/* Protected Customer Account & Orders */}
             <Route path="/account" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={[ROLES.CUSTOMER, ROLES.ADMIN]}>
                 <MyAccount />
               </ProtectedRoute>
             } />
             <Route path="/my-orders" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={[ROLES.CUSTOMER, ROLES.ADMIN]}>
                 <MyOrders />
               </ProtectedRoute>
             } />
@@ -430,7 +414,7 @@ export default function App() {
         </div>
 
         {/* Fixed Mobile Bottom Navigation (Only visible for logged in customers on main store tabs) */}
-        {currentUser && location.pathname === '/' && (
+        {currentUser && !isDashboardRoute && location.pathname === '/' && (
           <BottomNavigation
             currentTab={currentTab}
             onSelectTab={handleSelectTab}
