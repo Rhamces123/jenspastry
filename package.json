@@ -12,9 +12,11 @@
     "push": "git add -A && git commit -m \"Update BAKEOLOGY app\" && git push origin main"
   },
   "dependencies": {
+    "firebase": "^12.19.0",
     "lucide-react": "^1.49.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",

@@ -4,15 +4,45 @@
 // ==========================================
 
 import React, { useState } from 'react';
-import { Croissant, Info, RotateCcw, Sparkles, Download } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/useAuth.js';
+import { 
+  Croissant, 
+  Info, 
+  RotateCcw, 
+  Sparkles, 
+  Download, 
+  User, 
+  LogIn, 
+  UserPlus, 
+  ChevronDown, 
+  ShoppingBag, 
+  LogOut 
+} from 'lucide-react';
 
 export default function Header({ onResetData, onOpenInstallModal, isInstalled = false }) {
+  const { currentUser, userProfile, logout } = useAuth();
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    setShowUserMenu(false);
+    try {
+      await logout();
+      navigate('/');
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+  };
+
+  const displayName = userProfile?.fullName || currentUser?.displayName || 'Customer';
+  const initial = (displayName || currentUser?.email || 'C')[0].toUpperCase();
 
   return (
     <>
       <header className="mobile-header">
-        <div className="header-brand">
+        <Link to="/" className="header-brand hover:opacity-95 transition-opacity" style={{ textDecoration: 'none' }}>
           <div className="header-logo-badge">
             <Croissant className="header-icon" size={24} />
           </div>
@@ -20,9 +50,102 @@ export default function Header({ onResetData, onOpenInstallModal, isInstalled = 
             <h1 className="header-title">BAKEOLOGY</h1>
             <p className="header-subtitle">Pastry Shop Management System</p>
           </div>
-        </div>
+        </Link>
 
         <div className="header-actions flex items-center gap-1.5">
+          {/* Unauthenticated: Login & Sign Up buttons */}
+          {!currentUser ? (
+            <div className="flex items-center gap-1">
+              <Link 
+                to="/login"
+                className="btn-header-auth btn-header-login"
+                title="Customer Sign In"
+              >
+                <LogIn size={13} className="shrink-0" />
+                <span>Login</span>
+              </Link>
+              <Link 
+                to="/signup"
+                className="btn-header-auth btn-header-signup"
+                title="Create Account"
+              >
+                <UserPlus size={13} className="shrink-0" />
+                <span>Sign Up</span>
+              </Link>
+            </div>
+          ) : (
+            /* Authenticated: Customer Profile Menu Dropdown */
+            <div className="relative">
+              <button 
+                type="button"
+                className="btn-header-profile"
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                aria-expanded={showUserMenu}
+                aria-haspopup="true"
+                title={`Account: ${displayName}`}
+              >
+                <div className="header-avatar-circle">
+                  {initial}
+                </div>
+                <span className="header-user-name truncate">
+                  {displayName.split(' ')[0]}
+                </span>
+                <ChevronDown size={12} className={`transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Profile Dropdown Menu */}
+              {showUserMenu && (
+                <>
+                  <div 
+                    className="dropdown-overlay" 
+                    onClick={() => setShowUserMenu(false)} 
+                  />
+                  <div className="header-user-dropdown mobile-card">
+                    <div className="dropdown-user-info">
+                      <p className="font-bold text-xs text-primary truncate">
+                        {displayName}
+                      </p>
+                      <p className="text-2xs text-muted truncate">
+                        {currentUser.email}
+                      </p>
+                    </div>
+
+                    <div className="dropdown-divider" />
+
+                    <Link 
+                      to="/account" 
+                      className="dropdown-item" 
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      <User size={14} className="text-primary" />
+                      <span>My Account</span>
+                    </Link>
+
+                    <Link 
+                      to="/my-orders" 
+                      className="dropdown-item" 
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      <ShoppingBag size={14} className="text-primary" />
+                      <span>My Orders</span>
+                    </Link>
+
+                    <div className="dropdown-divider" />
+
+                    <button 
+                      type="button" 
+                      className="dropdown-item dropdown-logout"
+                      onClick={handleLogout}
+                    >
+                      <LogOut size={14} />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {!isInstalled && (
             <button 
               type="button"

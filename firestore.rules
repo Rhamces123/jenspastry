@@ -1,0 +1,242 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // CORE SECURITY INVARIANTS & POSTURE
+    // =========================================================================
+    // 1. Default Deny: All collections and documents are closed by default.
+    // 2. Least Privilege: Access is strictly scoped to resource owners and verified roles.
+    // 3. Validator Function Pattern: Data shape, boundary limits, and types are enforced
+    //    on BOTH create and update operations to eliminate the Update Bypass vulnerability.
+    // 4. Immutable Audit Fields: Critical fields (user IDs, order IDs, totals, order status)
+    //    cannot be tampered with or escalated by client updates.
+    // 5. Resource Exhaustion / DoS Prevention: Bounded string lengths and array sizes.
+    // =========================================================================
+
+    // Root Catch-All: Deny all operations unless explicitly permitted.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // HELPER FUNCTIONS
+    // =========================================================================
+
+    // Checks whether the incoming request is authenticated.
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Checks whether the caller is the specific resource owner.
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Role-based helper: derives authority from custom claims, never client payload.
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.get('admin', false) == true;
+    }
+
+    // Validates non-empty string with maximum length bound (DoS prevention).
+    function isNonEmptyString(val, maxLen) {
+      return val is string && val.size() > 0 && val.size() <= maxLen;
+    }
+
+    // Validates RFC-compliant email string format and length bounds.
+    function isValidEmail(val) {
+      return val is string &&
+        val.size() >= 3 &&
+        val.size() <= 254 &&
+        val.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    // Validates date representation: accepts Firestore timestamp or ISO 8601 string.
+    function isValidDate(val) {
+      return (val is timestamp) ||
+        (val is string && val.size() >= 10 && val.size() <= 40);
+    }
+
+    // Validates numeric values (integer or float) are non-negative.
+    function isPositiveNumber(val) {
+      return (val is int || val is float) && val >= 0;
+    }
+
+    // =========================================================================
+    // USER DOMAIN VALIDATORS
+    // =========================================================================
+
+    // Validates schema and domain invariants for registered customer accounts.
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'fullName', 'email', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'fullName', 'email', 'createdAt', 'updatedAt']) &&
+        isNonEmptyString(data.uid, 128) &&
+        data.fullName is string &&
+        data.fullName.size() >= 1 &&
+        data.fullName.size() <= 100 &&
+        isValidEmail(data.email) &&
+        isValidDate(data.createdAt) &&
+        (!('updatedAt' in data) || isValidDate(data.updatedAt));
+    }
+
+    // =========================================================================
+    // ORDER DOMAIN VALIDATORS
+    // =========================================================================
+
+    // Validates allowed lifecycle statuses for pastry shop orders.
+    function isValidOrderStatus(status) {
+      return status in [
+        'Pending',
+        'Confirmed',
+        'Preparing',
+        'Ready for Pickup',
+        'Out for Delivery',
+        'Completed',
+        'Cancelled'
+      ];
+    }
+
+    // Validates schema, types, and domain invariants for pastry orders.
+    function isValidOrder(data) {
+      return data.keys().hasAll([
+          'id',
+          'saleNumber',
+          'userId',
+          'customerName',
+          'customerEmail',
+          'date',
+          'items',
+          'total',
+          'orderStatus'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'saleNumber',
+          'userId',
+          'customerName',
+          'customerEmail',
+          'date',
+          'items',
+          'total',
+          'orderStatus',
+          'deliveryNotes',
+          'notes',
+          'updatedAt',
+          'subtotal',
+          'discount',
+          'discountStrategyId',
+          'discountRate',
+          'customerType'
+        ]) &&
+        isNonEmptyString(data.id, 128) &&
+        isPositiveNumber(data.saleNumber) &&
+        isNonEmptyString(data.userId, 128) &&
+        data.customerName is string &&
+        data.customerName.size() >= 1 &&
+        data.customerName.size() <= 100 &&
+        isValidEmail(data.customerEmail) &&
+        isValidDate(data.date) &&
+        data.items is list &&
+        data.items.size() >= 1 &&
+        data.items.size() <= 100 &&
+        (data.total is int || data.total is float) &&
+        data.total >= 0 &&
+        data.total <= 1000000 &&
+        isValidOrderStatus(data.orderStatus) &&
+        (!('deliveryNotes' in data) || (data.deliveryNotes is string && data.deliveryNotes.size() <= 500)) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 500)) &&
+        (!('updatedAt' in data) || isValidDate(data.updatedAt)) &&
+        (!('subtotal' in data) || isPositiveNumber(data.subtotal)) &&
+        (!('discount' in data) || isPositiveNumber(data.discount)) &&
+        (!('discountStrategyId' in data) || (data.discountStrategyId is string && data.discountStrategyId.size() <= 50)) &&
+        (!('discountRate' in data) || isPositiveNumber(data.discountRate)) &&
+        (!('customerType' in data) || (data.customerType is string && data.customerType.size() <= 100));
+    }
+
+    // =========================================================================
+    // COLLECTION ACCESS RULES
+    // =========================================================================
+
+    // 1. Registered Customer Accounts (/users/{userId})
+    match /users/{userId} {
+      // Read: Only the authenticated account owner (or admin) can access their profile
+      allow read: if isOwner(userId) || isAdmin();
+
+      // Create: Authenticated customer creating their own document
+      allow create: if isOwner(userId)
+                    && request.resource.data.uid == userId
+                    && isValidUser(request.resource.data);
+
+      // Update:
+      // - Authenticated customer where request.auth.uid == userId
+      // - uid and email cannot be changed
+      // - createdAt timestamp is immutable
+      // - Affected keys restricted strictly to profile fields (fullName, updatedAt)
+      // - Domain validator pattern applied on updated document
+      allow update: if isOwner(userId)
+                    && request.resource.data.uid == resource.data.uid
+                    && request.resource.data.email == resource.data.email
+                    && (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fullName', 'updatedAt'])
+                    && isValidUser(request.resource.data);
+
+      // Delete: Disallowed for customers to preserve account and audit integrity
+      allow delete: if false;
+    }
+
+    // 2. Pastry Shop Orders (/orders/{orderId})
+    match /orders/{orderId} {
+      // Read: Only the authenticated customer who placed the order (or admin) can read
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+
+      // Create:
+      // - Authenticated customer must match order's userId
+      // - Initial order status must strictly be 'Pending' or 'Confirmed'
+      // - Domain validator pattern applied (items list, numeric total, email, bounds)
+      allow create: if isOwner(request.resource.data.userId)
+                    && request.resource.data.orderStatus in ['Pending', 'Confirmed']
+                    && isValidOrder(request.resource.data);
+
+      // Update:
+      // Path 1 (Customer Owner):
+      // - Can only update delivery notes and updatedAt timestamp
+      // - STRICTLY disallowed from modifying orderStatus, total, items, saleNumber, id, date, or userId
+      // Path 2 (Bakery Admin):
+      // - Authorized administrative user updating order lifecycle (preparing, pickup, etc.)
+      // BOTH paths execute isValidOrder() to eliminate the Update Bypass vulnerability
+      allow update: if (
+                      // Customer Owner path
+                      isOwner(resource.data.userId)
+                      && request.resource.data.userId == resource.data.userId
+                      && request.resource.data.id == resource.data.id
+                      && request.resource.data.saleNumber == resource.data.saleNumber
+                      && request.resource.data.customerEmail == resource.data.customerEmail
+                      && request.resource.data.date == resource.data.date
+                      && request.resource.data.items == resource.data.items
+                      && request.resource.data.total == resource.data.total
+                      && request.resource.data.orderStatus == resource.data.orderStatus
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deliveryNotes', 'notes', 'updatedAt'])
+                      && isValidOrder(request.resource.data)
+                    ) || (
+                      // Bakery Administrator path
+                      isAdmin()
+                      && request.resource.data.userId == resource.data.userId
+                      && request.resource.data.id == resource.data.id
+                      && isValidOrder(request.resource.data)
+                    );
+
+      // Delete: Disallowed for customers to preserve sales and inventory history
+      allow delete: if false;
+    }
+
+    // 3. Products Catalog (/products/{productId}) [Catalog Protection]
+    match /products/{productId} {
+      // Pastry catalog is publicly viewable by all customers and guests
+      allow read: if true;
+
+      // Only administrators can create, update, or remove pastry catalog products
+      allow write: if isAdmin();
+    }
+  }
+}

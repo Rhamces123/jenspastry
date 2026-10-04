@@ -16,6 +16,17 @@ import Dashboard from './pages/Dashboard.jsx';
 import Products from './pages/Products.jsx';
 import Inventory from './pages/Inventory.jsx';
 import Sales from './pages/Sales.jsx';
+import Login from './pages/Login.jsx';
+import Signup from './pages/Signup.jsx';
+import ForgotPassword from './pages/ForgotPassword.jsx';
+import MyAccount from './pages/MyAccount.jsx';
+import MyOrders from './pages/MyOrders.jsx';
+import ProtectedRoute from './components/ProtectedRoute.jsx';
+
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { useAuth } from './context/useAuth.js';
+import { db, isFirebaseConfigured } from './firebase.js';
+import { collection, addDoc } from 'firebase/firestore';
 
 import { useShop } from './hooks/useShop.js';
 import { 
@@ -42,10 +53,21 @@ export default function App() {
     resetToDefaultData
   } = useShop();
 
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { currentUser, userProfile } = useAuth();
+
   // VARIABLES: Navigation & Modal UI states
-  const [currentTab, setCurrentTab] = useState('dashboard'); // 'dashboard' | 'products' | 'inventory' | 'sales'
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'products' | 'inventory' | 'sales'
   const [cart, setCart] = useState([]);
-  
+
+  // Derive currentTab from URL query parameter or fallback to activeTab
+  const searchParams = new URLSearchParams(location.search);
+  const tabParam = searchParams.get('tab');
+  const currentTab = (location.pathname === '/' && tabParam && ['dashboard', 'products', 'inventory', 'sales'].includes(tabParam))
+    ? tabParam
+    : activeTab;
+
   // Modals
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -65,6 +87,17 @@ export default function App() {
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
   };
+
+  // Toast on successful account registration
+  useEffect(() => {
+    if (location.state?.accountCreated) {
+      const timer = setTimeout(() => {
+        showToast("Account created successfully! Welcome to BAKEOLOGY.", "success");
+        navigate(location.pathname, { replace: true, state: {} });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [location.state, navigate, location.pathname]);
 
   // Capture PWA Install Prompt & Track Installation Lifecycle
   useEffect(() => {
@@ -197,7 +230,7 @@ export default function App() {
     }
   };
 
-  // FUNCTIONS: Complete Sale (Strategy Pattern)
+  // FUNCTIONS: Complete Sale (Strategy Pattern + Firestore Order Sync)
   const handleCompleteSale = (saleOptions) => {
     try {
       // STRATEGY PATTERN: Executes discount calculation and updates Singleton inventory
@@ -205,8 +238,58 @@ export default function App() {
       setActiveReceiptSale(recordedSale);
       setIsReceiptModalOpen(true);
       showToast(`Sale #${recordedSale.saleNumber} completed successfully!`, 'success');
+
+      // Sync completed order to Cloud Firestore & customer cache if authenticated
+      if (currentUser) {
+        const orderRecord = {
+          id: recordedSale.id,
+          saleNumber: recordedSale.saleNumber,
+          userId: currentUser.uid,
+          customerName: userProfile?.fullName || currentUser.displayName || 'Customer',
+          customerEmail: currentUser.email || '',
+          date: recordedSale.date,
+          customerType: recordedSale.customerType,
+          discountStrategyId: recordedSale.discountStrategyId,
+          subtotal: recordedSale.subtotal,
+          discount: recordedSale.discount,
+          total: recordedSale.total,
+          orderStatus: 'Confirmed',
+          items: recordedSale.items.map(item => ({
+            id: item.id,
+            name: item.name,
+            category: item.category,
+            price: item.price,
+            quantity: item.quantity,
+            lineTotal: item.lineTotal
+          }))
+        };
+
+        if (isFirebaseConfigured() && db) {
+          addDoc(collection(db, 'orders'), orderRecord)
+            .then(docRef => console.log('Order synced to Firestore:', docRef.id))
+            .catch(err => console.warn('Could not sync order to Firestore:', err));
+        }
+
+        // Cache order in user's localStorage
+        try {
+          const key = `bakeology_customer_orders_${currentUser.uid}`;
+          const existing = JSON.parse(localStorage.getItem(key) || '[]');
+          localStorage.setItem(key, JSON.stringify([orderRecord, ...existing]));
+        } catch (e) {
+          console.warn('Could not cache user order locally:', e);
+        }
+      }
     } catch (err) {
       showToast(err.message || 'Checkout failed', 'error');
+    }
+  };
+
+  const handleSelectTab = (tabId) => {
+    setActiveTab(tabId);
+    if (location.pathname !== '/') {
+      navigate(`/?tab=${tabId}`);
+    } else {
+      navigate(`/?tab=${tabId}`, { replace: true });
     }
   };
 
@@ -261,64 +344,91 @@ export default function App() {
           isInstalled={isAppInstalled}
         />
 
-        {/* Dynamic Main Body Content */}
+        {/* Dynamic Main Body Content & Routes */}
         <div className="mobile-scrollable-body">
-          {currentTab === 'dashboard' && (
-            <Dashboard
-              summary={summary}
-              onNavigateTab={(tab) => setCurrentTab(tab)}
-              onOpenAddModal={() => {
-                setEditingProduct(null);
-                setIsFormModalOpen(true);
-              }}
-              onViewReceipt={handleViewReceipt}
-              onOpenInstallModal={() => setIsInstallModalOpen(true)}
-              isInstalled={isAppInstalled}
-            />
-          )}
+          <Routes>
+            {/* Storefront Home & Core Tabs */}
+            <Route path="/" element={
+              <>
+                {currentTab === 'dashboard' && (
+                  <Dashboard
+                    summary={summary}
+                    onNavigateTab={handleSelectTab}
+                    onOpenAddModal={() => {
+                      setEditingProduct(null);
+                      setIsFormModalOpen(true);
+                    }}
+                    onViewReceipt={handleViewReceipt}
+                    onOpenInstallModal={() => setIsInstallModalOpen(true)}
+                    isInstalled={isAppInstalled}
+                  />
+                )}
 
-          {currentTab === 'products' && (
-            <Products
-              products={products}
-              onOpenAddModal={() => {
-                setEditingProduct(null);
-                setIsFormModalOpen(true);
-              }}
-              onEditProduct={(product) => {
-                setEditingProduct(product);
-                setIsFormModalOpen(true);
-              }}
-              onDeleteProduct={handleDeleteProduct}
-              onQuickAddToCart={handleQuickAddToCart}
-            />
-          )}
+                {currentTab === 'products' && (
+                  <Products
+                    products={products}
+                    onOpenAddModal={() => {
+                      setEditingProduct(null);
+                      setIsFormModalOpen(true);
+                    }}
+                    onEditProduct={(product) => {
+                      setEditingProduct(product);
+                      setIsFormModalOpen(true);
+                    }}
+                    onDeleteProduct={handleDeleteProduct}
+                    onQuickAddToCart={handleQuickAddToCart}
+                  />
+                )}
 
-          {currentTab === 'inventory' && (
-            <Inventory
-              products={products}
-              onOpenRestockModal={(product) => {
-                setRestockingProduct(product);
-                setIsRestockModalOpen(true);
-              }}
-            />
-          )}
+                {currentTab === 'inventory' && (
+                  <Inventory
+                    products={products}
+                    onOpenRestockModal={(product) => {
+                      setRestockingProduct(product);
+                      setIsRestockModalOpen(true);
+                    }}
+                  />
+                )}
 
-          {currentTab === 'sales' && (
-            <Sales
-              products={products}
-              sales={sales}
-              cart={cart}
-              setCart={setCart}
-              onCompleteSale={handleCompleteSale}
-              onViewReceipt={handleViewReceipt}
-            />
-          )}
+                {currentTab === 'sales' && (
+                  <Sales
+                    products={products}
+                    sales={sales}
+                    cart={cart}
+                    setCart={setCart}
+                    onCompleteSale={handleCompleteSale}
+                    onViewReceipt={handleViewReceipt}
+                  />
+                )}
+              </>
+            } />
+
+            {/* Authentication Pages */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+
+            {/* Protected Customer Account & Orders */}
+            <Route path="/account" element={
+              <ProtectedRoute>
+                <MyAccount />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-orders" element={
+              <ProtectedRoute>
+                <MyOrders />
+              </ProtectedRoute>
+            } />
+
+            {/* Fallback to homepage */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </div>
 
         {/* Fixed Mobile Bottom Navigation */}
         <BottomNavigation
-          currentTab={currentTab}
-          onSelectTab={setCurrentTab}
+          currentTab={location.pathname === '/' ? currentTab : ''}
+          onSelectTab={handleSelectTab}
           cartCount={totalCartCount}
         />
 
