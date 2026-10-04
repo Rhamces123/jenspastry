@@ -376,7 +376,7 @@ export default function App() {
 
             {/* 4 Dedicated Role-Based Dashboards */}
             <Route path="/customer/dashboard" element={
-              <RoleRoute allowedRoles={[ROLES.CUSTOMER]}>
+              <RoleRoute allowedRoles={[ROLES.CUSTOMER, ROLES.ADMIN]}>
                 <CustomerDashboard />
               </RoleRoute>
             } />

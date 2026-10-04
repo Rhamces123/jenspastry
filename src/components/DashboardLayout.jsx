@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/useAuth.js';
-import { ROLE_LABELS, ROLES } from '../constants/roles.js';
+import { ROLE_LABELS, ROLES, resolveRoleForUser } from '../constants/roles.js';
 import { 
   Croissant, 
   Menu, 
@@ -41,11 +41,17 @@ export default function DashboardLayout({
     }
   };
 
+  // Determine user's authoritative profile role, falling back to page role prop
+  const effectiveRole = resolveRoleForUser(
+    userProfile?.email || currentUser?.email,
+    userProfile?.fullName || currentUser?.displayName,
+    userProfile?.role || role
+  );
   const displayName = userProfile?.fullName || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
-  const roleLabel = ROLE_LABELS[role] || role;
+  const roleLabel = ROLE_LABELS[effectiveRole] || ROLE_LABELS[role] || effectiveRole;
 
-  const getRolePillClass = () => {
-    switch (role) {
+  const getRolePillClass = (r) => {
+    switch (r) {
       case ROLES.ADMIN:
         return 'role-admin';
       case ROLES.CASHIER:
@@ -85,6 +91,30 @@ export default function DashboardLayout({
 
         {/* User Profile Badge & Logout */}
         <div className="dashboard-topbar-actions">
+          {/* If an Admin is previewing or viewing customer/staff dashboard, provide instant switch back */}
+          {effectiveRole === ROLES.ADMIN && role !== ROLES.ADMIN && (
+            <Link
+              to="/admin/dashboard"
+              className="dashboard-admin-portal-btn"
+              style={{
+                textDecoration: 'none',
+                padding: '6px 12px',
+                background: '#eab308',
+                color: '#1a1a1a',
+                fontWeight: 700,
+                borderRadius: '8px',
+                fontSize: '0.75rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+              }}
+              title="Return to Store Owner / Admin Dashboard"
+            >
+              <span>👑 Admin Dashboard</span>
+            </Link>
+          )}
+
           <div className="dashboard-user-badge">
             <div className="dashboard-user-avatar">
               {displayName[0]?.toUpperCase() || 'U'}
@@ -95,8 +125,8 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          <span className={`dashboard-role-pill ${getRolePillClass()}`}>
-            {role}
+          <span className={`dashboard-role-pill ${getRolePillClass(effectiveRole)}`}>
+            {effectiveRole}
           </span>
 
           <button

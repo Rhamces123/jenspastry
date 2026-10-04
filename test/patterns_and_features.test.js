@@ -248,7 +248,7 @@ try {
 // ----------------------------------------------------
 console.log("\n5. Testing RBAC Roles, Dashboards, and Permissions...");
 
-import { ROLES, ROLE_LABELS, ROLE_DASHBOARDS, getDashboardPathForRole, hasPermission, PERMISSIONS } from '../src/constants/roles.js';
+import { ROLES, ROLE_LABELS, ROLE_DASHBOARDS, getDashboardPathForRole, hasPermission, PERMISSIONS, resolveRoleForUser } from '../src/constants/roles.js';
 
 try {
   // Test 4 Exact Roles
@@ -292,6 +292,16 @@ try {
   assert(hasPermission(ROLES.ADMIN, PERMISSIONS.USER_MANAGEMENT) === true, "Admin has user management permission");
   assert(hasPermission(ROLES.ADMIN, PERMISSIONS.SALES_REPORTS_FULL) === true, "Admin has full sales reports permission");
   assert(hasPermission(ROLES.ADMIN, PERMISSIONS.SYSTEM_SETTINGS) === true, "Admin has system settings permission");
+
+  // Test resolveRoleForUser Helper
+  assert(resolveRoleForUser('admin@jenspastry.com') === ROLES.ADMIN, "resolveRoleForUser identifies admin@jenspastry.com as ADMIN");
+  assert(resolveRoleForUser('cashier@jenspastry.com') === ROLES.CASHIER, "resolveRoleForUser identifies cashier@jenspastry.com as CASHIER");
+  assert(resolveRoleForUser('baker@jenspastry.com') === ROLES.BAKER, "resolveRoleForUser identifies baker@jenspastry.com as BAKER");
+  assert(resolveRoleForUser('admin@custom.com', 'admin') === ROLES.ADMIN, "resolveRoleForUser identifies admin prefix/name as ADMIN");
+  assert(resolveRoleForUser('owner@store.com', 'Store Owner / Admin') === ROLES.ADMIN, "resolveRoleForUser identifies Store Owner title as ADMIN");
+  assert(resolveRoleForUser('admin@jenspastry.com', 'admin', 'customer') === ROLES.ADMIN, "resolveRoleForUser overrides stale customer role for official admin");
+  assert(resolveRoleForUser('customer@gmail.com', 'John Customer') === ROLES.CUSTOMER, "resolveRoleForUser identifies regular user as CUSTOMER");
+  assert(resolveRoleForUser('vladimir@gmail.com', 'Vladimir') === ROLES.CUSTOMER, "resolveRoleForUser does not false-positive on Vladimir");
 } catch (e) {
   console.error("RBAC Tests error:", e);
 }

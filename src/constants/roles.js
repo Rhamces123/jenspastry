@@ -111,3 +111,71 @@ export function hasPermission(role, permission) {
   const permissions = ROLE_PERMISSIONS[role] || [];
   return permissions.includes(permission);
 }
+
+export const OFFICIAL_STAFF_EMAILS = {
+  'admin@jenspastry.com': ROLES.ADMIN,
+  'cashier@jenspastry.com': ROLES.CASHIER,
+  'baker@jenspastry.com': ROLES.BAKER
+};
+
+/**
+ * Resolves the authoritative role for a given user based on their email, display name, and stored role.
+ * Ensures admin and staff accounts are properly recognized and never misclassified as customer.
+ * 
+ * @param {string} [email]
+ * @param {string} [fullName]
+ * @param {string|null} [existingRole]
+ * @returns {string} One of ROLES (ADMIN, CASHIER, BAKER, CUSTOMER)
+ */
+export function resolveRoleForUser(email = '', fullName = '', existingRole = null) {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const cleanName = (fullName || '').trim().toLowerCase();
+
+  // 1. Exact match with official bakery staff email
+  if (OFFICIAL_STAFF_EMAILS[cleanEmail]) {
+    return OFFICIAL_STAFF_EMAILS[cleanEmail];
+  }
+
+  // 2. Admin heuristics
+  const nameParts = cleanName.split(/\s+/);
+  const emailPrefix = cleanEmail.split('@')[0];
+  if (
+    cleanEmail.startsWith('admin@') ||
+    cleanEmail.endsWith('@admin.jenspastry.com') ||
+    cleanEmail === 'admin' ||
+    emailPrefix === 'admin' ||
+    nameParts.includes('admin') ||
+    nameParts.includes('administrator') ||
+    cleanName.includes('store owner') ||
+    existingRole === ROLES.ADMIN
+  ) {
+    return ROLES.ADMIN;
+  }
+
+  // 3. Cashier heuristics
+  if (
+    cleanEmail.startsWith('cashier@') ||
+    emailPrefix === 'cashier' ||
+    nameParts.includes('cashier') ||
+    existingRole === ROLES.CASHIER
+  ) {
+    return ROLES.CASHIER;
+  }
+
+  // 4. Baker heuristics
+  if (
+    cleanEmail.startsWith('baker@') ||
+    emailPrefix === 'baker' ||
+    nameParts.includes('baker') ||
+    existingRole === ROLES.BAKER
+  ) {
+    return ROLES.BAKER;
+  }
+
+  // 5. Existing valid role if already assigned
+  if (existingRole && Object.values(ROLES).includes(existingRole)) {
+    return existingRole;
+  }
+
+  return ROLES.CUSTOMER;
+}

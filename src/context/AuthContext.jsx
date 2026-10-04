@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AuthContext } from './useAuth.js';
-import { ROLES } from '../constants/roles.js';
+import { ROLES, resolveRoleForUser } from '../constants/roles.js';
 import { 
   auth, 
   db, 
@@ -96,8 +96,27 @@ const ensureInitialDemoAccounts = () => {
         }
       }
     }
+    // Auto-heal any existing accounts in demo storage matching staff/admin patterns
+    for (let i = 0; i < existing.length; i++) {
+      const resolved = resolveRoleForUser(existing[i].email, existing[i].fullName, existing[i].role);
+      if (existing[i].role !== resolved) {
+        existing[i].role = resolved;
+        modified = true;
+      }
+    }
     if (modified) {
       localStorage.setItem(DEMO_ACCOUNTS_KEY, JSON.stringify(existing));
+    }
+
+    // Auto-heal active demo user session if present in localStorage
+    const activeDemo = localStorage.getItem(DEMO_USER_KEY);
+    if (activeDemo) {
+      const parsed = JSON.parse(activeDemo);
+      const resolved = resolveRoleForUser(parsed.email, parsed.fullName || parsed.displayName, parsed.role);
+      if (parsed.role !== resolved) {
+        parsed.role = resolved;
+        localStorage.setItem(DEMO_USER_KEY, JSON.stringify(parsed));
+      }
     }
   } catch (e) {
     console.warn("Could not seed demo staff accounts:", e);
@@ -111,7 +130,17 @@ const readInitialDemoUser = () => {
   if (!isFirebaseConfigured()) {
     try {
       const stored = localStorage.getItem(DEMO_USER_KEY);
-      return stored ? JSON.parse(stored) : null;
+      if (!stored) return null;
+      const parsed = JSON.parse(stored);
+      if (parsed) {
+        const resolved = resolveRoleForUser(parsed.email, parsed.fullName || parsed.displayName, parsed.role);
+        if (parsed.role !== resolved) {
+          parsed.role = resolved;
+          localStorage.setItem(DEMO_USER_KEY, JSON.stringify(parsed));
+        }
+        return parsed;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -133,19 +162,34 @@ export function AuthProvider({ children }) {
       const snapshot = await getDoc(userRef);
       if (snapshot.exists()) {
         const data = snapshot.data();
-        const role = data.role || defaultRole;
-        const profileWithRole = { ...data, role };
+        const resolvedRole = resolveRoleForUser(
+          firebaseUser.email || data.email,
+          data.fullName || firebaseUser.displayName,
+          data.role || defaultRole
+        );
+
+        // Auto-heal Firestore if account was previously saved with misclassified role
+        if (data.role !== resolvedRole) {
+          try {
+            await updateDoc(userRef, { role: resolvedRole, updatedAt: new Date().toISOString() });
+          } catch (patchErr) {
+            console.warn("Could not auto-heal user role in Firestore:", patchErr);
+          }
+        }
+
+        const profileWithRole = { ...data, role: resolvedRole };
         setUserProfile(profileWithRole);
         return profileWithRole;
       } else {
         // Document doesn't exist yet (e.g. from Google sign-in)
         const isGoogle = firebaseUser.providerData?.some(p => p.providerId === 'google.com');
+        const resolvedRole = resolveRoleForUser(firebaseUser.email, firebaseUser.displayName, defaultRole);
         const newProfile = {
           uid: firebaseUser.uid,
-          fullName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Customer',
+          fullName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || (resolvedRole === ROLES.ADMIN ? 'Store Owner / Admin' : 'Customer'),
           email: firebaseUser.email || '',
           photoURL: firebaseUser.photoURL || '',
-          role: defaultRole,
+          role: resolvedRole,
           provider: isGoogle ? 'google' : 'password',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
@@ -158,12 +202,13 @@ export function AuthProvider({ children }) {
       console.warn("Could not sync Firestore profile:", err);
       // Fallback profile from Firebase Auth user
       const isGoogle = firebaseUser.providerData?.some(p => p.providerId === 'google.com');
+      const resolvedRole = resolveRoleForUser(firebaseUser.email, firebaseUser.displayName, defaultRole);
       const fallback = {
         uid: firebaseUser.uid,
-        fullName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Customer',
+        fullName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || (resolvedRole === ROLES.ADMIN ? 'Store Owner / Admin' : 'Customer'),
         email: firebaseUser.email || '',
         photoURL: firebaseUser.photoURL || '',
-        role: defaultRole,
+        role: resolvedRole,
         provider: isGoogle ? 'google' : 'password',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -193,6 +238,7 @@ export function AuthProvider({ children }) {
    * Register a new customer with Email, Password, and Full Name
    */
   const signup = async (email, password, fullName) => {
+    const determinedRole = resolveRoleForUser(email, fullName, ROLES.CUSTOMER);
     if (isLive) {
       // 1. Create Firebase Auth user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -209,7 +255,7 @@ export function AuthProvider({ children }) {
         fullName: fullName || email.split('@')[0],
         email: user.email,
         photoURL: user.photoURL || '',
-        role: ROLES.CUSTOMER,
+        role: determinedRole,
         provider: 'password',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -231,7 +277,7 @@ export function AuthProvider({ children }) {
         displayName: fullName || email.split('@')[0],
         fullName: fullName || email.split('@')[0],
         photoURL: '',
-        role: ROLES.CUSTOMER,
+        role: determinedRole,
         provider: 'password',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -274,7 +320,7 @@ export function AuthProvider({ children }) {
               uid: newCred.user.uid,
               fullName: officialStaff.fullName,
               email: cleanEmail,
-              role: officialStaff.role,
+              role: resolveRoleForUser(officialStaff.email, officialStaff.fullName, officialStaff.role),
               provider: 'password',
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
@@ -292,7 +338,7 @@ export function AuthProvider({ children }) {
               displayName: officialStaff.fullName,
               fullName: officialStaff.fullName,
               photoURL: '',
-              role: officialStaff.role,
+              role: resolveRoleForUser(officialStaff.email, officialStaff.fullName, officialStaff.role),
               provider: 'password',
               createdAt: new Date().toISOString()
             };
@@ -322,13 +368,14 @@ export function AuthProvider({ children }) {
         err.code = 'auth/invalid-credential';
         throw err;
       }
+      const resolvedRole = resolveRoleForUser(found.email, found.fullName || found.displayName, found.role);
       const loggedIn = {
         uid: found.uid,
         email: found.email,
         displayName: found.fullName || found.displayName,
         fullName: found.fullName || found.displayName,
         photoURL: found.photoURL || '',
-        role: found.role || ROLES.CUSTOMER,
+        role: resolvedRole,
         provider: found.provider || 'password',
         createdAt: found.createdAt,
         updatedAt: found.updatedAt || found.createdAt
