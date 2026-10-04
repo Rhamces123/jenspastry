@@ -183,12 +183,14 @@ class ShopManager {
   addProduct(rawData) {
     // FACTORY PATTERN
     // Creates pastry product objects in one centralized place.
+    const defaultImage = rawData.imageUrl || (rawData.category ? `/products/${rawData.category.toLowerCase()}.svg` : '');
     const newProduct = PastryProductFactory.createProduct({
       id: Date.now(),
       name: rawData.name,
       category: rawData.category,
       price: rawData.price,
-      stock: rawData.stock
+      stock: rawData.stock,
+      imageUrl: defaultImage
     });
 
     // ARRAYS: Push to product list
@@ -219,7 +221,9 @@ class ShopManager {
       name: updatedFields.name !== undefined ? updatedFields.name : current.name,
       category: updatedFields.category !== undefined ? updatedFields.category : current.category,
       price: updatedFields.price !== undefined ? updatedFields.price : current.price,
-      stock: updatedFields.stock !== undefined ? updatedFields.stock : current.stock
+      stock: updatedFields.stock !== undefined ? updatedFields.stock : current.stock,
+      imageUrl: updatedFields.imageUrl !== undefined ? updatedFields.imageUrl : current.imageUrl,
+      icon: updatedFields.icon !== undefined ? updatedFields.icon : current.icon
     });
 
     this.products[index] = updated;

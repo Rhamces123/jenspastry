@@ -13,6 +13,7 @@ export default function ProductFormModal({ isOpen, onClose, onSubmit, initialPro
   const [category, setCategory] = useState(initialProduct ? (initialProduct.category || 'Bread') : 'Bread');
   const [price, setPrice] = useState(initialProduct && initialProduct.price !== undefined ? String(initialProduct.price) : '');
   const [stock, setStock] = useState(initialProduct && initialProduct.stock !== undefined ? String(initialProduct.stock) : '');
+  const [imageUrl, setImageUrl] = useState(initialProduct ? (initialProduct.imageUrl || '') : '');
   const [errors, setErrors] = useState({});
 
   const isEditing = Boolean(initialProduct);
@@ -65,7 +66,8 @@ export default function ProductFormModal({ isOpen, onClose, onSubmit, initialPro
       name: name.trim(),
       category: category,
       price: Number(price),
-      stock: Number(stock)
+      stock: Number(stock),
+      imageUrl: imageUrl.trim() || undefined
     };
 
     onSubmit(productPayload);
@@ -169,6 +171,30 @@ export default function ProductFormModal({ isOpen, onClose, onSubmit, initialPro
                 <span className="form-error"><AlertCircle size={14} /> {errors.stock}</span>
               )}
             </div>
+          </div>
+
+          {/* Image URL / Picture */}
+          <div className="form-group">
+            <label className="form-label" htmlFor="prod-image">Image URL or Path</label>
+            <input
+              id="prod-image"
+              type="text"
+              className="form-input"
+              placeholder="e.g. /products/bread.svg or https://images.unsplash.com/..."
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+            />
+            {imageUrl && (
+              <div className="mt-2 p-2 bg-cream-pure rounded-lg border border-border-light flex items-center gap-2.5">
+                <img
+                  src={imageUrl}
+                  alt="Preview"
+                  className="w-10 h-10 object-contain rounded-md border border-border-light bg-white"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+                <span className="text-2xs text-muted">Image preview</span>
+              </div>
+            )}
           </div>
 
           <div className="pattern-note">
