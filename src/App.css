@@ -1337,15 +1337,22 @@
    ========================================== */
 
 .modal-backdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: rgba(61, 11, 30, 0.65);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  z-index: 100;
+  z-index: 1000;
   animation: fadeIn 0.2s ease-out;
+}
+
+@media (min-width: 640px) {
+  .modal-backdrop {
+    align-items: center;
+    padding: 20px;
+  }
 }
 
 @keyframes fadeIn {
@@ -1362,6 +1369,13 @@
   padding: 20px;
   box-shadow: var(--shadow-lg);
   animation: slideUp 0.25s ease-out;
+}
+
+@media (min-width: 640px) {
+  .modal-content {
+    border-radius: var(--radius-xl);
+    max-width: 480px;
+  }
 }
 
 @keyframes slideUp {
@@ -1529,6 +1543,15 @@
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   background: #3D0B1E;
   padding: 18px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+@media (min-width: 640px) {
+  .receipt-modal-content {
+    border-radius: var(--radius-xl);
+  }
 }
 
 .receipt-paper {
@@ -1565,6 +1588,50 @@
 .receipt-meta {
   font-size: 11px;
   margin: 8px 0;
+}
+
+/* Print Optimization for Thermal Paper */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  .receipt-paper,
+  .receipt-paper * {
+    visibility: visible !important;
+  }
+
+  .receipt-paper {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 80mm !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 8mm 6mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+  }
+
+  .receipt-dashed-line {
+    border-bottom: 1px dashed #000000 !important;
+  }
+
+  .modal-backdrop,
+  .modal-content,
+  .receipt-modal-content {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+
+  .receipt-actions {
+    display: none !important;
+  }
 }
 
 /* ==========================================

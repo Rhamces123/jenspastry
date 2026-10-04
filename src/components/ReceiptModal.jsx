@@ -30,7 +30,7 @@ export default function ReceiptModal({ isOpen, onClose, sale }) {
           </div>
 
           {/* Transaction Metadata */}
-          <div className="receipt-meta">
+          <div className="receipt-meta space-y-1">
             <div className="flex justify-between">
               <span>Receipt No:</span>
               <strong className="font-mono">{formatSaleNumber(sale.saleNumber || sale.id)}</strong>
@@ -41,8 +41,14 @@ export default function ReceiptModal({ isOpen, onClose, sale }) {
             </div>
             <div className="flex justify-between">
               <span>Customer:</span>
-              <span>{sale.customerType}</span>
+              <span className="font-semibold">{sale.customerName || sale.customerType || 'Walk-in Guest'}</span>
             </div>
+            {sale.paymentMethod && (
+              <div className="flex justify-between">
+                <span>Tender:</span>
+                <span className="font-semibold">{sale.paymentMethod}</span>
+              </div>
+            )}
             <div className="receipt-dashed-line"></div>
           </div>
 
@@ -84,6 +90,18 @@ export default function ReceiptModal({ isOpen, onClose, sale }) {
               <span>FINAL TOTAL:</span>
               <span>{formatCurrency(sale.total)}</span>
             </div>
+            {sale.amountReceived > 0 && (
+              <>
+                <div className="flex justify-between text-xs text-muted pt-1">
+                  <span>Cash Tendered:</span>
+                  <span>{formatCurrency(sale.amountReceived)}</span>
+                </div>
+                <div className="flex justify-between text-xs font-bold text-success">
+                  <span>Change:</span>
+                  <span>{formatCurrency(sale.change || 0)}</span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Footer */}

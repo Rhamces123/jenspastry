@@ -127,7 +127,11 @@ export default function CashierDashboard() {
 
     try {
       const customerLabel = customerNameInput.trim() || 'Walk-in Guest';
-      const recordedSale = completeSale(posCart, customerLabel, discountStrategyId);
+      const recordedSale = completeSale({
+        cart: posCart,
+        customerLabel,
+        discountStrategyId
+      });
       
       const enrichedSale = {
         ...recordedSale,

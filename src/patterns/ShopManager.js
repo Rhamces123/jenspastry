@@ -274,16 +274,46 @@ class ShopManager {
   /**
    * Completes a sale transaction using Strategy Pattern for discount calculation.
    * Reduces inventory and records the transaction.
+   * Supports both completeSale({ cart, discountStrategyId, customerLabel }) 
+   * and completeSale(cartArray, customerLabel, discountStrategyId).
    * 
-   * @param {Object} options
-   * @param {Array} options.cart - [{ product, quantity }]
-   * @param {string} options.discountStrategyId - 'regular' | 'student' | 'bulk'
+   * @param {Object|Array} arg1 - options object { cart, discountStrategyId, customerLabel } OR cart array
+   * @param {string} [arg2] - customerLabel if arg1 is array, or fallback
+   * @param {string} [arg3] - discountStrategyId if arg1 is array
    * @returns {Object} completed sale record
    */
-  completeSale({ cart, discountStrategyId }) {
-    if (!cart || cart.length === 0) {
+  completeSale(arg1, arg2, arg3) {
+    let rawCart = [];
+    let discountStrategyId = 'regular';
+    let customCustomerLabel = null;
+
+    if (Array.isArray(arg1)) {
+      rawCart = arg1;
+      customCustomerLabel = typeof arg2 === 'string' ? arg2 : null;
+      discountStrategyId = arg3 || (typeof arg2 === 'string' && !arg3 ? 'regular' : arg2) || 'regular';
+    } else if (arg1 && typeof arg1 === 'object') {
+      rawCart = arg1.cart || [];
+      discountStrategyId = arg1.discountStrategyId || 'regular';
+      customCustomerLabel = arg1.customerLabel || arg1.customerName || (typeof arg2 === 'string' ? arg2 : null);
+    }
+
+    if (!rawCart || rawCart.length === 0) {
       throw new Error("Cart is empty. Cannot complete sale.");
     }
+
+    // Normalize each item in cart whether it's { product, quantity } or flat { id, name, price, quantity, ... }
+    const cart = rawCart.map(item => {
+      if (item.product) {
+        return {
+          product: item.product,
+          quantity: Number(item.quantity) || 1
+        };
+      }
+      return {
+        product: item,
+        quantity: Number(item.quantity) || 1
+      };
+    });
 
     // 1. Verify stock availability for all items
     for (const item of cart) {
@@ -333,7 +363,7 @@ class ShopManager {
       id: `SALE-${String(nextSaleNumber).padStart(3, '0')}`,
       saleNumber: nextSaleNumber,
       date: new Date().toISOString(),
-      customerType: strategy.customerLabel,
+      customerType: customCustomerLabel || strategy.customerLabel,
       discountStrategyId: strategy.id,
       discountRate: strategy.rate,
       subtotal: Math.round(subtotal * 100) / 100,

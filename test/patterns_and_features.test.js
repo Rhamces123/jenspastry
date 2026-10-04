@@ -196,6 +196,17 @@ try {
   const stockAfterSale = manager1.getProductById(newProduct.id).stock;
   assert(stockAfterSale === stockBeforeSale - 10, "Stock properly decremented from inventory after sale");
 
+  // Test Sale with Flat Cart Array & Customer Name (POS Cashier format)
+  const posFlatSale = manager1.completeSale(
+    [{ id: newProduct.id, name: newProduct.name, price: 18, quantity: 5 }],
+    'Walk-in Guest',
+    'bulk'
+  );
+  assert(posFlatSale.subtotal === 90, "Flat array subtotal correctly calculated: 5 * 18 = 90");
+  assert(posFlatSale.discount === 9, "Bulk discount 10% on 90 is 9");
+  assert(posFlatSale.total === 81, "Flat array final total: 90 - 9 = 81");
+  assert(posFlatSale.customerType === 'Walk-in Guest', "Customer label retained on sale record");
+
   // Delete Product
   manager1.deleteProduct(newProduct.id);
   assert(manager1.getProductById(newProduct.id) === undefined, "Product deleted successfully");

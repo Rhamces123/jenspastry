@@ -140,7 +140,11 @@ export default function CustomerDashboard() {
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     try {
-      const recordedSale = completeSale(cart, 'Regular Customer', discountStrategyId);
+      const recordedSale = completeSale({
+        cart,
+        customerLabel: 'Regular Customer',
+        discountStrategyId
+      });
       
       const orderRecord = {
         id: recordedSale.id,
