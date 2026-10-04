@@ -173,15 +173,17 @@ export default function Header({ onResetData, onOpenInstallModal, isInstalled = 
             </button>
           )}
 
-          <button 
-            type="button"
-            className="header-btn"
-            onClick={() => setShowInfoModal(true)}
-            aria-label="Design Patterns & Info"
-            title="School Project & Design Patterns Info"
-          >
-            <Info size={18} />
-          </button>
+          {currentUser && (
+            <button 
+              type="button"
+              className="header-btn"
+              onClick={() => setShowInfoModal(true)}
+              aria-label="Design Patterns & Info"
+              title="School Project & Design Patterns Info"
+            >
+              <Info size={18} />
+            </button>
+          )}
         </div>
       </header>
 

@@ -22,6 +22,7 @@ import ForgotPassword from './pages/ForgotPassword.jsx';
 import MyAccount from './pages/MyAccount.jsx';
 import MyOrders from './pages/MyOrders.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import WelcomeGateway from './components/WelcomeGateway.jsx';
 
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from './context/useAuth.js';
@@ -349,58 +350,65 @@ export default function App() {
           <Routes>
             {/* Storefront Home & Core Tabs */}
             <Route path="/" element={
-              <>
-                {currentTab === 'dashboard' && (
-                  <Dashboard
-                    summary={summary}
-                    onNavigateTab={handleSelectTab}
-                    onOpenAddModal={() => {
-                      setEditingProduct(null);
-                      setIsFormModalOpen(true);
-                    }}
-                    onViewReceipt={handleViewReceipt}
-                    onOpenInstallModal={() => setIsInstallModalOpen(true)}
-                    isInstalled={isAppInstalled}
-                  />
-                )}
+              !currentUser ? (
+                <WelcomeGateway
+                  onOpenInstallModal={() => setIsInstallModalOpen(true)}
+                  isInstalled={isAppInstalled}
+                />
+              ) : (
+                <>
+                  {currentTab === 'dashboard' && (
+                    <Dashboard
+                      summary={summary}
+                      onNavigateTab={handleSelectTab}
+                      onOpenAddModal={() => {
+                        setEditingProduct(null);
+                        setIsFormModalOpen(true);
+                      }}
+                      onViewReceipt={handleViewReceipt}
+                      onOpenInstallModal={() => setIsInstallModalOpen(true)}
+                      isInstalled={isAppInstalled}
+                    />
+                  )}
 
-                {currentTab === 'products' && (
-                  <Products
-                    products={products}
-                    onOpenAddModal={() => {
-                      setEditingProduct(null);
-                      setIsFormModalOpen(true);
-                    }}
-                    onEditProduct={(product) => {
-                      setEditingProduct(product);
-                      setIsFormModalOpen(true);
-                    }}
-                    onDeleteProduct={handleDeleteProduct}
-                    onQuickAddToCart={handleQuickAddToCart}
-                  />
-                )}
+                  {currentTab === 'products' && (
+                    <Products
+                      products={products}
+                      onOpenAddModal={() => {
+                        setEditingProduct(null);
+                        setIsFormModalOpen(true);
+                      }}
+                      onEditProduct={(product) => {
+                        setEditingProduct(product);
+                        setIsFormModalOpen(true);
+                      }}
+                      onDeleteProduct={handleDeleteProduct}
+                      onQuickAddToCart={handleQuickAddToCart}
+                    />
+                  )}
 
-                {currentTab === 'inventory' && (
-                  <Inventory
-                    products={products}
-                    onOpenRestockModal={(product) => {
-                      setRestockingProduct(product);
-                      setIsRestockModalOpen(true);
-                    }}
-                  />
-                )}
+                  {currentTab === 'inventory' && (
+                    <Inventory
+                      products={products}
+                      onOpenRestockModal={(product) => {
+                        setRestockingProduct(product);
+                        setIsRestockModalOpen(true);
+                      }}
+                    />
+                  )}
 
-                {currentTab === 'sales' && (
-                  <Sales
-                    products={products}
-                    sales={sales}
-                    cart={cart}
-                    setCart={setCart}
-                    onCompleteSale={handleCompleteSale}
-                    onViewReceipt={handleViewReceipt}
-                  />
-                )}
-              </>
+                  {currentTab === 'sales' && (
+                    <Sales
+                      products={products}
+                      sales={sales}
+                      cart={cart}
+                      setCart={setCart}
+                      onCompleteSale={handleCompleteSale}
+                      onViewReceipt={handleViewReceipt}
+                    />
+                  )}
+                </>
+              )
             } />
 
             {/* Authentication Pages */}
@@ -425,8 +433,8 @@ export default function App() {
           </Routes>
         </div>
 
-        {/* Fixed Mobile Bottom Navigation (Only visible on main store tabs) */}
-        {location.pathname === '/' && (
+        {/* Fixed Mobile Bottom Navigation (Only visible for logged in customers on main store tabs) */}
+        {currentUser && location.pathname === '/' && (
           <BottomNavigation
             currentTab={currentTab}
             onSelectTab={handleSelectTab}

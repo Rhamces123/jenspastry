@@ -2276,3 +2276,282 @@
   }
 }
 
+/* ==========================================
+   WELCOME GATEWAY (Guest Entry Portal)
+   Only shows Login, Sign Up, and Install Button
+   ========================================== */
+
+.welcome-gateway-container {
+  padding: 8px 4px 32px 4px;
+  max-width: 440px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.welcome-gateway-card {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 28px;
+  padding: 26px 20px;
+  box-shadow: 0 12px 36px rgba(157, 23, 77, 0.14), 0 2px 6px rgba(0, 0, 0, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+
+.welcome-gateway-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #F472B6, #EC4899, #BE185D);
+}
+
+.welcome-hero-badge {
+  width: 68px;
+  height: 68px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #FFF0F5 0%, #FCE7F3 100%);
+  border: 2px solid #FBCFE8;
+  color: var(--primary-pink-light);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(244, 114, 182, 0.30);
+  margin-bottom: 12px;
+  animation: floatBadge 3s ease-in-out infinite alternate;
+}
+
+@keyframes floatBadge {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-5px); }
+}
+
+.welcome-brand-title {
+  font-size: 26px;
+  font-weight: 800;
+  font-family: var(--font-serif);
+  color: var(--primary-pink-dark);
+  letter-spacing: -0.3px;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.welcome-brand-sub {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-pink-hover);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.welcome-brand-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin-bottom: 20px;
+  padding: 0 8px;
+}
+
+/* Install Banner inside Welcome Card */
+.welcome-install-banner {
+  background: linear-gradient(135deg, #FFF5F8 0%, #FCE8EF 100%);
+  border: 1.5px solid #F9DAE7;
+  border-radius: 18px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(157, 23, 77, 0.06);
+}
+
+.welcome-install-banner:hover {
+  transform: translateY(-2px);
+  border-color: #F472B6;
+  box-shadow: 0 6px 16px rgba(157, 23, 77, 0.12);
+}
+
+.welcome-install-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #FBCFE8, #F472B6);
+  color: #831843;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(157, 23, 77, 0.15);
+}
+
+.welcome-install-text {
+  flex: 1;
+}
+
+.welcome-install-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary-pink-dark);
+  line-height: 1.2;
+}
+
+.welcome-install-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.btn-welcome-install-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #F472B6, #BE185D);
+  color: #FFFFFF;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(190, 24, 93, 0.25);
+}
+
+/* Big Action Cards */
+.welcome-action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.btn-welcome-primary {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #F472B6 0%, #BE185D 100%);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-decoration: none;
+  box-shadow: 0 6px 20px rgba(190, 24, 93, 0.32);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+}
+
+.btn-welcome-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 26px rgba(190, 24, 93, 0.42);
+  background: linear-gradient(135deg, #EC4899 0%, #9D174D 100%);
+}
+
+.btn-welcome-primary:active {
+  transform: scale(0.98);
+}
+
+.welcome-btn-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.welcome-btn-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+}
+
+.welcome-btn-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #FFFFFF;
+  line-height: 1.2;
+}
+
+.welcome-btn-sub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+.btn-welcome-secondary {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #FFFFFF;
+  border: 1.5px solid var(--border-medium);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(157, 23, 77, 0.05);
+  transition: all 0.2s ease;
+}
+
+.btn-welcome-secondary:hover {
+  background: #FFF5F8;
+  border-color: #F472B6;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(157, 23, 77, 0.10);
+}
+
+.btn-welcome-secondary:active {
+  transform: scale(0.98);
+}
+
+.btn-welcome-secondary .welcome-btn-icon-wrap {
+  background: #FCE7F3;
+  color: var(--primary-pink);
+}
+
+.btn-welcome-secondary .welcome-btn-title {
+  color: var(--primary-pink-dark);
+}
+
+.btn-welcome-secondary .welcome-btn-sub {
+  color: var(--text-muted);
+}
+
+/* Feature pills */
+.welcome-perks-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.welcome-perk-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary-pink);
+  background: rgba(254, 242, 242, 0.8);
+  border: 1px solid #FBCFE8;
+  padding: 4px 10px;
+  border-radius: 9999px;
+}
+
+
