@@ -24,6 +24,12 @@ if (typeof globalThis.localStorage === 'undefined') {
 
 // Import ShopManager after localStorage polyfill
 import ShopManager from '../src/patterns/ShopManager.js';
+import { 
+  checkIsAppInstalled, 
+  markAppAsInstalled, 
+  clearAppInstalledState, 
+  isStandaloneMode 
+} from '../src/utils/pwa.js';
 
 let totalTests = 0;
 let passedTests = 0;
@@ -195,6 +201,38 @@ try {
   assert(Array.isArray(summary.recentSales), "Dashboard reports recentSales array");
 } catch (e) {
   console.error("Singleton Pattern Test error:", e);
+}
+
+// ----------------------------------------------------
+// 4. PWA INSTALLATION & STANDALONE STATE TESTS
+// ----------------------------------------------------
+console.log("\n4. Testing PWA Installation & Standalone Detection...");
+
+try {
+  clearAppInstalledState();
+  assert(checkIsAppInstalled() === false, "checkIsAppInstalled returns false by default");
+
+  markAppAsInstalled();
+  assert(checkIsAppInstalled() === true, "checkIsAppInstalled returns true after markAppAsInstalled");
+
+  clearAppInstalledState();
+  assert(checkIsAppInstalled() === false, "checkIsAppInstalled returns false after clearAppInstalledState");
+
+  // Simulate Standalone Display Mode (Installed PWA App running)
+  globalThis.window = {
+    matchMedia: (query) => ({
+      matches: query.includes('display-mode: standalone')
+    }),
+    navigator: {}
+  };
+
+  assert(isStandaloneMode() === true, "isStandaloneMode returns true when display-mode: standalone matches");
+  assert(checkIsAppInstalled() === true, "checkIsAppInstalled returns true in standalone mode even without localStorage");
+
+  // Reset window
+  delete globalThis.window;
+} catch (e) {
+  console.error("PWA Tests error:", e);
 }
 
 console.log("\n==========================================");

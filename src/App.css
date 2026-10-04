@@ -261,6 +261,17 @@
   transform: translateY(-1px);
 }
 
+/* Automatically hide install buttons and banners in standalone/installed mode */
+@media all and (display-mode: standalone), 
+       all and (display-mode: fullscreen), 
+       all and (display-mode: minimal-ui), 
+       all and (display-mode: window-controls-overlay) {
+  .btn-install-header,
+  .install-app-banner {
+    display: none !important;
+  }
+}
+
 /* Install App Banner on Dashboard */
 .install-app-banner {
   background: linear-gradient(135deg, #FFF5F8 0%, #FCE8EF 100%);

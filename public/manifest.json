@@ -10,6 +10,13 @@
   "background_color": "#FCE8EF",
   "theme_color": "#9D174D",
   "categories": ["business", "food", "productivity"],
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "/manifest.json",
+      "id": "com.jenspastry.app"
+    }
+  ],
   "icons": [
     {
       "src": "/icon-192.png",

@@ -6,6 +6,8 @@
 import React, { useState } from 'react';
 import { Download, Smartphone, Share2, PlusSquare, CheckCircle, X, QrCode, Monitor } from 'lucide-react';
 
+import { checkIsAppInstalled, markAppAsInstalled } from '../utils/pwa.js';
+
 function detectPlatform() {
   if (typeof navigator === 'undefined') return 'desktop';
   const userAgent = navigator.userAgent || navigator.vendor || window.opera || '';
@@ -18,17 +20,10 @@ function detectPlatform() {
   return 'desktop';
 }
 
-function checkIsInstalled() {
-  if (typeof window === 'undefined') return false;
-  return Boolean(
-    window.matchMedia('(display-mode: standalone)').matches || 
-    window.navigator.standalone === true
-  );
-}
-
-export default function InstallAppModal({ isOpen, onClose, deferredPrompt, onInstallSuccess }) {
+export default function InstallAppModal({ isOpen, onClose, deferredPrompt, onInstallSuccess, isInstalled: propIsInstalled }) {
   const [platform, setPlatform] = useState(detectPlatform);
-  const [isInstalled, setIsInstalled] = useState(checkIsInstalled);
+  const [internalInstalled, setInternalInstalled] = useState(checkIsAppInstalled);
+  const isInstalled = propIsInstalled ?? internalInstalled;
   const networkUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
   if (!isOpen) return null;
@@ -40,8 +35,9 @@ export default function InstallAppModal({ isOpen, onClose, deferredPrompt, onIns
         deferredPrompt.prompt();
         const choiceResult = await deferredPrompt.userChoice;
         if (choiceResult.outcome === 'accepted') {
+          markAppAsInstalled();
+          setInternalInstalled(true);
           if (onInstallSuccess) onInstallSuccess();
-          setIsInstalled(true);
           onClose();
         }
       } catch (err) {

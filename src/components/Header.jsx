@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { Croissant, Info, RotateCcw, Sparkles, Download } from 'lucide-react';
 
-export default function Header({ onResetData, onOpenInstallModal }) {
+export default function Header({ onResetData, onOpenInstallModal, isInstalled = false }) {
   const [showInfoModal, setShowInfoModal] = useState(false);
 
   return (
@@ -23,16 +23,18 @@ export default function Header({ onResetData, onOpenInstallModal }) {
         </div>
 
         <div className="header-actions flex items-center gap-1.5">
-          <button 
-            type="button"
-            className="btn-install-header"
-            onClick={onOpenInstallModal}
-            aria-label="Download / Install App to Phone"
-            title="Download / Install App to Phone"
-          >
-            <Download size={14} />
-            <span>Install</span>
-          </button>
+          {!isInstalled && (
+            <button 
+              type="button"
+              className="btn-install-header"
+              onClick={onOpenInstallModal}
+              aria-label="Download / Install App to Phone"
+              title="Download / Install App to Phone"
+            >
+              <Download size={14} />
+              <span>Install</span>
+            </button>
+          )}
 
           <button 
             type="button"

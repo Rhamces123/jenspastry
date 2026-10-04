@@ -18,6 +18,12 @@ import Inventory from './pages/Inventory.jsx';
 import Sales from './pages/Sales.jsx';
 
 import { useShop } from './hooks/useShop.js';
+import { 
+  isStandaloneMode, 
+  checkIsAppInstalled, 
+  markAppAsInstalled, 
+  clearAppInstalledState 
+} from './utils/pwa.js';
 import { Smartphone, Monitor } from 'lucide-react';
 import './App.css';
 
@@ -52,31 +58,78 @@ export default function App() {
 
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-
-  // Capture PWA Install Prompt
-  useEffect(() => {
-    const handleBeforeInstall = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-    };
-  }, []);
+  const [isAppInstalled, setIsAppInstalled] = useState(checkIsAppInstalled);
 
   // Toast feedback
   const [toast, setToast] = useState({ message: '', type: 'success' });
-
-  // Mobile frame simulator mode for desktop browsers
-  const [deviceFrameMode, setDeviceFrameMode] = useState(true);
-
-  // FUNCTIONS: Toast Trigger
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
   };
+
+  // Capture PWA Install Prompt & Track Installation Lifecycle
+  useEffect(() => {
+    // 1. Capture direct install prompt (only available if app is NOT already installed)
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+
+      // If browser offers install prompt and we are not in standalone mode, reset installed state
+      if (!isStandaloneMode()) {
+        clearAppInstalledState();
+        setIsAppInstalled(false);
+      }
+    };
+
+    // 2. Listen for 'appinstalled' event fired by the browser when installation completes
+    const handleAppInstalled = () => {
+      markAppAsInstalled();
+      setIsAppInstalled(true);
+      setDeferredPrompt(null);
+      setIsInstallModalOpen(false);
+      showToast("App installed successfully! Welcome to BAKEOLOGY.", "success");
+    };
+
+    // 3. Listen for standalone display-mode changes
+    const standaloneQuery = window.matchMedia ? window.matchMedia('(display-mode: standalone)') : null;
+    const handleDisplayModeChange = (e) => {
+      if (e.matches) {
+        markAppAsInstalled();
+        setIsAppInstalled(true);
+      }
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    if (standaloneQuery?.addEventListener) {
+      standaloneQuery.addEventListener('change', handleDisplayModeChange);
+    } else if (standaloneQuery?.addListener) {
+      standaloneQuery.addListener(handleDisplayModeChange);
+    }
+
+    // 4. Query navigator.getInstalledRelatedApps if supported (Chromium browsers)
+    if (typeof navigator !== 'undefined' && 'getInstalledRelatedApps' in navigator) {
+      navigator.getInstalledRelatedApps().then((relatedApps) => {
+        if (relatedApps && relatedApps.length > 0) {
+          markAppAsInstalled();
+          setIsAppInstalled(true);
+        }
+      }).catch(() => {});
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+      if (standaloneQuery?.removeEventListener) {
+        standaloneQuery.removeEventListener('change', handleDisplayModeChange);
+      } else if (standaloneQuery?.removeListener) {
+        standaloneQuery.removeListener(handleDisplayModeChange);
+      }
+    };
+  }, []);
+
+  // Mobile frame simulator mode for desktop browsers
+  const [deviceFrameMode, setDeviceFrameMode] = useState(true);
 
   // FUNCTIONS: Product Form Submission (Factory Pattern)
   const handleFormSubmit = (productData) => {
@@ -205,6 +258,7 @@ export default function App() {
         <Header 
           onResetData={resetToDefaultData} 
           onOpenInstallModal={() => setIsInstallModalOpen(true)}
+          isInstalled={isAppInstalled}
         />
 
         {/* Dynamic Main Body Content */}
@@ -219,6 +273,7 @@ export default function App() {
               }}
               onViewReceipt={handleViewReceipt}
               onOpenInstallModal={() => setIsInstallModalOpen(true)}
+              isInstalled={isAppInstalled}
             />
           )}
 
@@ -305,7 +360,12 @@ export default function App() {
           isOpen={isInstallModalOpen}
           onClose={() => setIsInstallModalOpen(false)}
           deferredPrompt={deferredPrompt}
-          onInstallSuccess={() => showToast("App installed successfully! Welcome to BAKEOLOGY.", "success")}
+          isInstalled={isAppInstalled}
+          onInstallSuccess={() => {
+            markAppAsInstalled();
+            setIsAppInstalled(true);
+            showToast("App installed successfully! Welcome to BAKEOLOGY.", "success");
+          }}
         />
 
         {/* In-app Toast */}

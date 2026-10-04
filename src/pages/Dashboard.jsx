@@ -24,7 +24,8 @@ export default function Dashboard({
   onNavigateTab, 
   onOpenAddModal, 
   onViewReceipt,
-  onOpenInstallModal 
+  onOpenInstallModal,
+  isInstalled = false
 }) {
   const { 
     totalProducts, 
@@ -85,26 +86,28 @@ export default function Dashboard({
         />
       </div>
 
-      {/* Download / Install App Banner */}
-      <div 
-        className="mobile-card install-app-banner flex items-center justify-between cursor-pointer"
-        onClick={onOpenInstallModal}
-        role="button"
-        tabIndex={0}
-      >
-        <div className="flex items-center gap-3">
-          <div className="install-banner-icon">
-            <Download size={20} />
+      {/* Download / Install App Banner (Hidden when already installed) */}
+      {!isInstalled && (
+        <div 
+          className="mobile-card install-app-banner flex items-center justify-between cursor-pointer"
+          onClick={onOpenInstallModal}
+          role="button"
+          tabIndex={0}
+        >
+          <div className="flex items-center gap-3">
+            <div className="install-banner-icon">
+              <Download size={20} />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-primary">Download to Device</h4>
+              <p className="text-2xs text-muted">Install for 1-tap offline mobile access</p>
+            </div>
           </div>
-          <div>
-            <h4 className="font-bold text-sm text-primary">Download to Device</h4>
-            <p className="text-2xs text-muted">Install for 1-tap offline mobile access</p>
-          </div>
+          <span className="btn-action-primary text-xs font-bold py-1 px-3">
+            Install
+          </span>
         </div>
-        <span className="btn-action-primary text-xs font-bold py-1 px-3">
-          Install
-        </span>
-      </div>
+      )}
 
       {/* Quick Action Buttons for Touch */}
       <div className="quick-actions-bar">
