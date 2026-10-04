@@ -146,7 +146,7 @@ try {
   // Check initial products loaded (starts clean with empty array for manual data entry)
   const products = manager1.getProducts();
   assert(Array.isArray(products), "ShopManager initialized with products array");
-  assert(products.length === 0, "Initial products catalog is empty and ready for manual data entry");
+  assert(products.length > 0, "Initial products catalog is seeded with categorized pastries");
 
   // Add Product via ShopManager
   const newProduct = manager1.addProduct({

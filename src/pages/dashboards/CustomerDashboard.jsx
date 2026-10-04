@@ -358,7 +358,11 @@ export default function CustomerDashboard() {
                 {featuredProducts.map(product => (
                   <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs">
                     <div>
-                      <div className="text-2xl text-center mb-1">{product.icon || '🥐'}</div>
+                      {product.imageUrl ? (
+                        <img src={product.imageUrl} alt={product.name} className="w-full h-16 object-cover rounded-lg mb-1" />
+                      ) : (
+                        <div className="text-2xl text-center mb-1">{product.icon || '🥐'}</div>
+                      )}
                       <h4 className="font-bold text-xs text-primary truncate text-center">{product.name}</h4>
                       <span className="text-2xs text-muted block text-center">{product.category}</span>
                     </div>
@@ -436,7 +440,11 @@ export default function CustomerDashboard() {
                     </button>
 
                     <div>
-                      <div className="text-3xl text-center my-1">{product.icon || '🥐'}</div>
+                      {product.imageUrl ? (
+                        <img src={product.imageUrl} alt={product.name} className="w-full h-20 object-cover rounded-lg my-1" />
+                      ) : (
+                        <div className="text-3xl text-center my-1">{product.icon || '🥐'}</div>
+                      )}
                       <span className="text-2xs text-muted block text-center">{product.category}</span>
                       <h4 className="font-bold text-xs text-primary truncate text-center">{product.name}</h4>
                       <span className="text-2xs font-semibold text-center block text-muted mt-0.5">
@@ -715,7 +723,11 @@ export default function CustomerDashboard() {
               {products.filter(p => favorites.includes(p.id)).map(product => (
                 <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs">
                   <div>
-                    <div className="text-2xl text-center">{product.icon || '🥐'}</div>
+                    {product.imageUrl ? (
+                      <img src={product.imageUrl} alt={product.name} className="w-full h-16 object-cover rounded-lg" />
+                    ) : (
+                      <div className="text-2xl text-center">{product.icon || '🥐'}</div>
+                    )}
                     <h4 className="font-bold text-xs text-primary truncate text-center mt-1">{product.name}</h4>
                     <span className="text-2xs text-muted block text-center">{formatCurrency(product.price)}</span>
                   </div>

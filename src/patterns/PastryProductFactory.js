@@ -11,7 +11,7 @@ export const PRODUCT_CATEGORIES = ['Bread', 'Pastry', 'Cake', 'Dessert'];
  * Base Product representation
  */
 class BaseProduct {
-  constructor({ id, name, category, price, stock, icon, shelfLifeDays }) {
+  constructor({ id, name, category, price, stock, icon, shelfLifeDays, imageUrl, description }) {
     this.id = id;
     this.name = name;
     this.category = category;
@@ -19,6 +19,8 @@ class BaseProduct {
     this.stock = Number(stock);
     this.icon = icon || '🥐';
     this.shelfLifeDays = shelfLifeDays || 3;
+    this.imageUrl = imageUrl || '';
+    this.description = description || '';
     this.createdAt = new Date().toISOString();
   }
 
@@ -35,7 +37,7 @@ class BreadProduct extends BaseProduct {
     super({
       ...data,
       category: 'Bread',
-      icon: '🥖',
+      icon: data.icon || '🥖',
       shelfLifeDays: 2
     });
   }
@@ -46,7 +48,7 @@ class PastryProductItem extends BaseProduct {
     super({
       ...data,
       category: 'Pastry',
-      icon: '🥐',
+      icon: data.icon || '🥐',
       shelfLifeDays: 3
     });
   }
@@ -57,7 +59,7 @@ class CakeProduct extends BaseProduct {
     super({
       ...data,
       category: 'Cake',
-      icon: '🎂',
+      icon: data.icon || '🎂',
       shelfLifeDays: 5
     });
   }
@@ -68,7 +70,7 @@ class DessertProduct extends BaseProduct {
     super({
       ...data,
       category: 'Dessert',
-      icon: '🍮',
+      icon: data.icon || '🍮',
       shelfLifeDays: 4
     });
   }
@@ -89,7 +91,7 @@ export class PastryProductFactory {
       throw new Error("Product data is required to create a product.");
     }
 
-    const { id, name, category, price, stock } = productData;
+    const { id, name, category, price, stock, icon, imageUrl, description, shelfLifeDays } = productData;
 
     // Validate product name
     if (!name || typeof name !== 'string' || name.trim() === '') {
@@ -117,7 +119,11 @@ export class PastryProductFactory {
       name: name.trim(),
       category: normalizedCategory,
       price: parsedPrice,
-      stock: parsedStock
+      stock: parsedStock,
+      icon,
+      imageUrl,
+      description,
+      shelfLifeDays
     };
 
     // Instantiate appropriate product subclass based on category

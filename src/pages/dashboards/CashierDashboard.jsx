@@ -351,7 +351,11 @@ export default function CashierDashboard() {
                       )}
 
                       <div className="flex justify-between items-start">
-                        <span className="pos-card-icon">{p.icon || '🥐'}</span>
+                        {p.imageUrl ? (
+                          <img src={p.imageUrl} alt={p.name} className="pos-card-image" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8 }} />
+                        ) : (
+                          <span className="pos-card-icon">{p.icon || '🥐'}</span>
+                        )}
                         <span className={`pos-stock-badge ${
                           p.stock > 10 ? 'pos-stock-good' : p.stock > 0 ? 'pos-stock-low' : 'pos-stock-out'
                         }`}>

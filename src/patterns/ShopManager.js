@@ -14,8 +14,42 @@ import {
 } from '../utils/storage.js';
 
 // VARIABLES
-// Initial clean state: empty catalog and sales ready for manual data entry
-const INITIAL_PRODUCTS = [];
+// Default catalog seeded on first launch (customers see a categorized menu out of the box)
+const INITIAL_PRODUCTS = [
+  { name: 'Pandesal', category: 'Bread', price: 15, stock: 50, icon: '🍞', imageUrl: '/products/bread.svg' },
+  { name: 'Ensaymada', category: 'Bread', price: 45, stock: 30, icon: '🥖', imageUrl: '/products/bread.svg' },
+  { name: 'Monay', category: 'Bread', price: 20, stock: 40, icon: '🍞', imageUrl: '/products/bread.svg' },
+  { name: 'Siopao', category: 'Bread', price: 35, stock: 25, icon: '🥟', imageUrl: '/products/bread.svg' },
+  { name: 'Pan de Coco', category: 'Bread', price: 25, stock: 30, icon: '🥥', imageUrl: '/products/bread.svg' },
+  { name: 'Loaf Bread', category: 'Bread', price: 70, stock: 20, icon: '🍞', imageUrl: '/products/bread.svg' },
+  { name: 'Dinner Rolls', category: 'Bread', price: 12, stock: 60, icon: '🥖', imageUrl: '/products/bread.svg' },
+  { name: 'Ube Pandesal', category: 'Bread', price: 20, stock: 40, icon: '🍞', imageUrl: '/products/bread.svg' },
+
+  { name: 'Croissant', category: 'Pastry', price: 55, stock: 30, icon: '🥐', imageUrl: '/products/pastry.svg' },
+  { name: 'Danish', category: 'Pastry', price: 50, stock: 25, icon: '🥐', imageUrl: '/products/pastry.svg' },
+  { name: 'Pain au Chocolat', category: 'Pastry', price: 60, stock: 20, icon: '🍫', imageUrl: '/products/pastry.svg' },
+  { name: 'Cinnamon Roll', category: 'Pastry', price: 48, stock: 25, icon: '🥮', imageUrl: '/products/pastry.svg' },
+  { name: 'Apple Pie', category: 'Pastry', price: 85, stock: 15, icon: '🥧', imageUrl: '/products/pastry.svg' },
+  { name: 'Empanada', category: 'Pastry', price: 40, stock: 30, icon: '🥟', imageUrl: '/products/pastry.svg' },
+  { name: 'Hopia', category: 'Pastry', price: 30, stock: 35, icon: '🥮', imageUrl: '/products/pastry.svg' },
+  { name: 'Pie', category: 'Pastry', price: 75, stock: 18, icon: '🥧', imageUrl: '/products/pastry.svg' },
+
+  { name: 'Chocolate Cake', category: 'Cake', price: 650, stock: 10, icon: '🍫', imageUrl: '/products/cake.svg' },
+  { name: 'Vanilla Sponge Cake', category: 'Cake', price: 550, stock: 10, icon: '🎂', imageUrl: '/products/cake.svg' },
+  { name: 'Red Velvet Cake', category: 'Cake', price: 700, stock: 8, icon: '🎂', imageUrl: '/products/cake.svg' },
+  { name: 'Carrot Cake', category: 'Cake', price: 600, stock: 10, icon: '🥕', imageUrl: '/products/cake.svg' },
+  { name: 'Ube Cake', category: 'Cake', price: 750, stock: 8, icon: '🍠', imageUrl: '/products/cake.svg' },
+  { name: 'Cheesecake', category: 'Cake', price: 680, stock: 10, icon: '🍰', imageUrl: '/products/cake.svg' },
+
+  { name: 'Brownie', category: 'Dessert', price: 45, stock: 30, icon: '🍫', imageUrl: '/products/dessert.svg' },
+  { name: 'Macarons', category: 'Dessert', price: 120, stock: 20, icon: '🍪', imageUrl: '/products/dessert.svg' },
+  { name: 'Pudding', category: 'Dessert', price: 40, stock: 25, icon: '🍮', imageUrl: '/products/dessert.svg' },
+  { name: 'Crème Brûlée', category: 'Dessert', price: 70, stock: 15, icon: '🍮', imageUrl: '/products/dessert.svg' },
+  { name: 'Fruit Tart', category: 'Dessert', price: 65, stock: 15, icon: '🍓', imageUrl: '/products/dessert.svg' },
+  { name: 'Cupcake', category: 'Dessert', price: 35, stock: 40, icon: '🧁', imageUrl: '/products/dessert.svg' },
+  { name: 'Doughnut', category: 'Dessert', price: 30, stock: 40, icon: '🍩', imageUrl: '/products/dessert.svg' },
+  { name: 'Tart', category: 'Dessert', price: 55, stock: 20, icon: '🥧', imageUrl: '/products/dessert.svg' }
+];
 const INITIAL_SALES = [];
 
 // SINGLETON PATTERN
@@ -99,7 +133,9 @@ class ShopManager {
       // FACTORY PATTERN: Reconstruct product objects through the Factory
       this.products = storedProducts.map(item => PastryProductFactory.createProduct(item));
     } else {
-      this.products = [];
+      this.products = INITIAL_PRODUCTS.map((item, i) =>
+        PastryProductFactory.createProduct({ id: `seed-${i + 1}`, ...item })
+      );
       saveProducts(this.products);
     }
 

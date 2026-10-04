@@ -14,8 +14,8 @@ export default function ProductCard({ product, onEdit, onDelete, onQuickAddToCar
 
   const getCategoryEmoji = (category) => {
     switch (category) {
-      case 'Bread': return '🥖';
-      case 'Cake': return '🎂';
+      case 'Bread': return '🍞';
+      case 'Cake': return '🍰';
       case 'Dessert': return '🍮';
       case 'Pastry':
       default: return '🥐';
