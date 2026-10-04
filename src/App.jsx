@@ -339,11 +339,7 @@ export default function App() {
         </div>
 
         {/* Application Header */}
-        <Header 
-          onResetData={resetToDefaultData} 
-          onOpenInstallModal={() => setIsInstallModalOpen(true)}
-          isInstalled={isAppInstalled}
-        />
+        <Header onResetData={resetToDefaultData} />
 
         {/* Dynamic Main Body Content & Routes */}
         <div className="mobile-scrollable-body">
