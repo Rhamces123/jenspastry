@@ -353,21 +353,7 @@ export function AuthProvider({ children }) {
       const profile = await syncFirestoreProfile(result.user, ROLES.CUSTOMER);
       return { user: result.user, profile };
     } else {
-      const googleDemoUser = {
-        uid: `google-demo-${Date.now()}`,
-        email: 'customer@gmail.com',
-        displayName: 'Google Customer',
-        fullName: 'Google Customer',
-        photoURL: '',
-        role: ROLES.CUSTOMER,
-        provider: 'google',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      localStorage.setItem(DEMO_USER_KEY, JSON.stringify(googleDemoUser));
-      setCurrentUser(googleDemoUser);
-      setUserProfile(googleDemoUser);
-      return { user: googleDemoUser, profile: googleDemoUser };
+      throw new Error('Google Sign-In is unavailable: Firebase is not configured.');
     }
   };
 
