@@ -28,7 +28,7 @@ import CustomerDashboard from './pages/dashboards/CustomerDashboard.jsx';
 import CashierDashboard from './pages/dashboards/CashierDashboard.jsx';
 import BakerDashboard from './pages/dashboards/BakerDashboard.jsx';
 import AdminDashboard from './pages/dashboards/AdminDashboard.jsx';
-import { ROLES, getDashboardPathForRole } from './constants/roles.js';
+import { ROLES, getDashboardPathForRole, resolveRoleForUser } from './constants/roles.js';
 
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from './context/useAuth.js';
@@ -365,7 +365,7 @@ export default function App() {
                   isInstalled={isAppInstalled}
                 />
               ) : (
-                <Navigate to={getDashboardPathForRole(userProfile?.role)} replace />
+                <Navigate to={getDashboardPathForRole(resolveRoleForUser(currentUser?.email, userProfile?.fullName || currentUser?.displayName, userProfile?.role))} replace />
               )
             } />
 
@@ -376,7 +376,7 @@ export default function App() {
 
             {/* 4 Dedicated Role-Based Dashboards */}
             <Route path="/customer/dashboard" element={
-              <RoleRoute allowedRoles={[ROLES.CUSTOMER, ROLES.ADMIN]}>
+              <RoleRoute allowedRoles={[ROLES.CUSTOMER]}>
                 <CustomerDashboard />
               </RoleRoute>
             } />

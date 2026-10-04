@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/useAuth.js';
-import { ROLES, getDashboardPathForRole } from '../constants/roles.js';
+import { ROLES, getDashboardPathForRole, resolveRoleForUser } from '../constants/roles.js';
 import { 
   Mail, 
   Lock, 
@@ -37,9 +37,21 @@ export default function Login() {
 
   // Auto-redirect if already authenticated
   useEffect(() => {
-    if (currentUser && userProfile) {
-      const redirectPath = location.state?.from?.pathname || getDashboardPathForRole(userProfile.role);
-      navigate(redirectPath, { replace: true });
+    if (currentUser) {
+      const effectiveRole = resolveRoleForUser(
+        currentUser.email,
+        userProfile?.fullName || currentUser.displayName,
+        userProfile?.role
+      );
+      const targetDashboard = getDashboardPathForRole(effectiveRole);
+
+      // Staff (Admin, Cashier, Baker) MUST always go to their designated dashboard, never to customer dashboard
+      const fromPath = location.state?.from?.pathname;
+      if (effectiveRole === ROLES.ADMIN || effectiveRole === ROLES.CASHIER || effectiveRole === ROLES.BAKER) {
+        navigate(targetDashboard, { replace: true });
+      } else {
+        navigate(fromPath || targetDashboard, { replace: true });
+      }
     }
   }, [currentUser, userProfile, navigate, location]);
 
@@ -74,9 +86,13 @@ export default function Login() {
     setErrorMessage('');
 
     try {
-      const { profile } = await login(email.trim(), password, rememberMe);
-      const role = profile?.role || ROLES.CUSTOMER;
-      const targetDashboard = getDashboardPathForRole(role);
+      const { profile, user } = await login(email.trim(), password, rememberMe);
+      const effectiveRole = resolveRoleForUser(
+        email.trim() || user?.email,
+        profile?.fullName || user?.displayName,
+        profile?.role
+      );
+      const targetDashboard = getDashboardPathForRole(effectiveRole);
       navigate(targetDashboard, { replace: true });
     } catch (err) {
       setErrorMessage(formatAuthError(err));
@@ -92,9 +108,13 @@ export default function Login() {
     setErrorMessage('');
 
     try {
-      const { profile } = await loginWithGoogle();
-      const role = profile?.role || ROLES.CUSTOMER;
-      const targetDashboard = getDashboardPathForRole(role);
+      const { profile, user } = await loginWithGoogle();
+      const effectiveRole = resolveRoleForUser(
+        user?.email,
+        profile?.fullName || user?.displayName,
+        profile?.role
+      );
+      const targetDashboard = getDashboardPathForRole(effectiveRole);
       navigate(targetDashboard, { replace: true });
     } catch (err) {
       setErrorMessage(formatAuthError(err));

@@ -7,7 +7,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/useAuth.js';
-import { ROLES, getDashboardPathForRole } from '../constants/roles.js';
+import { ROLES, getDashboardPathForRole, resolveRoleForUser } from '../constants/roles.js';
 
 export default function RoleRoute({ allowedRoles = [], children }) {
   const { currentUser, userProfile, loading } = useAuth();
@@ -27,8 +27,12 @@ export default function RoleRoute({ allowedRoles = [], children }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Derive user role (defaulting to customer if not yet assigned)
-  const currentRole = userProfile?.role || ROLES.CUSTOMER;
+  // Derive user role authoritatively
+  const currentRole = resolveRoleForUser(
+    currentUser?.email || userProfile?.email,
+    userProfile?.fullName || currentUser?.displayName,
+    userProfile?.role
+  );
 
   // If the user's role is not in the allowed list -> Block and redirect to their correct dashboard
   if (allowedRoles.length > 0 && !allowedRoles.includes(currentRole)) {

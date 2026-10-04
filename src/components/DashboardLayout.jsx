@@ -162,7 +162,7 @@ export default function DashboardLayout({
         <aside className={`dashboard-sidebar ${mobileMenuOpen ? 'sidebar-open' : ''}`}>
           <div>
             <div className="dashboard-sidebar-header">
-              <span>{roleLabel} Menu</span>
+              <span>{ROLE_LABELS[role] || roleLabel} Menu</span>
               <Sparkles size={12} style={{ color: '#BE185D' }} />
             </div>
 

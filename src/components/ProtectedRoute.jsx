@@ -7,7 +7,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/useAuth.js';
 
-import { ROLES, getDashboardPathForRole } from '../constants/roles.js';
+import { ROLES, getDashboardPathForRole, resolveRoleForUser } from '../constants/roles.js';
 
 export default function ProtectedRoute({ allowedRoles = [], children }) {
   const { currentUser, userProfile, loading } = useAuth();
@@ -26,7 +26,11 @@ export default function ProtectedRoute({ allowedRoles = [], children }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  const currentRole = userProfile?.role || ROLES.CUSTOMER;
+  const currentRole = resolveRoleForUser(
+    currentUser?.email || userProfile?.email,
+    userProfile?.fullName || currentUser?.displayName,
+    userProfile?.role
+  );
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(currentRole)) {
     const correctDashboard = getDashboardPathForRole(currentRole);
