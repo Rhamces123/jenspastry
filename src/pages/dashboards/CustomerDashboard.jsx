@@ -425,48 +425,99 @@ export default function CustomerDashboard() {
               No pastries available in the catalog yet.
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {filteredProducts.slice(0, 16).map(product => {
-                const isFav = favorites.includes(product.id);
-                return (
-                  <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs relative">
-                    <button
-                      type="button"
-                      className="absolute top-2 right-2 text-muted hover:text-red-500"
-                      onClick={() => toggleFavorite(product.id)}
-                      title={isFav ? "Remove favorite" : "Add to favorites"}
-                    >
-                      <Heart size={14} className={isFav ? "fill-red-500 text-red-500" : ""} />
-                    </button>
-
-                    <div>
-                      {product.imageUrl ? (
-                        <img src={product.imageUrl} alt={product.name} className="w-12 h-12 object-cover rounded-lg mx-auto my-1" />
-                      ) : (
-                        <div className="text-2xl text-center my-1">{product.icon || '🥐'}</div>
-                      )}
-                      <span className="text-2xs text-muted block text-center">{product.category}</span>
-                      <h4 className="font-bold text-xs text-primary truncate text-center">{product.name}</h4>
-                      <span className="text-2xs font-semibold text-center block text-muted mt-0.5">
-                        Stock: {product.stock}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 pt-2 border-t border-border-light flex justify-between items-center">
-                      <span className="font-bold text-sm text-primary">{formatCurrency(product.price)}</span>
-                      <button
-                        type="button"
-                        className="px-2.5 py-1 rounded-lg bg-primary text-white text-2xs font-bold flex items-center gap-1 hover:bg-primary-dark transition-all"
-                        onClick={() => addToCart(product)}
-                        disabled={product.stock <= 0}
-                      >
-                        <Plus size={11} />
-                        <span>{product.stock <= 0 ? 'Out' : 'Add'}</span>
-                      </button>
-                    </div>
+            <div className="space-y-4">
+              {/* Bread: displayed as rows */}
+              {filteredProducts.filter(p => p.category === 'Bread').length > 0 && (
+                <div>
+                  <h3 className="text-xs font-bold text-primary uppercase tracking-wide mb-2">Bread</h3>
+                  <div className="space-y-2">
+                    {filteredProducts.filter(p => p.category === 'Bread').map(product => {
+                      const isFav = favorites.includes(product.id);
+                      return (
+                        <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex items-center gap-3 shadow-2xs relative">
+                          <button
+                            type="button"
+                            className="absolute top-2 right-2 text-muted hover:text-red-500"
+                            onClick={() => toggleFavorite(product.id)}
+                            title={isFav ? "Remove favorite" : "Add to favorites"}
+                          >
+                            <Heart size={14} className={isFav ? "fill-red-500 text-red-500" : ""} />
+                          </button>
+                          {product.imageUrl ? (
+                            <img src={product.imageUrl} alt={product.name} className="w-10 h-10 object-cover rounded-lg shrink-0" />
+                          ) : (
+                            <div className="text-xl shrink-0">{product.icon || '🥐'}</div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-xs text-primary truncate">{product.name}</h4>
+                            <span className="text-2xs text-muted">Stock: {product.stock}</span>
+                          </div>
+                          <span className="font-bold text-sm text-primary">{formatCurrency(product.price)}</span>
+                          <button
+                            type="button"
+                            className="px-2.5 py-1 rounded-lg bg-primary text-white text-2xs font-bold flex items-center gap-1 hover:bg-primary-dark transition-all"
+                            onClick={() => addToCart(product)}
+                            disabled={product.stock <= 0}
+                          >
+                            <Plus size={11} />
+                            <span>{product.stock <= 0 ? 'Out' : 'Add'}</span>
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </div>
+              )}
+
+              {/* Pastry, Cake & Dessert: displayed as 4-column grid */}
+              {filteredProducts.filter(p => p.category !== 'Bread').length > 0 && (
+                <div>
+                  <h3 className="text-xs font-bold text-primary uppercase tracking-wide mb-2">Pastries</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {filteredProducts.filter(p => p.category !== 'Bread').map(product => {
+                      const isFav = favorites.includes(product.id);
+                      return (
+                        <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs relative">
+                          <button
+                            type="button"
+                            className="absolute top-2 right-2 text-muted hover:text-red-500"
+                            onClick={() => toggleFavorite(product.id)}
+                            title={isFav ? "Remove favorite" : "Add to favorites"}
+                          >
+                            <Heart size={14} className={isFav ? "fill-red-500 text-red-500" : ""} />
+                          </button>
+
+                          <div>
+                            {product.imageUrl ? (
+                              <img src={product.imageUrl} alt={product.name} className="w-12 h-12 object-cover rounded-lg mx-auto my-1" />
+                            ) : (
+                              <div className="text-2xl text-center my-1">{product.icon || '🥐'}</div>
+                            )}
+                            <span className="text-2xs text-muted block text-center">{product.category}</span>
+                            <h4 className="font-bold text-xs text-primary truncate text-center">{product.name}</h4>
+                            <span className="text-2xs font-semibold text-center block text-muted mt-0.5">
+                              Stock: {product.stock}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 pt-2 border-t border-border-light flex justify-between items-center">
+                            <span className="font-bold text-sm text-primary">{formatCurrency(product.price)}</span>
+                            <button
+                              type="button"
+                              className="px-2.5 py-1 rounded-lg bg-primary text-white text-2xs font-bold flex items-center gap-1 hover:bg-primary-dark transition-all"
+                              onClick={() => addToCart(product)}
+                              disabled={product.stock <= 0}
+                            >
+                              <Plus size={11} />
+                              <span>{product.stock <= 0 ? 'Out' : 'Add'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
