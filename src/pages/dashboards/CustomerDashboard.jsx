@@ -441,7 +441,7 @@ export default function CustomerDashboard() {
 
                     <div>
                       {product.imageUrl ? (
-                        <img src={product.imageUrl} alt={product.name} className="w-full h-20 object-cover rounded-lg my-1" />
+                        <img src={product.imageUrl} alt={product.name} className="w-10 h-10 object-cover rounded-lg mx-auto my-1" />
                       ) : (
                         <div className="text-3xl text-center my-1">{product.icon || '🥐'}</div>
                       )}
