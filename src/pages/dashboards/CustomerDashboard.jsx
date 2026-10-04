@@ -419,57 +419,55 @@ export default function CustomerDashboard() {
             </div>
           </div>
 
-          {/* Product Menu grouped by category (menu-board style) */}
+          {/* Product Cards Grid */}
           {filteredProducts.length === 0 ? (
             <div className="p-8 text-center text-xs text-muted bg-card rounded-xl border border-border-light">
               No pastries available in the catalog yet.
             </div>
           ) : (
-            ['Bread', 'Pastry', 'Cake', 'Dessert'].map(categoryName => {
-              const items = filteredProducts.filter(p => p.category === categoryName);
-              if (items.length === 0) return null;
-              return (
-                <div key={categoryName} className="bg-card rounded-xl border border-border-light p-3">
-                  <div className="text-center py-1.5 mb-2 border-y-2 border-sky-200 bg-sky-50">
-                    <h3 className="text-xs font-extrabold tracking-widest text-slate-700 uppercase">
-                      {categoryName}
-                    </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {filteredProducts.map(product => {
+                const isFav = favorites.includes(product.id);
+                return (
+                  <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs relative">
+                    <button
+                      type="button"
+                      className="absolute top-2 right-2 text-muted hover:text-red-500"
+                      onClick={() => toggleFavorite(product.id)}
+                      title={isFav ? "Remove favorite" : "Add to favorites"}
+                    >
+                      <Heart size={14} className={isFav ? "fill-red-500 text-red-500" : ""} />
+                    </button>
+
+                    <div>
+                      {product.imageUrl ? (
+                        <img src={product.imageUrl} alt={product.name} className="w-full h-20 object-cover rounded-lg my-1" />
+                      ) : (
+                        <div className="text-3xl text-center my-1">{product.icon || '🥐'}</div>
+                      )}
+                      <span className="text-2xs text-muted block text-center">{product.category}</span>
+                      <h4 className="font-bold text-xs text-primary truncate text-center">{product.name}</h4>
+                      <span className="text-2xs font-semibold text-center block text-muted mt-0.5">
+                        Stock: {product.stock}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-border-light flex justify-between items-center">
+                      <span className="font-bold text-sm text-primary">{formatCurrency(product.price)}</span>
+                      <button
+                        type="button"
+                        className="px-2.5 py-1 rounded-lg bg-primary text-white text-2xs font-bold flex items-center gap-1 hover:bg-primary-dark transition-all"
+                        onClick={() => addToCart(product)}
+                        disabled={product.stock <= 0}
+                      >
+                        <Plus size={11} />
+                        <span>{product.stock <= 0 ? 'Out' : 'Add'}</span>
+                      </button>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {items.map(product => {
-                      const isFav = favorites.includes(product.id);
-                      return (
-                        <div key={product.id} className="relative flex flex-col items-center text-center p-1">
-                          <button
-                            type="button"
-                            className="absolute top-0 right-0 text-muted hover:text-red-500"
-                            onClick={() => toggleFavorite(product.id)}
-                            title={isFav ? "Remove favorite" : "Add to favorites"}
-                          >
-                            <Heart size={12} className={isFav ? "fill-red-500 text-red-500" : ""} />
-                          </button>
-                          {product.imageUrl ? (
-                            <img src={product.imageUrl} alt={product.name} className="w-14 h-14 object-cover rounded-full border border-border-light" />
-                          ) : (
-                            <div className="w-14 h-14 flex items-center justify-center text-3xl rounded-full bg-beige">{product.icon || '🥐'}</div>
-                          )}
-                          <h4 className="font-bold text-2xs text-primary uppercase mt-1 leading-tight">{product.name}</h4>
-                          <span className="text-2xs font-bold text-primary">{formatCurrency(product.price)}</span>
-                          <button
-                            type="button"
-                            className="mt-1 px-2 py-0.5 rounded-full bg-primary text-white text-2xs font-bold hover:bg-primary-dark transition-all disabled:opacity-50"
-                            onClick={() => addToCart(product)}
-                            disabled={product.stock <= 0}
-                          >
-                            {product.stock <= 0 ? 'Out' : '+ Add'}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           )}
         </div>
       )}
