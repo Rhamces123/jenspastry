@@ -12,6 +12,7 @@ import DashboardLayout from '../../components/DashboardLayout.jsx';
 import ProductFormModal from '../../components/ProductFormModal.jsx';
 import QuickRestockModal from '../../components/QuickRestockModal.jsx';
 import ReceiptModal from '../../components/ReceiptModal.jsx';
+import NotificationToast from '../../components/NotificationToast.jsx';
 import { formatCurrency, formatDate, formatDateTime, formatSaleNumber } from '../../utils/formatters.js';
 import { 
   LayoutDashboard, 
@@ -81,6 +82,10 @@ export default function AdminDashboard() {
   const [staffSubmitting, setStaffSubmitting] = useState(false);
   const [staffSuccessMsg, setStaffSuccessMsg] = useState('');
   const [staffErrorMsg, setStaffErrorMsg] = useState('');
+
+  // Toast feedback
+  const [toast, setToast] = useState({ message: '', type: 'success' });
+  const showToast = (message, type = 'success') => setToast({ message, type });
 
   // Orders State (syncs with local storage / sales)
   const [orders, setOrders] = useState(() => {
@@ -1515,8 +1520,14 @@ export default function AdminDashboard() {
             setRestockingProduct(null);
           }}
           product={restockingProduct}
-          onConfirm={(productId, newStock) => {
-            updateStock(productId, newStock);
+          onConfirm={(productId, newStock, addedBatchQty) => {
+            try {
+              const updated = updateStock(productId, newStock);
+              const batchAdded = addedBatchQty || (newStock - (restockingProduct?.stock || 0));
+              showToast(`✓ Restocked "${updated?.name || restockingProduct?.name}"! Added +${batchAdded} units (Total: ${newStock} units).`, 'success');
+            } catch (err) {
+              showToast(`Restock failed: ${err.message || err}`, 'error');
+            }
             setIsRestockModalOpen(false);
             setRestockingProduct(null);
           }}
@@ -1532,6 +1543,15 @@ export default function AdminDashboard() {
             setActiveReceiptSale(null);
           }}
           sale={activeReceiptSale}
+        />
+      )}
+
+      {/* NOTIFICATION TOAST */}
+      {toast.message && (
+        <NotificationToast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast({ message: '', type: 'success' })}
         />
       )}
     </DashboardLayout>

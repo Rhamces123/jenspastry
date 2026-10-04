@@ -172,7 +172,8 @@ class ShopManager {
 
   // FUNCTIONS: Get product by id
   getProductById(id) {
-    return this.products.find(p => p.id === Number(id));
+    if (id === undefined || id === null) return undefined;
+    return this.products.find(p => String(p.id) === String(id) || p.id === id || (typeof id === 'number' && p.id === id));
   }
 
   /**
@@ -202,12 +203,11 @@ class ShopManager {
 
   /**
    * Updates an existing product.
-   * @param {number} id
+   * @param {string|number} id
    * @param {Object} updatedFields
    */
   updateProduct(id, updatedFields) {
-    const targetId = Number(id);
-    const index = this.products.findIndex(p => p.id === targetId);
+    const index = this.products.findIndex(p => String(p.id) === String(id) || p.id === id);
 
     if (index === -1) {
       throw new Error(`Product with ID ${id} not found.`);
@@ -234,11 +234,10 @@ class ShopManager {
 
   /**
    * Deletes a product by ID.
-   * @param {number} id
+   * @param {string|number} id
    */
   deleteProduct(id) {
-    const targetId = Number(id);
-    this.products = this.products.filter(p => p.id !== targetId);
+    this.products = this.products.filter(p => String(p.id) !== String(id) && p.id !== id);
     saveProducts(this.products);
     this.notify();
     return true;
@@ -246,13 +245,12 @@ class ShopManager {
 
   /**
    * Adjusts stock quantity for inventory management.
-   * @param {number} id
+   * @param {string|number} id
    * @param {number} newStock
    */
   updateStock(id, newStock) {
-    const targetId = Number(id);
-    const product = this.products.find(p => p.id === targetId);
-    if (!product) throw new Error("Product not found");
+    const product = this.products.find(p => String(p.id) === String(id) || p.id === id);
+    if (!product) throw new Error(`Product "${id}" not found.`);
 
     const parsedStock = Math.max(0, Number(newStock) || 0);
     product.stock = parsedStock;

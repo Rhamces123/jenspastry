@@ -180,6 +180,14 @@ try {
   manager1.updateStock(newProduct.id, 80);
   assert(manager1.getProductById(newProduct.id).stock === 80, "Stock updated via updateStock to 80");
 
+  // Test Restock on Seeded Products with string IDs (e.g. 'seed-7' Dinner Rolls)
+  const dinnerRolls = manager1.getProducts().find(p => p.name === 'Dinner Rolls');
+  if (dinnerRolls) {
+    const updatedDinnerRolls = manager1.updateStock(dinnerRolls.id, 70);
+    assert(updatedDinnerRolls.stock === 70, "Seeded product Dinner Rolls stock successfully updated to 70");
+    assert(manager1.getProductById(dinnerRolls.id).stock === 70, "getProductById retrieves seeded product with updated stock");
+  }
+
   // Test Sale & Stock Deduction (Strategy Pattern applied)
   const stockBeforeSale = manager1.getProductById(newProduct.id).stock;
   const sale = manager1.completeSale({
