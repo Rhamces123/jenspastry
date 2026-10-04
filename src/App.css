@@ -4411,3 +4411,105 @@
   font-family: monospace;
   font-size: 14px;
 }
+
+/* ==========================================================================
+   MOBILE OVERFLOW SAFETY — phones
+   ========================================================================== */
+svg {
+  flex-shrink: 0;
+  max-width: 100%;
+}
+
+h1, h2, h3, h4, h5, h6, p, span, label, a, td, th {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.dashboard-content-header > *,
+.admin-card-header > *,
+.admin-kpi-top > *,
+.admin-top-item > *,
+.page-header-row > * {
+  min-width: 0;
+}
+
+@media (max-width: 600px) {
+  .dashboard-content-header {
+    padding: 12px 16px;
+    gap: 10px;
+  }
+  .dashboard-header-title {
+    font-size: 18px;
+  }
+  .dashboard-header-subtitle {
+    font-size: 11px;
+  }
+  .dashboard-content-body {
+    padding: 16px;
+  }
+  .page-content {
+    padding: 12px;
+  }
+  .admin-kpi-grid {
+    gap: 10px;
+  }
+  .admin-kpi-card {
+    padding: 14px 16px;
+  }
+  .admin-kpi-value {
+    font-size: 20px;
+    letter-spacing: -0.3px;
+  }
+  .admin-kpi-label {
+    letter-spacing: 0.3px;
+  }
+  .admin-kpi-icon-wrap {
+    width: 30px;
+    height: 30px;
+  }
+  .admin-card {
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .admin-card-header {
+    gap: 8px;
+  }
+  .admin-card-title {
+    font-size: 15px;
+  }
+  .admin-bar-chart-container {
+    gap: 8px;
+    height: 180px;
+  }
+  .admin-bar-label {
+    font-size: 10px;
+  }
+  .admin-top-item {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .admin-timeframe-switch {
+    flex-wrap: wrap;
+  }
+  table {
+    font-size: 12px;
+  }
+  .btn-admin-primary,
+  .btn-admin-secondary {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 380px) {
+  .dashboard-content-body {
+    padding: 12px;
+  }
+  .admin-kpi-value {
+    font-size: 18px;
+  }
+  .dashboard-header-title {
+    font-size: 16px;
+  }
+}
+

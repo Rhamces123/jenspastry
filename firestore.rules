@@ -199,7 +199,9 @@ service cloud.firestore {
         data.customerName is string &&
         data.customerName.size() >= 1 &&
         data.customerName.size() <= 100 &&
-        isValidEmail(data.customerEmail) &&
+        // Walk-in POS orders (cashier/admin) may omit the email via '' ;
+        // customer self-service creates additionally require a valid email (see orders create rule).
+        (data.customerEmail == '' || isValidEmail(data.customerEmail)) &&
         isValidDate(data.date) &&
         data.items is list &&
         data.items.size() >= 1 &&
