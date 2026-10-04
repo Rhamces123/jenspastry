@@ -429,7 +429,7 @@ export default function CustomerDashboard() {
               {filteredProducts.map(product => {
                 const isFav = favorites.includes(product.id);
                 return (
-                  <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs relative">
+                  <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex items-center gap-3 shadow-2xs relative">
                     <button
                       type="button"
                       className="absolute top-2 right-2 text-muted hover:text-red-500"
@@ -439,20 +439,19 @@ export default function CustomerDashboard() {
                       <Heart size={14} className={isFav ? "fill-red-500 text-red-500" : ""} />
                     </button>
 
-                    <div>
-                      {product.imageUrl ? (
-                        <img src={product.imageUrl} alt={product.name} className="w-full h-20 object-cover rounded-lg my-1" />
-                      ) : (
-                        <div className="text-3xl text-center my-1">{product.icon || '🥐'}</div>
-                      )}
-                      <span className="text-2xs text-muted block text-center">{product.category}</span>
-                      <h4 className="font-bold text-xs text-primary truncate text-center">{product.name}</h4>
-                      <span className="text-2xs font-semibold text-center block text-muted mt-0.5">
-                        Stock: {product.stock}
-                      </span>
+                    {product.imageUrl ? (
+                      <img src={product.imageUrl} alt={product.name} className="w-12 h-12 object-cover rounded-lg shrink-0" />
+                    ) : (
+                      <div className="text-2xl shrink-0">{product.icon || '🥐'}</div>
+                    )}
+
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-xs text-primary truncate">{product.name}</h4>
+                      <span className="text-2xs text-muted block">{product.category}</span>
+                      <span className="text-2xs font-semibold text-muted">Stock: {product.stock}</span>
                     </div>
 
-                    <div className="mt-3 pt-2 border-t border-border-light flex justify-between items-center">
+                    <div className="flex flex-col items-end gap-1">
                       <span className="font-bold text-sm text-primary">{formatCurrency(product.price)}</span>
                       <button
                         type="button"
