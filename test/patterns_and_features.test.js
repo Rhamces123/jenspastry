@@ -89,6 +89,16 @@ try {
   });
   assert(outOfStockItem.getStatus() === "Out of Stock", "Stock = 0 returns 'Out of Stock'");
 
+  // Test Beverage creation
+  const beverage = PastryProductFactory.createProduct({
+    name: "Brewed Coffee",
+    category: "Beverage",
+    price: 60,
+    stock: 20
+  });
+  assert(beverage.category === "Beverage", "Factory correctly creates Beverage product");
+  assert(beverage.icon === "☕", "Factory assigns Beverage icon");
+
   // Test Validation in Factory
   let validationErrorCaught = false;
   try {

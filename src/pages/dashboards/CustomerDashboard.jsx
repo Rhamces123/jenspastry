@@ -195,11 +195,56 @@ export default function CustomerDashboard() {
 
   // Filtered Products
   const categories = ['All', 'Bread', 'Cake', 'Pastry', 'Beverage'];
+  const menuCategories = ['Bread', 'Cake', 'Pastry', 'Beverage'];
   const filteredProducts = products.filter(p => {
     const matchesCategory = selectedCategory === 'All' || p.category.toLowerCase() === selectedCategory.toLowerCase();
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  const renderProductCard = (product) => {
+    const isFav = favorites.includes(product.id);
+    return (
+      <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs relative hover:border-primary-light transition-all">
+        <button
+          type="button"
+          className="absolute top-2 right-2 text-muted hover:text-red-500"
+          onClick={() => toggleFavorite(product.id)}
+          title={isFav ? "Remove favorite" : "Add to favorites"}
+        >
+          <Heart size={14} className={isFav ? "fill-red-500 text-red-500" : ""} />
+        </button>
+
+        <div>
+          <div className="w-14 h-14 mx-auto my-1 flex items-center justify-center bg-cream-pure rounded-xl overflow-hidden border border-border-light">
+            {product.imageUrl ? (
+              <img src={product.imageUrl} alt={product.name} className="w-10 h-10 object-contain" />
+            ) : (
+              <div className="text-2xl">{product.icon || '🥐'}</div>
+            )}
+          </div>
+          <span className="text-2xs text-muted block text-center uppercase tracking-wider">{product.category}</span>
+          <h4 className="font-bold text-xs text-primary truncate text-center mt-0.5" title={product.name}>{product.name}</h4>
+          <span className="text-2xs font-semibold text-center block text-muted mt-0.5">
+            Stock: {product.stock}
+          </span>
+        </div>
+
+        <div className="mt-2.5 pt-2 border-t border-border-light flex justify-between items-center">
+          <span className="font-bold text-sm text-primary">{formatCurrency(product.price)}</span>
+          <button
+            type="button"
+            className="px-2.5 py-1 rounded-lg bg-primary text-white text-2xs font-bold flex items-center gap-1 hover:bg-primary-dark transition-all disabled:opacity-50"
+            onClick={() => addToCart(product)}
+            disabled={product.stock <= 0}
+          >
+            <Plus size={11} />
+            <span>{product.stock <= 0 ? 'Out' : 'Add'}</span>
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   const featuredProducts = products.slice(0, 4);
   const activeOrders = customerOrders.filter(o => ['Pending', 'Confirmed', 'Preparing', 'Ready for Pickup'].includes(o.orderStatus));
@@ -419,54 +464,64 @@ export default function CustomerDashboard() {
             </div>
           </div>
 
-          {/* Product Cards Grid */}
+          {/* Product Cards: 4 rows (Bread, Cake, Pastry, Beverage) and 4 columns */}
           {filteredProducts.length === 0 ? (
             <div className="p-8 text-center text-xs text-muted bg-card rounded-xl border border-border-light">
-              No pastries available in the catalog yet.
+              No pastries or beverages found matching your selection.
             </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {filteredProducts.slice(0, 16).map(product => {
-                const isFav = favorites.includes(product.id);
+          ) : selectedCategory === 'All' && !searchQuery ? (
+            /* 4 Rows (Bread, Cake, Pastry, Beverage) and 4 Columns */
+            <div className="space-y-5">
+              {menuCategories.map(cat => {
+                const catProducts = products.filter(p => p.category?.toLowerCase() === cat.toLowerCase());
+                if (catProducts.length === 0) return null;
+                const catIcon = cat === 'Bread' ? '🍞' : cat === 'Cake' ? '🍰' : cat === 'Pastry' ? '🥐' : '☕';
                 return (
-                  <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs relative">
-                    <button
-                      type="button"
-                      className="absolute top-2 right-2 text-muted hover:text-red-500"
-                      onClick={() => toggleFavorite(product.id)}
-                      title={isFav ? "Remove favorite" : "Add to favorites"}
-                    >
-                      <Heart size={14} className={isFav ? "fill-red-500 text-red-500" : ""} />
-                    </button>
-
-                    <div>
-                      {product.imageUrl ? (
-                        <img src={product.imageUrl} alt={product.name} className="w-12 h-12 object-cover rounded-lg mx-auto my-1" />
-                      ) : (
-                        <div className="text-2xl text-center my-1">{product.icon || '🥐'}</div>
-                      )}
-                      <span className="text-2xs text-muted block text-center">{product.category}</span>
-                      <h4 className="font-bold text-xs text-primary truncate text-center">{product.name}</h4>
-                      <span className="text-2xs font-semibold text-center block text-muted mt-0.5">
-                        Stock: {product.stock}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 pt-2 border-t border-border-light flex justify-between items-center">
-                      <span className="font-bold text-sm text-primary">{formatCurrency(product.price)}</span>
+                  <div key={cat} className="space-y-2">
+                    <div className="flex justify-between items-center px-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{catIcon}</span>
+                        <h3 className="font-bold text-xs text-primary uppercase tracking-wider">{cat}</h3>
+                        <span className="text-2xs text-muted bg-cream px-2 py-0.5 rounded-full border border-border-light">
+                          {catProducts.length} items
+                        </span>
+                      </div>
                       <button
                         type="button"
-                        className="px-2.5 py-1 rounded-lg bg-primary text-white text-2xs font-bold flex items-center gap-1 hover:bg-primary-dark transition-all"
-                        onClick={() => addToCart(product)}
-                        disabled={product.stock <= 0}
+                        className="text-2xs text-primary font-bold hover:underline"
+                        onClick={() => setSelectedCategory(cat)}
                       >
-                        <Plus size={11} />
-                        <span>{product.stock <= 0 ? 'Out' : 'Add'}</span>
+                        View All {cat} →
                       </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {catProducts.slice(0, 4).map(product => renderProductCard(product))}
                     </div>
                   </div>
                 );
               })}
+            </div>
+          ) : (
+            /* Single Category Filter or Search Results: 4-Column Grid */
+            <div className="space-y-2">
+              {selectedCategory !== 'All' && (
+                <div className="flex justify-between items-center px-1">
+                  <h3 className="font-bold text-xs text-primary uppercase tracking-wider">
+                    {selectedCategory} ({filteredProducts.length})
+                  </h3>
+                  <button
+                    type="button"
+                    className="text-2xs text-primary font-bold hover:underline"
+                    onClick={() => setSelectedCategory('All')}
+                  >
+                    ← Back to All Categories
+                  </button>
+                </div>
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {filteredProducts.slice(0, 16).map(product => renderProductCard(product))}
+              </div>
             </div>
           )}
         </div>

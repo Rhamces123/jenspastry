@@ -76,6 +76,17 @@ class DessertProduct extends BaseProduct {
   }
 }
 
+class BeverageProduct extends BaseProduct {
+  constructor(data) {
+    super({
+      ...data,
+      category: 'Beverage',
+      icon: data.icon || '☕',
+      shelfLifeDays: 2
+    });
+  }
+}
+
 // FACTORY PATTERN
 // Creates pastry product objects in one centralized place.
 // This decouples the client code (React components) from product instantiation logic.
@@ -134,6 +145,8 @@ export class PastryProductFactory {
         return new CakeProduct(payload);
       case 'Dessert':
         return new DessertProduct(payload);
+      case 'Beverage':
+        return new BeverageProduct(payload);
       case 'Pastry':
       default:
         return new PastryProductItem(payload);

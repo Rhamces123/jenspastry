@@ -41,6 +41,11 @@ const INITIAL_PRODUCTS = [
   { name: 'Ube Cake', category: 'Cake', price: 750, stock: 8, icon: '🍠', imageUrl: '/products/cake.svg' },
   { name: 'Cheesecake', category: 'Cake', price: 680, stock: 10, icon: '🍰', imageUrl: '/products/cake.svg' },
 
+  { name: 'Brewed Coffee', category: 'Beverage', price: 60, stock: 40, icon: '☕', imageUrl: '/products/beverage.svg' },
+  { name: 'Iced Cafe Latte', category: 'Beverage', price: 85, stock: 35, icon: '🧋', imageUrl: '/products/beverage.svg' },
+  { name: 'Hot Chocolate', category: 'Beverage', price: 75, stock: 25, icon: '🍫', imageUrl: '/products/beverage.svg' },
+  { name: 'Matcha Green Tea', category: 'Beverage', price: 90, stock: 20, icon: '🍵', imageUrl: '/products/beverage.svg' },
+
   { name: 'Brownie', category: 'Dessert', price: 45, stock: 30, icon: '🍫', imageUrl: '/products/dessert.svg' },
   { name: 'Macarons', category: 'Dessert', price: 120, stock: 20, icon: '🍪', imageUrl: '/products/dessert.svg' },
   { name: 'Pudding', category: 'Dessert', price: 40, stock: 25, icon: '🍮', imageUrl: '/products/dessert.svg' },
@@ -131,7 +136,16 @@ class ShopManager {
 
     if (storedProducts && Array.isArray(storedProducts) && storedProducts.length > 0) {
       // FACTORY PATTERN: Reconstruct product objects through the Factory
-      this.products = storedProducts.map(item => PastryProductFactory.createProduct(item));
+      let prods = storedProducts.map(item => PastryProductFactory.createProduct(item));
+      const hasBeverage = prods.some(p => p.category?.toLowerCase() === 'beverage');
+      if (!hasBeverage) {
+        const beverageSeeds = INITIAL_PRODUCTS
+          .filter(p => p.category === 'Beverage')
+          .map((item, i) => PastryProductFactory.createProduct({ id: `seed-bev-${i + 1}`, ...item }));
+        prods = [...prods, ...beverageSeeds];
+        saveProducts(prods);
+      }
+      this.products = prods;
     } else {
       this.products = INITIAL_PRODUCTS.map((item, i) =>
         PastryProductFactory.createProduct({ id: `seed-${i + 1}`, ...item })

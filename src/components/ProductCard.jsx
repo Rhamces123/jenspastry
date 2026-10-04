@@ -17,6 +17,7 @@ export default function ProductCard({ product, onEdit, onDelete, onQuickAddToCar
       case 'Bread': return '🍞';
       case 'Cake': return '🍰';
       case 'Dessert': return '🍮';
+      case 'Beverage': return '☕';
       case 'Pastry':
       default: return '🥐';
     }
