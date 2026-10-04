@@ -380,197 +380,206 @@ export default function CashierDashboard() {
           </div>
 
           {/* RIGHT: Order Tray & Payment Terminal */}
-          <div 
-            className="pos-tray-panel"
-            style={{ 
-              maxHeight: 'calc(100vh - 90px)', 
-              overflowY: 'auto', 
-              WebkitOverflowScrolling: 'touch' 
-            }}
-          >
-            {/* Tray Header */}
-            <div className="flex justify-between items-center border-b border-border-light pb-2.5 mb-2">
+          <div className="pos-tray-panel">
+            {/* Pinned Tray Header */}
+            <div className="pos-tray-header">
               <div className="flex items-center gap-2">
                 <ShoppingBag size={16} className="text-primary" />
                 <h3 className="font-extrabold text-xs text-primary font-serif tracking-tight">Active Register Tray</h3>
               </div>
-              <span className="text-2xs font-extrabold bg-primary/10 text-primary px-2.5 py-0.5 rounded-full">
-                {posCart.reduce((sum, i) => sum + i.quantity, 0)} item(s)
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-2xs font-extrabold bg-primary/10 text-primary px-2.5 py-0.5 rounded-full">
+                  {posCart.reduce((sum, i) => sum + i.quantity, 0)} item(s)
+                </span>
+                {posCart.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearPosCart}
+                    className="text-3xs font-bold text-muted hover:text-danger flex items-center gap-0.5 transition-colors"
+                    title="Clear tray"
+                  >
+                    <RotateCcw size={10} />
+                    <span>Clear</span>
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Customer Tag / Name Input */}
-            <div className="mb-2">
-              <input
-                type="text"
-                placeholder="Customer Name or Table # (e.g. Walk-in, Maria, Table 2)"
-                className="w-full px-3 py-1.5 rounded-xl border border-border-medium bg-cream-pure text-xs text-text-primary placeholder:text-muted/60 focus:bg-white focus:border-primary focus:outline-none font-medium"
-                value={customerNameInput}
-                onChange={e => setCustomerNameInput(e.target.value)}
-              />
-            </div>
+            {/* Scrollable Register Body (Customer, Items, Discount, Tender) */}
+            <div className="pos-tray-scrollable-body">
+              {/* Customer Tag / Name Input */}
+              <div>
+                <input
+                  type="text"
+                  placeholder="Customer Name or Table # (e.g. Walk-in, Maria, Table 2)"
+                  className="w-full px-3 py-1.5 rounded-xl border border-border-medium bg-cream-pure text-xs text-text-primary placeholder:text-muted/60 focus:bg-white focus:border-primary focus:outline-none font-medium"
+                  value={customerNameInput}
+                  onChange={e => setCustomerNameInput(e.target.value)}
+                />
+              </div>
 
-            {/* Scrollable Order Items List */}
-            <div className="pos-items-scroll">
-              {posCart.length === 0 ? (
-                <div className="text-center py-10 px-4">
-                  <div className="w-12 h-12 rounded-full bg-cream-pure mx-auto flex items-center justify-center text-muted/60 mb-2">
-                    <ShoppingBag size={22} />
+              {/* Order Items List */}
+              <div className="pos-items-scroll">
+                {posCart.length === 0 ? (
+                  <div className="text-center py-6 px-4">
+                    <div className="w-10 h-10 rounded-full bg-cream-pure mx-auto flex items-center justify-center text-muted/60 mb-1.5">
+                      <ShoppingBag size={18} />
+                    </div>
+                    <p className="font-bold text-xs text-text-primary">Tray is empty</p>
+                    <p className="text-2xs text-muted mt-0.5">Click pastries on the left to add items to this order.</p>
                   </div>
-                  <p className="font-bold text-xs text-text-primary">Tray is empty</p>
-                  <p className="text-2xs text-muted mt-0.5">Click pastries on the left to add items to this order.</p>
-                </div>
-              ) : (
-                posCart.map(item => (
-                  <div key={item.id} className="pos-item-row">
-                    <div className="pos-item-info">
-                      <span className="pos-item-name">{item.name}</span>
-                      <span className="pos-item-unit">{formatCurrency(item.price)} each</span>
-                    </div>
+                ) : (
+                  posCart.map(item => (
+                    <div key={item.id} className="pos-item-row">
+                      <div className="pos-item-info">
+                        <span className="pos-item-name">{item.name}</span>
+                        <span className="pos-item-unit">{formatCurrency(item.price)} each</span>
+                      </div>
 
-                    <div className="pos-stepper">
+                      <div className="pos-stepper">
+                        <button
+                          type="button"
+                          className="pos-stepper-btn"
+                          onClick={() => updatePosQty(item.id, -1)}
+                          title="Decrease quantity"
+                        >
+                          <Minus size={11} />
+                        </button>
+                        <span className="pos-stepper-val">{item.quantity}</span>
+                        <button
+                          type="button"
+                          className="pos-stepper-btn"
+                          onClick={() => updatePosQty(item.id, 1)}
+                          title="Increase quantity"
+                        >
+                          <Plus size={11} />
+                        </button>
+                      </div>
+
+                      <span className="pos-item-total">
+                        {formatCurrency(item.price * item.quantity)}
+                      </span>
+
                       <button
                         type="button"
-                        className="pos-stepper-btn"
-                        onClick={() => updatePosQty(item.id, -1)}
-                        title="Decrease quantity"
+                        className="pos-btn-trash"
+                        onClick={() => removeFromPosCart(item.id)}
+                        title="Remove item"
                       >
-                        <Minus size={11} />
-                      </button>
-                      <span className="pos-stepper-val">{item.quantity}</span>
-                      <button
-                        type="button"
-                        className="pos-stepper-btn"
-                        onClick={() => updatePosQty(item.id, 1)}
-                        title="Increase quantity"
-                      >
-                        <Plus size={11} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
+                  ))
+                )}
+              </div>
 
-                    <span className="pos-item-total">
-                      {formatCurrency(item.price * item.quantity)}
+              {/* Strategy Pattern Discount Box */}
+              <div className="pos-discount-box">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-3xs font-bold text-muted uppercase tracking-wider">Discount Strategy:</label>
+                  {discountRate > 0 && (
+                    <span className="pos-discount-badge">
+                      Save {discountRate * 100}%
                     </span>
+                  )}
+                </div>
+                <select
+                  value={discountStrategyId}
+                  onChange={e => setDiscountStrategyId(e.target.value)}
+                  className="w-full p-2 rounded-xl border border-border-medium bg-white text-xs font-semibold text-text-primary focus:border-primary focus:outline-none"
+                >
+                  <option value="regular">Standard Retail (0% Discount)</option>
+                  <option value="student">Student / Senior Citizen (5% Discount)</option>
+                  <option value="bulk">Bulk Wholesale / Corporate (10% Discount)</option>
+                </select>
+              </div>
 
-                    <button
-                      type="button"
-                      className="pos-btn-trash"
-                      onClick={() => removeFromPosCart(item.id)}
-                      title="Remove item"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+              {/* Payment Method 3-Way Tabs */}
+              <div className="mt-1">
+                <label className="text-3xs font-bold text-muted uppercase tracking-wider block mb-1">Tender Method:</label>
+                <div className="pos-tender-tabs">
+                  {[
+                    { id: 'Cash', label: 'Cash', icon: Banknote },
+                    { id: 'GCash', label: 'GCash / QR', icon: QrCode },
+                    { id: 'Card', label: 'Card / POS', icon: Wallet }
+                  ].map(tab => {
+                    const Icon = tab.icon;
+                    const isActive = paymentMethod === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        className={`pos-tender-tab ${isActive ? 'active' : ''}`}
+                        onClick={() => setPaymentMethod(tab.id)}
+                      >
+                        <Icon size={13} />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Cash Tender Calculation & Quick Bills */}
+              {paymentMethod === 'Cash' && (
+                <div className="bg-cream-pure p-2.5 rounded-xl border border-border-light mt-1 space-y-2">
+                  {/* Quick Bills Row */}
+                  <div>
+                    <span className="text-3xs font-bold text-muted uppercase tracking-wider block mb-1">Quick Tender:</span>
+                    <div className="pos-quick-bills">
+                      {quickBills.map(qb => (
+                        <button
+                          key={qb.label}
+                          type="button"
+                          className="pos-quick-bill-btn"
+                          onClick={() => setAmountReceived(qb.value.toString())}
+                        >
+                          {qb.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                ))
+
+                  {/* Amount Received Input */}
+                  <div className="flex justify-between items-center pt-1 border-t border-border-light">
+                    <label className="text-2xs font-bold text-primary">Cash Received (₱):</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="w-28 px-2 py-1 text-right text-xs font-extrabold rounded-lg border border-border-medium bg-white text-text-primary focus:border-primary focus:outline-none"
+                      value={amountReceived}
+                      onChange={e => setAmountReceived(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Live Change Due Banner */}
+                  {numReceived > 0 && (
+                    <div className="pos-change-banner">
+                      <span className="font-bold">Change Due:</span>
+                      <span className={changeDue >= 0 ? "font-extrabold text-sm" : "text-danger text-xs"}>
+                        {numReceived < total 
+                          ? `Short by ${formatCurrency(total - numReceived)}` 
+                          : formatCurrency(changeDue)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Digital Payment Notice */}
+              {paymentMethod !== 'Cash' && (
+                <div className="bg-blue-50/70 p-2.5 rounded-xl border border-blue-200 mt-1 text-2xs text-blue-800 flex items-center gap-2">
+                  <Sparkles size={14} className="text-blue-600 flex-shrink-0" />
+                  <span>
+                    Present merchant QR or swipe card for <strong>{formatCurrency(total)}</strong>. Confirmation auto-records to ledger.
+                  </span>
+                </div>
               )}
             </div>
 
-            {/* Strategy Pattern Discount Box */}
-            <div className="pos-discount-box">
-              <div className="flex justify-between items-center mb-1">
-                <label className="text-3xs font-bold text-muted uppercase tracking-wider">Discount Strategy:</label>
-                {discountRate > 0 && (
-                  <span className="pos-discount-badge">
-                    Save {discountRate * 100}%
-                  </span>
-                )}
-              </div>
-              <select
-                value={discountStrategyId}
-                onChange={e => setDiscountStrategyId(e.target.value)}
-                className="w-full p-2 rounded-xl border border-border-medium bg-white text-xs font-semibold text-text-primary focus:border-primary focus:outline-none"
-              >
-                <option value="regular">Standard Retail (0% Discount)</option>
-                <option value="student">Student / Senior Citizen (5% Discount)</option>
-                <option value="bulk">Bulk Wholesale / Corporate (10% Discount)</option>
-              </select>
-            </div>
-
-            {/* Payment Method 3-Way Tabs */}
-            <div className="mt-2.5">
-              <label className="text-3xs font-bold text-muted uppercase tracking-wider block mb-1.5">Tender Method:</label>
-              <div className="pos-tender-tabs">
-                {[
-                  { id: 'Cash', label: 'Cash', icon: Banknote },
-                  { id: 'GCash', label: 'GCash / QR', icon: QrCode },
-                  { id: 'Card', label: 'Card / POS', icon: Wallet }
-                ].map(tab => {
-                  const Icon = tab.icon;
-                  const isActive = paymentMethod === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      className={`pos-tender-tab ${isActive ? 'active' : ''}`}
-                      onClick={() => setPaymentMethod(tab.id)}
-                    >
-                      <Icon size={13} />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Cash Tender Calculation & Quick Bills */}
-            {paymentMethod === 'Cash' && (
-              <div className="bg-cream-pure p-2.5 rounded-xl border border-border-light mt-2.5 space-y-2">
-                {/* Quick Bills Row */}
-                <div>
-                  <span className="text-3xs font-bold text-muted uppercase tracking-wider block mb-1">Quick Tender:</span>
-                  <div className="pos-quick-bills">
-                    {quickBills.map(qb => (
-                      <button
-                        key={qb.label}
-                        type="button"
-                        className="pos-quick-bill-btn"
-                        onClick={() => setAmountReceived(qb.value.toString())}
-                      >
-                        {qb.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Amount Received Input */}
-                <div className="flex justify-between items-center pt-1 border-t border-border-light">
-                  <label className="text-2xs font-bold text-primary">Cash Received (₱):</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    className="w-28 px-2 py-1 text-right text-xs font-extrabold rounded-lg border border-border-medium bg-white text-text-primary focus:border-primary focus:outline-none"
-                    value={amountReceived}
-                    onChange={e => setAmountReceived(e.target.value)}
-                  />
-                </div>
-
-                {/* Live Change Due Banner */}
-                {numReceived > 0 && (
-                  <div className="pos-change-banner">
-                    <span className="font-bold">Change Due:</span>
-                    <span className={changeDue >= 0 ? "font-extrabold text-sm" : "text-danger text-xs"}>
-                      {numReceived < total 
-                        ? `Short by ${formatCurrency(total - numReceived)}` 
-                        : formatCurrency(changeDue)}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Digital Payment Notice */}
-            {paymentMethod !== 'Cash' && (
-              <div className="bg-blue-50/70 p-2.5 rounded-xl border border-blue-200 mt-2.5 text-2xs text-blue-800 flex items-center gap-2">
-                <Sparkles size={14} className="text-blue-600 flex-shrink-0" />
-                <span>
-                  Present merchant QR or swipe card for <strong>{formatCurrency(total)}</strong>. Confirmation auto-records to ledger.
-                </span>
-              </div>
-            )}
-
-            {/* Total Due & Checkout Action */}
-            <div className="border-t border-border-light pt-2.5 mt-3 space-y-2">
+            {/* Pinned Bottom Footer: Total Due & Checkout Action */}
+            <div className="pos-tray-footer space-y-2">
               <div className="flex justify-between text-xs text-muted">
                 <span>Subtotal ({posCart.reduce((sum, i) => sum + i.quantity, 0)} items):</span>
                 <span>{formatCurrency(subtotal)}</span>
