@@ -14,82 +14,9 @@ import {
 } from '../utils/storage.js';
 
 // VARIABLES
-// Initial sample products as specified in project requirements
-const INITIAL_PRODUCTS = [
-  { id: 1, name: "Pandesal", category: "Bread", price: 3, stock: 100 },
-  { id: 2, name: "Spanish Bread", category: "Bread", price: 10, stock: 50 },
-  { id: 3, name: "Cheese Bread", category: "Bread", price: 12, stock: 40 },
-  { id: 4, name: "Ensaymada", category: "Pastry", price: 25, stock: 8 }, // Low stock sample
-  { id: 5, name: "Chocolate Cake", category: "Cake", price: 450, stock: 5 }, // Low stock sample
-  { id: 6, name: "Leche Flan", category: "Dessert", price: 180, stock: 15 },
-  { id: 7, name: "Croissant", category: "Pastry", price: 35, stock: 30 },
-  { id: 8, name: "Brownies", category: "Dessert", price: 30, stock: 25 }
-];
-
-// Initial sample sales matching the dashboard requirements
-const INITIAL_SALES = [
-  {
-    id: "SALE-001",
-    saleNumber: 1,
-    date: new Date(Date.now() - 3600000 * 4).toISOString(),
-    customerType: "Student Customer",
-    discountStrategyId: "student",
-    discountRate: 0.05,
-    subtotal: 200,
-    discount: 10,
-    total: 190,
-    items: [
-      { id: 1, name: "Pandesal", price: 3, quantity: 20, lineTotal: 60 },
-      { id: 4, name: "Ensaymada", price: 25, quantity: 4, lineTotal: 100 },
-      { id: 3, name: "Cheese Bread", price: 12, quantity: 3, lineTotal: 36 },
-      { id: 1, name: "Pandesal", price: 3, quantity: 1, lineTotal: 4 } // rounding sample
-    ]
-  },
-  {
-    id: "SALE-002",
-    saleNumber: 2,
-    date: new Date(Date.now() - 3600000 * 2).toISOString(),
-    customerType: "Regular Customer",
-    discountStrategyId: "regular",
-    discountRate: 0,
-    subtotal: 450,
-    discount: 0,
-    total: 450,
-    items: [
-      { id: 5, name: "Chocolate Cake", price: 450, quantity: 1, lineTotal: 450 }
-    ]
-  },
-  {
-    id: "SALE-003",
-    saleNumber: 3,
-    date: new Date(Date.now() - 3600000 * 1).toISOString(),
-    customerType: "Regular Customer",
-    discountStrategyId: "regular",
-    discountRate: 0,
-    subtotal: 120,
-    discount: 0,
-    total: 120,
-    items: [
-      { id: 8, name: "Brownies", price: 30, quantity: 4, lineTotal: 120 }
-    ]
-  },
-  {
-    id: "SALE-004",
-    saleNumber: 4,
-    date: new Date(Date.now() - 1800000).toISOString(),
-    customerType: "Bulk Order",
-    discountStrategyId: "bulk",
-    discountRate: 0.10,
-    subtotal: 1877.78,
-    discount: 187.78,
-    total: 1690, // Makes total today's sales 190 + 450 + 120 + 1690 = ₱2,450!
-    items: [
-      { id: 6, name: "Leche Flan", price: 180, quantity: 5, lineTotal: 900 },
-      { id: 7, name: "Croissant", price: 35, quantity: 20, lineTotal: 700 },
-      { id: 2, name: "Spanish Bread", price: 10, quantity: 27, lineTotal: 270 }
-    ]
-  }
-];
+// Initial clean state: empty catalog and sales ready for manual data entry
+const INITIAL_PRODUCTS = [];
+const INITIAL_SALES = [];
 
 // SINGLETON PATTERN
 // Ensures that only one Shop Manager instance exists.
@@ -143,10 +70,28 @@ class ShopManager {
   }
 
   /**
-   * Loads initial products and sales from LocalStorage.
-   * If LocalStorage is empty, uses sample products via PastryProductFactory.
+   * Loads products and sales from LocalStorage.
+   * If LocalStorage has not been purged of old sample data, purges it first.
+   * Defaults to empty arrays so products/sales can be added manually.
    */
   initializeData() {
+    // One-time purge check: if the user's browser still has old mock/sample data, purge it cleanly
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const PURGE_KEY = 'jens_pastry_sample_data_purged_v2';
+        if (localStorage.getItem(PURGE_KEY) !== 'true') {
+          localStorage.removeItem('bakeology_products_v1');
+          localStorage.removeItem('bakeology_sales_v1');
+          localStorage.removeItem('bakeology_sales');
+          localStorage.removeItem('jens_pastry_products_v1');
+          localStorage.removeItem('jens_pastry_sales_v1');
+          localStorage.setItem(PURGE_KEY, 'true');
+        }
+      }
+    } catch (e) {
+      console.warn("Storage purge check skipped:", e);
+    }
+
     const storedProducts = loadProducts();
     const storedSales = loadSales();
 
@@ -154,15 +99,14 @@ class ShopManager {
       // FACTORY PATTERN: Reconstruct product objects through the Factory
       this.products = storedProducts.map(item => PastryProductFactory.createProduct(item));
     } else {
-      // FACTORY PATTERN: Instantiate initial sample products via Factory
-      this.products = INITIAL_PRODUCTS.map(item => PastryProductFactory.createProduct(item));
+      this.products = [];
       saveProducts(this.products);
     }
 
     if (storedSales && Array.isArray(storedSales) && storedSales.length > 0) {
       this.sales = storedSales;
     } else {
-      this.sales = INITIAL_SALES;
+      this.sales = [];
       saveSales(this.sales);
     }
   }
@@ -390,12 +334,12 @@ class ShopManager {
   }
 
   /**
-   * Resets data to initial sample products & sales (useful for demo/grading).
+   * Resets and clears all product items and sales history to a fresh clean slate.
    */
   resetToDefaultData() {
     clearAllStorage();
-    this.products = INITIAL_PRODUCTS.map(item => PastryProductFactory.createProduct(item));
-    this.sales = INITIAL_SALES;
+    this.products = [];
+    this.sales = [];
     saveProducts(this.products);
     saveSales(this.sales);
     this.notify();

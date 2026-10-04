@@ -349,28 +349,34 @@ export default function CustomerDashboard() {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {featuredProducts.map(product => (
-                <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs">
-                  <div>
-                    <div className="text-2xl text-center mb-1">{product.icon || '🥐'}</div>
-                    <h4 className="font-bold text-xs text-primary truncate text-center">{product.name}</h4>
-                    <span className="text-2xs text-muted block text-center">{product.category}</span>
+            {featuredProducts.length === 0 ? (
+              <div className="p-6 text-center text-xs text-muted bg-card rounded-xl border border-border-light">
+                Our fresh pastry menu is being prepared. Check back shortly!
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {featuredProducts.map(product => (
+                  <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs">
+                    <div>
+                      <div className="text-2xl text-center mb-1">{product.icon || '🥐'}</div>
+                      <h4 className="font-bold text-xs text-primary truncate text-center">{product.name}</h4>
+                      <span className="text-2xs text-muted block text-center">{product.category}</span>
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-border-light flex justify-between items-center">
+                      <span className="font-bold text-xs text-primary">{formatCurrency(product.price)}</span>
+                      <button
+                        type="button"
+                        className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-all"
+                        onClick={() => addToCart(product)}
+                        title="Add to Cart"
+                      >
+                        <Plus size={13} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="mt-2 pt-2 border-t border-border-light flex justify-between items-center">
-                    <span className="font-bold text-xs text-primary">{formatCurrency(product.price)}</span>
-                    <button
-                      type="button"
-                      className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-all"
-                      onClick={() => addToCart(product)}
-                      title="Add to Cart"
-                    >
-                      <Plus size={13} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -410,45 +416,51 @@ export default function CustomerDashboard() {
           </div>
 
           {/* Product Cards Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {filteredProducts.map(product => {
-              const isFav = favorites.includes(product.id);
-              return (
-                <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs relative">
-                  <button
-                    type="button"
-                    className="absolute top-2 right-2 text-muted hover:text-red-500"
-                    onClick={() => toggleFavorite(product.id)}
-                    title={isFav ? "Remove favorite" : "Add to favorites"}
-                  >
-                    <Heart size={14} className={isFav ? "fill-red-500 text-red-500" : ""} />
-                  </button>
-
-                  <div>
-                    <div className="text-3xl text-center my-1">{product.icon || '🥐'}</div>
-                    <span className="text-2xs text-muted block text-center">{product.category}</span>
-                    <h4 className="font-bold text-xs text-primary truncate text-center">{product.name}</h4>
-                    <span className="text-2xs font-semibold text-center block text-muted mt-0.5">
-                      Stock: {product.stock}
-                    </span>
-                  </div>
-
-                  <div className="mt-3 pt-2 border-t border-border-light flex justify-between items-center">
-                    <span className="font-bold text-sm text-primary">{formatCurrency(product.price)}</span>
+          {filteredProducts.length === 0 ? (
+            <div className="p-8 text-center text-xs text-muted bg-card rounded-xl border border-border-light">
+              No pastries available in the catalog yet.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {filteredProducts.map(product => {
+                const isFav = favorites.includes(product.id);
+                return (
+                  <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs relative">
                     <button
                       type="button"
-                      className="px-2.5 py-1 rounded-lg bg-primary text-white text-2xs font-bold flex items-center gap-1 hover:bg-primary-dark transition-all"
-                      onClick={() => addToCart(product)}
-                      disabled={product.stock <= 0}
+                      className="absolute top-2 right-2 text-muted hover:text-red-500"
+                      onClick={() => toggleFavorite(product.id)}
+                      title={isFav ? "Remove favorite" : "Add to favorites"}
                     >
-                      <Plus size={11} />
-                      <span>{product.stock <= 0 ? 'Out' : 'Add'}</span>
+                      <Heart size={14} className={isFav ? "fill-red-500 text-red-500" : ""} />
                     </button>
+
+                    <div>
+                      <div className="text-3xl text-center my-1">{product.icon || '🥐'}</div>
+                      <span className="text-2xs text-muted block text-center">{product.category}</span>
+                      <h4 className="font-bold text-xs text-primary truncate text-center">{product.name}</h4>
+                      <span className="text-2xs font-semibold text-center block text-muted mt-0.5">
+                        Stock: {product.stock}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-border-light flex justify-between items-center">
+                      <span className="font-bold text-sm text-primary">{formatCurrency(product.price)}</span>
+                      <button
+                        type="button"
+                        className="px-2.5 py-1 rounded-lg bg-primary text-white text-2xs font-bold flex items-center gap-1 hover:bg-primary-dark transition-all"
+                        onClick={() => addToCart(product)}
+                        disabled={product.stock <= 0}
+                      >
+                        <Plus size={11} />
+                        <span>{product.stock <= 0 ? 'Out' : 'Add'}</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

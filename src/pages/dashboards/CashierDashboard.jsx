@@ -258,15 +258,23 @@ export default function CashierDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-light">
-                  {allOrders.slice(0, 5).map(sale => (
-                    <tr key={sale.id} className="hover:bg-cream-pure">
-                      <td className="py-2 font-bold text-primary">#{sale.saleNumber}</td>
-                      <td className="py-2 text-2xs text-muted">{formatDate(sale.date)}</td>
-                      <td className="py-2 text-2xs">{sale.items?.length || 0} item(s)</td>
-                      <td className="py-2 text-2xs font-semibold">{sale.paymentMethod || 'Cash'}</td>
-                      <td className="py-2 text-right font-bold text-primary">{formatCurrency(sale.total)}</td>
+                  {allOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="py-4 text-center text-2xs text-muted">
+                        No transactions recorded yet.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    allOrders.slice(0, 5).map(sale => (
+                      <tr key={sale.id} className="hover:bg-cream-pure">
+                        <td className="py-2 font-bold text-primary">#{sale.saleNumber}</td>
+                        <td className="py-2 text-2xs text-muted">{formatDate(sale.date)}</td>
+                        <td className="py-2 text-2xs">{sale.items?.length || 0} item(s)</td>
+                        <td className="py-2 text-2xs font-semibold">{sale.paymentMethod || 'Cash'}</td>
+                        <td className="py-2 text-right font-bold text-primary">{formatCurrency(sale.total)}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -309,30 +317,36 @@ export default function CashierDashboard() {
             </div>
 
             {/* Product Quick-Tap Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[500px] overflow-y-auto pr-1">
-              {filteredProducts.map(p => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className="bg-card p-3 rounded-xl border border-border-light hover:border-primary flex flex-col justify-between text-left transition-all hover:shadow-sm"
-                  onClick={() => addToPosCart(p)}
-                  disabled={p.stock <= 0}
-                >
-                  <div className="flex justify-between items-start">
-                    <span className="text-2xl">{p.icon || '🥐'}</span>
-                    <span className={`text-2xs px-1.5 py-0.5 rounded font-bold ${
-                      p.stock > 10 ? 'bg-green-100 text-green-700' : p.stock > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                      {p.stock} left
-                    </span>
-                  </div>
-                  <div className="mt-2">
-                    <span className="font-bold text-xs text-primary block truncate">{p.name}</span>
-                    <span className="font-extrabold text-xs text-text-primary block mt-0.5">{formatCurrency(p.price)}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
+            {filteredProducts.length === 0 ? (
+              <div className="p-8 text-center text-xs text-muted bg-card rounded-xl border border-border-light">
+                No pastries found in catalog. Add pastries first via the Admin Dashboard.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[500px] overflow-y-auto pr-1">
+                {filteredProducts.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="bg-card p-3 rounded-xl border border-border-light hover:border-primary flex flex-col justify-between text-left transition-all hover:shadow-sm"
+                    onClick={() => addToPosCart(p)}
+                    disabled={p.stock <= 0}
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="text-2xl">{p.icon || '🥐'}</span>
+                      <span className={`text-2xs px-1.5 py-0.5 rounded font-bold ${
+                        p.stock > 10 ? 'bg-green-100 text-green-700' : p.stock > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {p.stock} left
+                      </span>
+                    </div>
+                    <div className="mt-2">
+                      <span className="font-bold text-xs text-primary block truncate">{p.name}</span>
+                      <span className="font-extrabold text-xs text-text-primary block mt-0.5">{formatCurrency(p.price)}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right: POS Tray & Payment Tender (1 col) */}
@@ -486,71 +500,77 @@ export default function CashierDashboard() {
             <span className="text-2xs text-muted">Confirming orders notifies the Baker</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {allOrders.map(order => (
-              <div key={order.id} className="bg-card p-3.5 rounded-xl border border-border-light space-y-2 shadow-2xs">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="font-bold text-xs text-primary block">Order #{order.saleNumber}</span>
-                    <span className="text-2xs text-muted">Customer: {order.customerName || 'Walk-in'}</span>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded-full text-2xs font-extrabold border ${
-                    order.orderStatus === 'Completed' ? 'bg-green-100 text-green-700 border-green-200' :
-                    order.orderStatus === 'Ready for Pickup' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                    order.orderStatus === 'Preparing' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                    'bg-pink-100 text-primary border-border-light'
-                  }`}>
-                    {order.orderStatus || 'Pending'}
-                  </span>
-                </div>
-
-                <div className="bg-cream-pure p-2 rounded-lg text-2xs space-y-1">
-                  {order.items?.map((it, idx) => (
-                    <div key={idx} className="flex justify-between">
-                      <span>{it.name} × {it.quantity}</span>
-                      <span>{formatCurrency(it.price * it.quantity)}</span>
+          {allOrders.length === 0 ? (
+            <div className="p-8 text-center text-xs text-muted bg-card rounded-xl border border-border-light">
+              No orders in pipeline. New orders placed online or via POS will appear here.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {allOrders.map(order => (
+                <div key={order.id} className="bg-card p-3.5 rounded-xl border border-border-light space-y-2 shadow-2xs">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="font-bold text-xs text-primary block">Order #{order.saleNumber}</span>
+                      <span className="text-2xs text-muted">Customer: {order.customerName || 'Walk-in'}</span>
                     </div>
-                  ))}
-                  <div className="pt-1 border-t border-border-light flex justify-between font-bold text-primary">
-                    <span>Total</span>
-                    <span>{formatCurrency(order.total)}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-2xs font-extrabold border ${
+                      order.orderStatus === 'Completed' ? 'bg-green-100 text-green-700 border-green-200' :
+                      order.orderStatus === 'Ready for Pickup' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                      order.orderStatus === 'Preparing' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                      'bg-pink-100 text-primary border-border-light'
+                    }`}>
+                      {order.orderStatus || 'Pending'}
+                    </span>
+                  </div>
+
+                  <div className="bg-cream-pure p-2 rounded-lg text-2xs space-y-1">
+                    {order.items?.map((it, idx) => (
+                      <div key={idx} className="flex justify-between">
+                        <span>{it.name} × {it.quantity}</span>
+                        <span>{formatCurrency(it.price * it.quantity)}</span>
+                      </div>
+                    ))}
+                    <div className="pt-1 border-t border-border-light flex justify-between font-bold text-primary">
+                      <span>Total</span>
+                      <span>{formatCurrency(order.total)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-1.5 pt-1">
+                    {(!order.orderStatus || order.orderStatus === 'Pending') && (
+                      <button
+                        type="button"
+                        className="btn-primary py-1 px-3 rounded-lg text-2xs font-bold flex-1"
+                        onClick={() => handleUpdateOrderStatus(order.id, 'Confirmed')}
+                      >
+                        Confirm Order
+                      </button>
+                    )}
+                    {order.orderStatus === 'Ready for Pickup' && (
+                      <button
+                        type="button"
+                        className="bg-green-600 text-white hover:bg-green-700 py-1 px-3 rounded-lg text-2xs font-bold flex-1"
+                        onClick={() => handleUpdateOrderStatus(order.id, 'Completed')}
+                      >
+                        Mark Completed (Picked Up)
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="p-1 rounded-lg border border-border-medium hover:bg-cream text-muted text-2xs"
+                      onClick={() => {
+                        setActiveReceiptSale(order);
+                        setIsReceiptModalOpen(true);
+                      }}
+                      title="View Receipt"
+                    >
+                      <Receipt size={14} />
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex gap-1.5 pt-1">
-                  {(!order.orderStatus || order.orderStatus === 'Pending') && (
-                    <button
-                      type="button"
-                      className="btn-primary py-1 px-3 rounded-lg text-2xs font-bold flex-1"
-                      onClick={() => handleUpdateOrderStatus(order.id, 'Confirmed')}
-                    >
-                      Confirm Order
-                    </button>
-                  )}
-                  {order.orderStatus === 'Ready for Pickup' && (
-                    <button
-                      type="button"
-                      className="bg-green-600 text-white hover:bg-green-700 py-1 px-3 rounded-lg text-2xs font-bold flex-1"
-                      onClick={() => handleUpdateOrderStatus(order.id, 'Completed')}
-                    >
-                      Mark Completed (Picked Up)
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="p-1 rounded-lg border border-border-medium hover:bg-cream text-muted text-2xs"
-                    onClick={() => {
-                      setActiveReceiptSale(order);
-                      setIsReceiptModalOpen(true);
-                    }}
-                    title="View Receipt"
-                  >
-                    <Receipt size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

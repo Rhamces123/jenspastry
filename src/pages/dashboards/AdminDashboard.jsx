@@ -148,7 +148,7 @@ export default function AdminDashboard() {
   const activeProductsCount = products.length;
   const lowStockCount = products.filter(p => p.stock <= 5).length;
   const outOfStockCount = products.filter(p => p.stock === 0).length;
-  const totalUsersCount = userList.length || 4; // fallback to minimum demo accounts
+  const totalUsersCount = userList.length;
 
   // Average Order Value
   const aov = totalOrdersCount > 0 ? totalRevenue / totalOrdersCount : 0;
@@ -177,7 +177,7 @@ export default function AdminDashboard() {
       .slice(0, 5);
   }, [orders]);
 
-  // Sales Analytics Chart Data: Daily, Weekly, Monthly
+  // Sales Analytics Chart Data: Daily, Weekly, Monthly (strictly aggregated from real orders)
   const chartData = useMemo(() => {
     if (analyticsTimeframe === 'daily') {
       const days = [];
@@ -196,21 +196,46 @@ export default function AdminDashboard() {
       }
       return days;
     } else if (analyticsTimeframe === 'weekly') {
-      return [
-        { label: 'Week 1', amount: totalRevenue * 0.22 },
-        { label: 'Week 2', amount: totalRevenue * 0.28 },
-        { label: 'Week 3', amount: totalRevenue * 0.24 },
-        { label: 'Week 4 (Current)', amount: totalRevenue * 0.26 }
-      ];
+      const weeks = [];
+      const now = new Date();
+      for (let i = 3; i >= 0; i--) {
+        const start = new Date(now);
+        start.setDate(now.getDate() - (i * 7 + 6));
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date(now);
+        end.setDate(now.getDate() - (i * 7));
+        end.setHours(23, 59, 59, 999);
+
+        const label = i === 0 ? 'This Week' : i === 1 ? 'Last Week' : `${i} Wks Ago`;
+
+        const weekTotal = orders.filter(o => {
+          if (!o.date) return false;
+          const orderDate = new Date(o.date);
+          return orderDate >= start && orderDate <= end;
+        }).reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+        weeks.push({ label, amount: weekTotal });
+      }
+      return weeks;
     } else {
-      return [
-        { label: 'Jan', amount: totalRevenue * 0.7 },
-        { label: 'Feb', amount: totalRevenue * 0.85 },
-        { label: 'Mar', amount: totalRevenue * 0.95 },
-        { label: 'Apr (Current)', amount: totalRevenue }
-      ];
+      const months = [];
+      const now = new Date();
+      for (let i = 3; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthLabel = d.toLocaleDateString('en-US', { month: 'short' });
+        const yearMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+        const monthTotal = orders.filter(o => {
+          if (!o.date) return false;
+          return o.date.startsWith(yearMonth);
+        }).reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+        months.push({ label: i === 0 ? `${monthLabel} (Current)` : monthLabel, amount: monthTotal });
+      }
+      return months;
     }
-  }, [analyticsTimeframe, orders, totalRevenue]);
+  }, [analyticsTimeframe, orders]);
 
   const maxChartAmount = Math.max(...chartData.map(d => d.amount), 100);
 
@@ -576,45 +601,53 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.slice(0, 5).map(order => (
-                    <tr key={order.id}>
-                      <td style={{ fontFamily: 'monospace', fontWeight: 800, color: '#9D174D' }}>
-                        {formatSaleNumber(order.saleNumber)}
-                      </td>
-                      <td style={{ fontWeight: 600 }}>
-                        {order.customerName || 'Walk-in Customer'}
-                      </td>
-                      <td style={{ color: '#717A88' }}>
-                        {formatDateTime(order.date)}
-                      </td>
-                      <td style={{ color: '#555E68' }}>
-                        {(order.items || []).length} items
-                      </td>
-                      <td style={{ fontWeight: 800, color: '#1F242E' }}>
-                        {formatCurrency(order.total)}
-                      </td>
-                      <td>
-                        <span className={`admin-status-badge ${getStatusBadgeClass(order.orderStatus)}`}>
-                          {order.orderStatus || 'Completed'}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          className="btn-admin-secondary"
-                          style={{ padding: '4px 8px', fontSize: '11px' }}
-                          onClick={() => {
-                            setActiveReceiptSale(order);
-                            setIsReceiptModalOpen(true);
-                          }}
-                          title="View Receipt"
-                        >
-                          <Eye size={13} />
-                          <span>View</span>
-                        </button>
+                  {orders.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '36px 16px', color: '#8A92A0', fontSize: '13px' }}>
+                        No bakery orders recorded yet. As orders are placed via POS or Customer checkout, they will appear here.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    orders.slice(0, 5).map(order => (
+                      <tr key={order.id}>
+                        <td style={{ fontFamily: 'monospace', fontWeight: 800, color: '#9D174D' }}>
+                          {formatSaleNumber(order.saleNumber)}
+                        </td>
+                        <td style={{ fontWeight: 600 }}>
+                          {order.customerName || 'Walk-in Customer'}
+                        </td>
+                        <td style={{ color: '#717A88' }}>
+                          {formatDateTime(order.date)}
+                        </td>
+                        <td style={{ color: '#555E68' }}>
+                          {(order.items || []).length} items
+                        </td>
+                        <td style={{ fontWeight: 800, color: '#1F242E' }}>
+                          {formatCurrency(order.total)}
+                        </td>
+                        <td>
+                          <span className={`admin-status-badge ${getStatusBadgeClass(order.orderStatus)}`}>
+                            {order.orderStatus || 'Completed'}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            className="btn-admin-secondary"
+                            style={{ padding: '4px 8px', fontSize: '11px' }}
+                            onClick={() => {
+                              setActiveReceiptSale(order);
+                              setIsReceiptModalOpen(true);
+                            }}
+                            title="View Receipt"
+                          >
+                            <Eye size={13} />
+                            <span>View</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -803,7 +836,27 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.map(prod => (
+                {filteredProducts.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '40px 16px', color: '#8A92A0' }}>
+                      <Package size={32} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.4 }} />
+                      <p style={{ fontWeight: 700, fontSize: '14px', color: '#374151', margin: '0 0 6px' }}>No pastries in catalog</p>
+                      <p style={{ fontSize: '12px', margin: '0 0 16px', color: '#8A92A0' }}>Your catalog is ready for manual entry. Click below to add your first pastry!</p>
+                      <button
+                        type="button"
+                        className="btn-admin-primary"
+                        onClick={() => {
+                          setEditingProduct(null);
+                          setIsProductModalOpen(true);
+                        }}
+                      >
+                        <Plus size={14} />
+                        <span>Add New Pastry</span>
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProducts.map(prod => (
                   <tr key={prod.id}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -881,7 +934,7 @@ export default function AdminDashboard() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
@@ -903,74 +956,93 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-            {products.map(prod => {
-              const maxUnits = 100;
-              const stockPercent = Math.min(100, Math.round((prod.stock / maxUnits) * 100));
-              return (
-                <div 
-                  key={prod.id}
-                  className="admin-card"
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    border: prod.stock <= 5 ? '1px solid #FCD34D' : '1px solid #EDE4DC',
-                    boxShadow: prod.stock <= 5 ? '0 4px 12px rgba(245, 158, 11, 0.12)' : '0 2px 8px rgba(0,0,0,0.03)'
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 800, color: '#8A92A0' }}>
-                        {prod.category}
-                      </span>
-                      <span className={`admin-status-badge ${prod.stock === 0 ? 'status-cancelled' : prod.stock <= 5 ? 'status-preparing' : 'status-completed'}`}>
-                        {prod.stock} in stock
-                      </span>
+          {products.length === 0 ? (
+            <div className="admin-card" style={{ textAlign: 'center', padding: '40px 16px', color: '#8A92A0' }}>
+              <Package size={32} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.4 }} />
+              <p style={{ fontWeight: 700, fontSize: '14px', color: '#374151', margin: '0 0 6px' }}>No inventory items</p>
+              <p style={{ fontSize: '12px', margin: '0 0 16px', color: '#8A92A0' }}>Add pastries to your catalog first to monitor stock levels and restock items.</p>
+              <button
+                type="button"
+                className="btn-admin-primary"
+                onClick={() => {
+                  setEditingProduct(null);
+                  setIsProductModalOpen(true);
+                }}
+              >
+                <Plus size={14} />
+                <span>Add Pastry</span>
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              {products.map(prod => {
+                const maxUnits = 100;
+                const stockPercent = Math.min(100, Math.round((prod.stock / maxUnits) * 100));
+                return (
+                  <div 
+                    key={prod.id}
+                    className="admin-card"
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      border: prod.stock <= 5 ? '1px solid #FCD34D' : '1px solid #EDE4DC',
+                      boxShadow: prod.stock <= 5 ? '0 4px 12px rgba(245, 158, 11, 0.12)' : '0 2px 8px rgba(0,0,0,0.03)'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 800, color: '#8A92A0' }}>
+                          {prod.category}
+                        </span>
+                        <span className={`admin-status-badge ${prod.stock === 0 ? 'status-cancelled' : prod.stock <= 5 ? 'status-preparing' : 'status-completed'}`}>
+                          {prod.stock} in stock
+                        </span>
+                      </div>
+
+                      <h4 style={{ fontSize: '15px', fontWeight: 800, color: '#1F242E', marginBottom: '4px' }}>
+                        {prod.name}
+                      </h4>
+                      <p style={{ fontSize: '12px', color: '#717A88', marginBottom: '14px' }}>
+                        {formatCurrency(prod.price)} / unit
+                      </p>
+
+                      {/* Stock level bar */}
+                      <div style={{ width: '100%', height: '6px', background: '#F1EBE6', borderRadius: '4px', overflow: 'hidden', marginBottom: '16px' }}>
+                        <div 
+                          style={{
+                            width: `${stockPercent}%`,
+                            height: '100%',
+                            background: prod.stock <= 5 ? '#DC2626' : '#10B981',
+                            borderRadius: '4px',
+                            transition: 'width 0.3s ease'
+                          }}
+                        />
+                      </div>
                     </div>
 
-                    <h4 style={{ fontSize: '15px', fontWeight: 800, color: '#1F242E', marginBottom: '4px' }}>
-                      {prod.name}
-                    </h4>
-                    <p style={{ fontSize: '12px', color: '#717A88', marginBottom: '14px' }}>
-                      {formatCurrency(prod.price)} / unit
-                    </p>
-
-                    {/* Stock level bar */}
-                    <div style={{ width: '100%', height: '6px', background: '#F1EBE6', borderRadius: '4px', overflow: 'hidden', marginBottom: '16px' }}>
-                      <div 
-                        style={{
-                          width: `${stockPercent}%`,
-                          height: '100%',
-                          background: prod.stock <= 5 ? '#DC2626' : '#10B981',
-                          borderRadius: '4px',
-                          transition: 'width 0.3s ease'
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #F1EBE6', paddingTop: '12px' }}>
+                      <span style={{ fontSize: '11px', color: '#8A92A0', fontWeight: 600 }}>
+                        {prod.stock <= 5 ? '⚠ Bake soon' : '✓ In stock'}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn-admin-primary"
+                        style={{ padding: '6px 12px', fontSize: '11px' }}
+                        onClick={() => {
+                          setRestockingProduct(prod);
+                          setIsRestockModalOpen(true);
                         }}
-                      />
+                      >
+                        <Plus size={13} />
+                        <span>Quick Restock</span>
+                      </button>
                     </div>
                   </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #F1EBE6', paddingTop: '12px' }}>
-                    <span style={{ fontSize: '11px', color: '#8A92A0', fontWeight: 600 }}>
-                      {prod.stock <= 5 ? '⚠ Bake soon' : '✓ In stock'}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn-admin-primary"
-                      style={{ padding: '6px 12px', fontSize: '11px' }}
-                      onClick={() => {
-                        setRestockingProduct(prod);
-                        setIsRestockModalOpen(true);
-                      }}
-                    >
-                      <Plus size={13} />
-                      <span>Quick Restock</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -1272,14 +1344,14 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Reset Pastry Data Card */}
+          {/* Clear Store Data Card */}
           <div className="admin-card" style={{ borderColor: '#FECDD3', background: '#FFF9FA' }}>
             <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '15px', fontWeight: 800, color: '#BE123C', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <RefreshCw size={17} style={{ color: '#E11D48' }} />
-              Reset System Catalog to Factory Defaults
+              Clear All Bakery Products & Sales
             </h4>
             <p style={{ fontSize: '12px', color: '#717A88', marginBottom: '14px' }}>
-              Restores all default artisan breads, cakes, and pastries created via Factory Pattern to their factory default stock and pricing.
+              Clears all local products, inventory levels, and order transactions to start with a fresh clean slate.
             </p>
             <button
               type="button"
@@ -1294,13 +1366,14 @@ export default function AdminDashboard() {
                 cursor: 'pointer'
               }}
               onClick={() => {
-                if (window.confirm("Are you sure you want to reset all product items to default data? Any custom pastries will be removed.")) {
+                if (window.confirm("Are you sure you want to clear all product items and sales history? This will reset your shop to a clean slate.")) {
                   resetToDefaultData();
-                  alert("Product catalog has been successfully reset to default items!");
+                  setOrders([]);
+                  alert("Bakery catalog and sales history cleared successfully!");
                 }
               }}
             >
-              Reset to Default Pastry Catalog
+              Clear Products & Orders
             </button>
           </div>
         </div>

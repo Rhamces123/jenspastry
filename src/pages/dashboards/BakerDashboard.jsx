@@ -191,21 +191,27 @@ export default function BakerDashboard() {
           <div className="bg-card rounded-xl border border-border-light p-4 shadow-2xs space-y-2">
             <h3 className="font-bold text-xs text-primary">Active Queue Highlights</h3>
             <div className="space-y-2">
-              {[...preparingOrders, ...pendingOrders].slice(0, 3).map(order => (
-                <div key={order.id} className="p-3 rounded-xl bg-cream-pure border border-border-light flex justify-between items-center text-xs">
-                  <div>
-                    <span className="font-bold text-primary block">ORDER #{order.saleNumber}</span>
-                    <span className="text-2xs text-muted">
-                      {order.items?.map(it => `${it.name} × ${it.quantity}`).join(', ')}
+              {preparingOrders.length === 0 && pendingOrders.length === 0 ? (
+                <div className="p-4 text-center text-xs text-muted">
+                  No orders currently in the kitchen queue.
+                </div>
+              ) : (
+                [...preparingOrders, ...pendingOrders].slice(0, 3).map(order => (
+                  <div key={order.id} className="p-3 rounded-xl bg-cream-pure border border-border-light flex justify-between items-center text-xs">
+                    <div>
+                      <span className="font-bold text-primary block">ORDER #{order.saleNumber}</span>
+                      <span className="text-2xs text-muted">
+                        {order.items?.map(it => `${it.name} × ${it.quantity}`).join(', ')}
+                      </span>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-2xs font-extrabold ${
+                      order.orderStatus === 'Preparing' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {order.orderStatus}
                     </span>
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-2xs font-extrabold ${
-                    order.orderStatus === 'Preparing' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {order.orderStatus}
-                  </span>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -219,13 +225,18 @@ export default function BakerDashboard() {
             <span className="text-2xs text-muted">Advance status as you bake</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {productionOrders.filter(o => o.orderStatus !== 'Completed').map(order => {
-              const isPreparing = order.orderStatus === 'Preparing';
-              const isReady = order.orderStatus === 'Ready for Pickup';
+          {productionOrders.filter(o => o.orderStatus !== 'Completed').length === 0 ? (
+            <div className="p-8 text-center text-xs text-muted bg-card rounded-xl border border-border-light">
+              No pending orders in the kitchen production queue. Hot baked pastries will appear here as orders arrive.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {productionOrders.filter(o => o.orderStatus !== 'Completed').map(order => {
+                const isPreparing = order.orderStatus === 'Preparing';
+                const isReady = order.orderStatus === 'Ready for Pickup';
 
-              return (
-                <div key={order.id} className="bg-card p-4 rounded-xl border border-border-light shadow-2xs space-y-3 flex flex-col justify-between">
+                return (
+                  <div key={order.id} className="bg-card p-4 rounded-xl border border-border-light shadow-2xs space-y-3 flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-start border-b border-border-light pb-2">
                       <div>
@@ -289,6 +300,7 @@ export default function BakerDashboard() {
               );
             })}
           </div>
+          )}
         </div>
       )}
 
@@ -300,14 +312,20 @@ export default function BakerDashboard() {
             <p className="text-2xs text-muted">Total quantities of each pastry needed for today's orders:</p>
 
             <div className="divide-y divide-border-light">
-              {Object.entries(itemsNeededMap).map(([name, qty]) => (
-                <div key={name} className="py-2.5 flex justify-between items-center text-xs">
-                  <span className="font-semibold text-text-primary">{name}</span>
-                  <span className="font-extrabold text-sm text-primary px-3 py-0.5 bg-pink-100 rounded-lg">
-                    {qty} required
-                  </span>
+              {Object.keys(itemsNeededMap).length === 0 ? (
+                <div className="py-6 text-center text-xs text-muted">
+                  No active orders requiring baking at this time.
                 </div>
-              ))}
+              ) : (
+                Object.entries(itemsNeededMap).map(([name, qty]) => (
+                  <div key={name} className="py-2.5 flex justify-between items-center text-xs">
+                    <span className="font-semibold text-text-primary">{name}</span>
+                    <span className="font-extrabold text-sm text-primary px-3 py-0.5 bg-pink-100 rounded-lg">
+                      {qty} required
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

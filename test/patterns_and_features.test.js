@@ -143,12 +143,10 @@ try {
 
   assert(manager1 === manager2, "ShopManager.getInstance() returns the exact same singleton instance");
 
-  // Check initial products loaded
+  // Check initial products loaded (starts clean with empty array for manual data entry)
   const products = manager1.getProducts();
-  assert(products.length >= 8, `ShopManager initialized with ${products.length} sample products`);
-
-  const initialPandesal = manager1.getProducts().find(p => p.name === "Pandesal");
-  assert(initialPandesal !== undefined, "Sample product 'Pandesal' exists");
+  assert(Array.isArray(products), "ShopManager initialized with products array");
+  assert(products.length === 0, "Initial products catalog is empty and ready for manual data entry");
 
   // Add Product via ShopManager
   const newProduct = manager1.addProduct({

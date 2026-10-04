@@ -56,6 +56,7 @@ export function saveSales(sales) {
   try {
     const serialized = JSON.stringify(sales);
     localStorage.setItem(STORAGE_KEYS.SALES, serialized);
+    localStorage.setItem('bakeology_sales', serialized);
     return true;
   } catch (error) {
     console.error("Error saving sales to LocalStorage:", error);
@@ -71,6 +72,9 @@ export function saveSales(sales) {
 export function loadSales() {
   try {
     let serialized = localStorage.getItem(STORAGE_KEYS.SALES);
+    if (!serialized) {
+      serialized = localStorage.getItem('bakeology_sales');
+    }
     if (!serialized) {
       serialized = localStorage.getItem(STORAGE_KEYS.LEGACY_SALES);
     }
@@ -89,6 +93,7 @@ export function clearAllStorage() {
   try {
     localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
     localStorage.removeItem(STORAGE_KEYS.SALES);
+    localStorage.removeItem('bakeology_sales');
     localStorage.removeItem(STORAGE_KEYS.LEGACY_PRODUCTS);
     localStorage.removeItem(STORAGE_KEYS.LEGACY_SALES);
     return true;
