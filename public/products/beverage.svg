@@ -1,1 +1,11 @@
-<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><rect width='160' height='160' rx='20' fill='#FCE8EF'/><text x='80' y='105' font-size='80' text-anchor='middle'>☕</text></svg>
+<svg xmlns='http://www.w3.org/2000/svg' width='280' height='180' viewBox='0 0 280 180'>
+  <defs>
+    <radialGradient id='bevGlow' cx='50%' cy='50%' r='50%'>
+      <stop offset='0%' stop-color='#FCE7F3' stop-opacity='0.9'/>
+      <stop offset='100%' stop-color='#FCE8EF' stop-opacity='0'/>
+    </radialGradient>
+  </defs>
+  <ellipse cx='140' cy='120' rx='68' ry='22' fill='url(#bevGlow)'/>
+  <ellipse cx='140' cy='118' rx='56' ry='15' fill='#FFFFFF' stroke='#F9DAE7' stroke-width='2'/>
+  <text x='140' y='110' font-size='66' text-anchor='middle'>☕</text>
+</svg>

@@ -339,7 +339,15 @@ input, select, textarea {
 .w-16 { width: 64px; }
 .h-16 { height: 64px; }
 .w-32 { width: 128px; }
+.h-20 { height: 80px; }
+.h-24 { height: 96px; }
+.h-28 { height: 112px; }
 .h-32 { height: 128px; }
+.h-36 { height: 144px; }
+.h-40 { height: 160px; }
+.h-full { height: 100%; }
+.object-contain { object-fit: contain; }
+.object-cover { object-fit: cover; }
 .rounded-full { border-radius: 9999px; }
 .border { border-width: 1px; border-style: solid; }
 .border-2 { border-width: 2px; border-style: solid; }
@@ -353,6 +361,20 @@ input, select, textarea {
 .border-border-light { border-color: var(--border-light); }
 .border-border-medium { border-color: var(--border-medium); }
 .border-t-transparent { border-top-color: transparent !important; }
+
+/* Picture Holder */
+.picture-holder {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  background: linear-gradient(180deg, #FDF2F8 0%, #FFF5F8 100%);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* Backgrounds & Colors */
 .bg-card { background-color: var(--bg-card); }
@@ -379,8 +401,16 @@ input, select, textarea {
 .text-red-500 { color: #EF4444; }
 .text-pink-100 { color: #FCE7F3; }
 .text-pink-200 { color: #FBCFE8; }
+.bg-white { background-color: #FFFFFF; }
+.bg-white\/80 { background-color: rgba(255, 255, 255, 0.8); }
+.bg-white\/90 { background-color: rgba(255, 255, 255, 0.9); }
 .bg-white\/20 { background-color: rgba(255, 255, 255, 0.2); }
+.bg-red-500 { background-color: #EF4444; }
+.text-white { color: #FFFFFF; }
+.text-red-500 { color: #EF4444; }
+.text-red-600 { color: #DC2626; }
 .bg-gradient-to-r { background-image: linear-gradient(to right, #EC4899, #BE185D); }
+.bg-gradient-to-b { background-image: linear-gradient(to bottom, #FDF2F8, #FFF5F8); }
 
 /* Elevation Shadows */
 .shadow-2xs { box-shadow: 0 1px 2px rgba(157, 23, 77, 0.05); }
@@ -391,6 +421,9 @@ input, select, textarea {
 
 /* Effects & Transitions */
 .hover\:underline:hover { text-decoration: underline; }
+.hover\:bg-white:hover { background-color: #FFFFFF; }
+.hover\:border-primary-light:hover { border-color: var(--primary-pink-light); }
+.hover\:scale-105:hover { transform: scale(1.04); }
 .transition-all { transition-property: all; }
 .transition-colors { transition-property: background-color, border-color, color, fill, stroke; }
 .transition-transform { transition-property: transform; }

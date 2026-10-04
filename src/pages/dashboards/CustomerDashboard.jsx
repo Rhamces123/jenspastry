@@ -204,42 +204,67 @@ export default function CustomerDashboard() {
 
   const renderProductCard = (product) => {
     const isFav = favorites.includes(product.id);
+    const isOutOfStock = product.stock <= 0;
+    const isLowStock = product.stock > 0 && product.stock <= 10;
+
     return (
       <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs relative hover:border-primary-light transition-all">
-        <button
-          type="button"
-          className="absolute top-2 right-2 text-muted hover:text-red-500"
-          onClick={() => toggleFavorite(product.id)}
-          title={isFav ? "Remove favorite" : "Add to favorites"}
-        >
-          <Heart size={14} className={isFav ? "fill-red-500 text-red-500" : ""} />
-        </button>
-
         <div>
-          <div className="w-14 h-14 mx-auto my-1 flex items-center justify-center bg-cream-pure rounded-xl overflow-hidden border border-border-light">
+          {/* Picture Holder Frame */}
+          <div className="picture-holder mb-2.5">
             {product.imageUrl ? (
-              <img src={product.imageUrl} alt={product.name} className="w-10 h-10 object-contain" />
+              <img
+                src={product.imageUrl}
+                alt={product.name}
+                className="w-full h-full object-contain p-1.5 hover:scale-105 transition-transform"
+              />
             ) : (
-              <div className="text-2xl">{product.icon || '🥐'}</div>
+              <span className="text-4xl">{product.icon || '🥐'}</span>
             )}
+
+            {/* Favorite button inside picture holder */}
+            <button
+              type="button"
+              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 text-muted hover:text-red-500 flex items-center justify-center shadow-xs hover:bg-white transition-all cursor-pointer"
+              onClick={() => toggleFavorite(product.id)}
+              title={isFav ? "Remove favorite" : "Add to favorites"}
+            >
+              <Heart size={13} className={isFav ? "fill-red-500 text-red-500" : ""} />
+            </button>
+
+            {/* Stock status badge overlay */}
+            {isOutOfStock ? (
+              <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-2xs font-extrabold bg-red-500 text-white shadow-xs">
+                Out of Stock
+              </span>
+            ) : isLowStock ? (
+              <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-2xs font-extrabold bg-amber-100 text-amber-800 border border-amber-200 shadow-xs">
+                Low Stock ({product.stock})
+              </span>
+            ) : null}
           </div>
-          <span className="text-2xs text-muted block text-center uppercase tracking-wider">{product.category}</span>
-          <h4 className="font-bold text-xs text-primary truncate text-center mt-0.5" title={product.name}>{product.name}</h4>
-          <span className="text-2xs font-semibold text-center block text-muted mt-0.5">
-            Stock: {product.stock}
-          </span>
+
+          {/* Product Details */}
+          <div className="space-y-0.5 text-center">
+            <span className="text-2xs text-muted block uppercase tracking-wider font-semibold">{product.category}</span>
+            <h4 className="font-bold text-xs text-primary truncate" title={product.name}>{product.name}</h4>
+            <span className="text-2xs font-medium text-muted block">
+              Stock: <strong className={isOutOfStock ? "text-danger" : "text-primary"}>{product.stock}</strong>
+            </span>
+          </div>
         </div>
 
+        {/* Price & Action */}
         <div className="mt-2.5 pt-2 border-t border-border-light flex justify-between items-center">
           <span className="font-bold text-sm text-primary">{formatCurrency(product.price)}</span>
           <button
             type="button"
             className="px-2.5 py-1 rounded-lg bg-primary text-white text-2xs font-bold flex items-center gap-1 hover:bg-primary-dark transition-all disabled:opacity-50"
             onClick={() => addToCart(product)}
-            disabled={product.stock <= 0}
+            disabled={isOutOfStock}
           >
             <Plus size={11} />
-            <span>{product.stock <= 0 ? 'Out' : 'Add'}</span>
+            <span>{isOutOfStock ? 'Out' : 'Add'}</span>
           </button>
         </div>
       </div>
@@ -400,30 +425,7 @@ export default function CustomerDashboard() {
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {featuredProducts.map(product => (
-                  <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs">
-                    <div>
-                      {product.imageUrl ? (
-                        <img src={product.imageUrl} alt={product.name} className="w-full h-16 object-cover rounded-lg mb-1" />
-                      ) : (
-                        <div className="text-2xl text-center mb-1">{product.icon || '🥐'}</div>
-                      )}
-                      <h4 className="font-bold text-xs text-primary truncate text-center">{product.name}</h4>
-                      <span className="text-2xs text-muted block text-center">{product.category}</span>
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-border-light flex justify-between items-center">
-                      <span className="font-bold text-xs text-primary">{formatCurrency(product.price)}</span>
-                      <button
-                        type="button"
-                        className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-all"
-                        onClick={() => addToCart(product)}
-                        title="Add to Cart"
-                      >
-                        <Plus size={13} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                {featuredProducts.map(product => renderProductCard(product))}
               </div>
             )}
           </div>
