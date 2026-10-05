@@ -4682,3 +4682,517 @@
   font-family: monospace;
   font-size: 14px;
 }
+
+/* ==========================================
+   BAKERY INVENTORY & REPLENISHMENT HUB (100x UPGRADE)
+   ========================================== */
+
+/* Hero Banner */
+.baker-replenish-hero {
+  background: linear-gradient(135deg, #701A40 0%, #9D174D 50%, #BE185D 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: 20px;
+  padding: 22px 24px;
+  color: #FFFFFF;
+  box-shadow: 0 8px 24px rgba(157, 23, 77, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.baker-replenish-hero::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.baker-hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(6px);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #FCE7F3;
+}
+
+.baker-hero-action-btn {
+  background: #FFFFFF;
+  color: #831843;
+  padding: 10px 18px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  flex-shrink: 0;
+}
+
+.baker-hero-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  background: #FFF5F8;
+  color: #701A40;
+}
+
+.baker-hero-action-btn:active {
+  transform: scale(0.97);
+}
+
+/* Metric Cards */
+.baker-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .baker-kpi-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.baker-kpi-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 14px 16px;
+  border: 1.5px solid #F3E8EE;
+  box-shadow: 0 2px 8px rgba(157, 23, 77, 0.04);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.baker-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(157, 23, 77, 0.08);
+}
+
+.baker-kpi-card.kpi-amber {
+  border-color: #FDE68A;
+  background: linear-gradient(180deg, #FFFDF8 0%, #FFFFFF 100%);
+}
+
+.baker-kpi-card.kpi-red {
+  border-color: #FECDD3;
+  background: linear-gradient(180deg, #FFF9FA 0%, #FFFFFF 100%);
+}
+
+.baker-kpi-card.kpi-green {
+  border-color: #BBF7D0;
+  background: linear-gradient(180deg, #F9FDFB 0%, #FFFFFF 100%);
+}
+
+.baker-kpi-card.kpi-pink {
+  border-color: #FBCFE8;
+  background: linear-gradient(180deg, #FFF9FC 0%, #FFFFFF 100%);
+}
+
+.baker-kpi-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+/* Search and View Toggles */
+.baker-controls-bar {
+  background: #FFFFFF;
+  border-radius: 18px;
+  padding: 14px 16px;
+  border: 1.5px solid #F3E8EE;
+  box-shadow: 0 2px 10px rgba(157, 23, 77, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.baker-search-box {
+  position: relative;
+  flex: 1;
+}
+
+.baker-search-input {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  border-radius: 12px;
+  border: 1.5px solid #F0D5E2;
+  background: #FFF9FA;
+  font-size: 13px;
+  color: #2D323A;
+  font-weight: 500;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.baker-search-input:focus {
+  border-color: #9D174D;
+  background: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(157, 23, 77, 0.12);
+}
+
+.baker-view-segmented {
+  display: flex;
+  background: #F8E9F0;
+  padding: 4px;
+  border-radius: 14px;
+  gap: 4px;
+  border: 1px solid #F2D3E3;
+}
+
+.baker-view-tab {
+  padding: 7px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  color: #701A40;
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.baker-view-tab.active-amber {
+  background: #D97706;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.3);
+}
+
+.baker-view-tab.active-pink {
+  background: #9D174D;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(157, 23, 77, 0.3);
+}
+
+.baker-category-chip {
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+  border: 1.5px solid #EED4E2;
+  background: #FFFFFF;
+  color: #6B7280;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.baker-category-chip:hover {
+  border-color: #BE185D;
+  color: #9D174D;
+  background: #FFF5F8;
+}
+
+.baker-category-chip.active {
+  background: #9D174D;
+  color: #FFFFFF;
+  border-color: #9D174D;
+  box-shadow: 0 2px 6px rgba(157, 23, 77, 0.25);
+}
+
+/* Pastry Restock Card */
+.baker-card {
+  background: #FFFFFF;
+  border-radius: 18px;
+  border: 1.5px solid #F2DCE7;
+  padding: 16px;
+  box-shadow: 0 2px 10px rgba(157, 23, 77, 0.04);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.baker-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(157, 23, 77, 0.08);
+  border-color: #E2B9CF;
+}
+
+.baker-card.card-critical {
+  border-color: #F87171;
+  background: linear-gradient(180deg, #FEF2F2 0%, #FFFFFF 30%);
+}
+
+.baker-card.card-low {
+  border-color: #FBBF24;
+  background: linear-gradient(180deg, #FFFBEB 0%, #FFFFFF 30%);
+}
+
+.baker-card-badge {
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid;
+}
+
+.baker-badge-critical {
+  background: #FEE2E2;
+  color: #B91C1C;
+  border-color: #FCA5A5;
+}
+
+.baker-badge-low {
+  background: #FEF3C7;
+  color: #B45309;
+  border-color: #FCD34D;
+}
+
+.baker-badge-good {
+  background: #DCFCE7;
+  color: #15803D;
+  border-color: #86EFAC;
+}
+
+/* Counter Gauge Bar */
+.baker-gauge-track {
+  width: 100%;
+  height: 9px;
+  background: #F3F4F6;
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid #E5E7EB;
+}
+
+.baker-gauge-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.baker-gauge-fill.fill-critical {
+  background: linear-gradient(90deg, #EF4444, #DC2626);
+}
+
+.baker-gauge-fill.fill-low {
+  background: linear-gradient(90deg, #F59E0B, #D97706);
+}
+
+.baker-gauge-fill.fill-good {
+  background: linear-gradient(90deg, #10B981, #059669);
+}
+
+/* Quick Batch Buttons */
+.baker-batch-btn {
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #FFF9FA;
+  border: 1.5px solid #F0D5E2;
+  color: #9D174D;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.baker-batch-btn:hover {
+  background: #FCE7F3;
+  border-color: #9D174D;
+  transform: translateY(-1px);
+}
+
+.baker-batch-btn:active {
+  transform: scale(0.96);
+}
+
+/* Custom Stepper */
+.baker-stepper-box {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid #F0D5E2;
+  border-radius: 10px;
+  background: #FFFFFF;
+  overflow: hidden;
+}
+
+.baker-stepper-btn {
+  padding: 6px 10px;
+  background: #FFF5F8;
+  color: #9D174D;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.baker-stepper-btn:hover:not(:disabled) {
+  background: #FCE7F3;
+}
+
+.baker-stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.baker-stepper-value {
+  min-width: 32px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #2D323A;
+  padding: 0 4px;
+}
+
+.baker-add-stock-btn {
+  background: linear-gradient(135deg, #9D174D 0%, #BE185D 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 10px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  flex: 1;
+  box-shadow: 0 2px 6px rgba(157, 23, 77, 0.25);
+  transition: all 0.15s ease;
+}
+
+.baker-add-stock-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.baker-add-stock-btn:active {
+  transform: scale(0.97);
+}
+
+/* Ingredients Hub Styles */
+.ingredient-card {
+  background: #FFFFFF;
+  border-radius: 18px;
+  border: 1.5px solid #F0DCE7;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 2px 10px rgba(157, 23, 77, 0.04);
+  transition: all 0.2s ease;
+}
+
+.ingredient-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(157, 23, 77, 0.08);
+  border-color: #E2B9CF;
+}
+
+.ingredient-card.ing-low {
+  border-color: #FBBF24;
+  background: linear-gradient(180deg, #FFFDF8 0%, #FFFFFF 35%);
+}
+
+.ingredient-card.ing-critical {
+  border-color: #F87171;
+  background: linear-gradient(180deg, #FFF9FA 0%, #FFFFFF 35%);
+}
+
+.ing-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  background: #FFF0F5;
+  border: 1px solid #FCD3E1;
+  flex-shrink: 0;
+}
+
+.ing-quick-btn {
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #FFF9FA;
+  border: 1.5px solid #F0D5E2;
+  color: #9D174D;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex: 1;
+}
+
+.ing-quick-btn:hover {
+  background: #FCE7F3;
+  border-color: #9D174D;
+  transform: translateY(-1px);
+}
+
+.ing-quick-btn:active {
+  transform: scale(0.96);
+}
+
+/* Modal for Adding Custom Ingredient */
+.baker-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(45, 50, 58, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.baker-modal-card {
+  background: #FFFFFF;
+  border-radius: 24px;
+  max-width: 460px;
+  width: 100%;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border: 1.5px solid #F9DAE7;
+  animation: modalPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPopIn {
+  0% { transform: scale(0.94) translateY(8px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
