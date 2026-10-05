@@ -3,7 +3,7 @@
 // Section 9: Dashboard, Production Queue, Today's Orders, Ingredients, Low Stock, Production Summary, Logout
 // ==========================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useShop } from '../../hooks/useShop.js';
 import { ROLES } from '../../constants/roles.js';
 import DashboardLayout from '../../components/DashboardLayout.jsx';
@@ -40,6 +40,19 @@ export default function BakerDashboard() {
       return sales.map(o => ({ ...o, orderStatus: o.orderStatus || 'Pending' }));
     }
   });
+
+  const PREP_DURATION = 20; // 20 seconds preparation timer
+
+  // Track start times for preparing orders
+  const [prepTimers, setPrepTimers] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('bakeology_prep_timers') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
   // Baker status transitions: Pending -> Preparing -> Ready for Pickup
   const handleAdvanceStatus = (orderId, targetStatus) => {
@@ -79,10 +92,124 @@ export default function BakerDashboard() {
     }
   };
 
+  // Start 20-second timer when Baker starts preparing
+  const handleStartPreparing = (orderId) => {
+    const startTime = Date.now();
+    setPrepTimers(prev => {
+      const next = { ...prev, [orderId]: startTime };
+      localStorage.setItem('bakeology_prep_timers', JSON.stringify(next));
+      return next;
+    });
+    handleAdvanceStatus(orderId, 'Preparing');
+  };
+
+  // Allow immediate completion if needed
+  const handleMarkDoneImmediately = (orderId) => {
+    setPrepTimers(prev => {
+      const next = { ...prev };
+      delete next[orderId];
+      localStorage.setItem('bakeology_prep_timers', JSON.stringify(next));
+      return next;
+    });
+    handleAdvanceStatus(orderId, 'Ready for Pickup');
+  };
+
+  // Helper to get remaining countdown seconds (20 -> 0)
+  const getOrderRemainingSeconds = (order) => {
+    const key = order.id || order.saleNumber;
+    const startTime = prepTimers[key] || prepTimers[order.id] || prepTimers[order.saleNumber];
+    if (!startTime) return PREP_DURATION;
+    const elapsed = Math.floor((currentTime - startTime) / 1000);
+    return Math.max(0, PREP_DURATION - elapsed);
+  };
+
+  // Auto-initialize timer for any existing preparing orders without timer
+  useEffect(() => {
+    const preparing = productionOrders.filter(o => o.orderStatus === 'Preparing');
+    if (preparing.length > 0) {
+      setPrepTimers(prev => {
+        let changed = false;
+        const next = { ...prev };
+        preparing.forEach(o => {
+          const key = o.id || o.saleNumber;
+          if (!next[key]) {
+            next[key] = Date.now();
+            changed = true;
+          }
+        });
+        if (changed) {
+          localStorage.setItem('bakeology_prep_timers', JSON.stringify(next));
+        }
+        return changed ? next : prev;
+      });
+    }
+  }, [productionOrders]);
+
+  // Main 20s countdown ticker: when time hits zero, automatically turns into Done
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setCurrentTime(now);
+
+      // Check all preparing orders to auto-advance when 20s expires
+      setProductionOrders(prevOrders => {
+        let hasChanges = false;
+        const updatedOrders = prevOrders.map(order => {
+          if (order.orderStatus === 'Preparing') {
+            const key = order.id || order.saleNumber;
+            const startTime = prepTimers[key] || prepTimers[order.id] || prepTimers[order.saleNumber];
+            if (startTime) {
+              const elapsedSec = (now - startTime) / 1000;
+              if (elapsedSec >= PREP_DURATION) {
+                // Timer reached 0: Automatically turn into Done (Ready for Pickup)
+                hasChanges = true;
+                return { ...order, orderStatus: 'Ready for Pickup' };
+              }
+            }
+          }
+          return order;
+        });
+
+        if (hasChanges) {
+          localStorage.setItem('bakeology_sales', JSON.stringify(updatedOrders));
+          
+          // Also sync customer orders in localStorage
+          try {
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              if (k && k.startsWith('bakeology_customer_orders_')) {
+                const custOrders = JSON.parse(localStorage.getItem(k) || '[]');
+                let custChanged = false;
+                const updatedCust = custOrders.map(co => {
+                  const matching = updatedOrders.find(uo => uo.id === co.id || uo.saleNumber === co.saleNumber);
+                  if (matching && matching.orderStatus !== co.orderStatus) {
+                    custChanged = true;
+                    return { ...co, orderStatus: matching.orderStatus };
+                  }
+                  return co;
+                });
+                if (custChanged) {
+                  localStorage.setItem(k, JSON.stringify(updatedCust));
+                }
+              }
+            }
+            window.dispatchEvent(new CustomEvent('bakeology_order_updated', { detail: { autoDone: true } }));
+          } catch (e) {
+            console.warn("Could not sync customer orders on auto-done:", e);
+          }
+          return updatedOrders;
+        }
+        return prevOrders;
+      });
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [prepTimers]);
+
   // Metrics
   const pendingOrders = productionOrders.filter(o => o.orderStatus === 'Pending' || o.orderStatus === 'Confirmed');
   const preparingOrders = productionOrders.filter(o => o.orderStatus === 'Preparing');
-  const readyOrders = productionOrders.filter(o => o.orderStatus === 'Ready for Pickup');
+  const readyOrders = productionOrders.filter(o => o.orderStatus === 'Ready for Pickup' || o.orderStatus === 'Done');
   const completedOrders = productionOrders.filter(o => o.orderStatus === 'Completed');
   const totalItemsToBake = productionOrders
     .filter(o => o.orderStatus !== 'Completed')
@@ -231,7 +358,7 @@ export default function BakerDashboard() {
                     <span className={`px-2 py-0.5 rounded-full text-2xs font-extrabold ${
                       order.orderStatus === 'Preparing' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
                     }`}>
-                      {order.orderStatus}
+                      {order.orderStatus === 'Preparing' ? `Preparing (${getOrderRemainingSeconds(order)}s)` : order.orderStatus}
                     </span>
                   </div>
                 ))
@@ -257,7 +384,8 @@ export default function BakerDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {productionOrders.filter(o => o.orderStatus !== 'Completed').map(order => {
                 const isPreparing = order.orderStatus === 'Preparing';
-                const isReady = order.orderStatus === 'Ready for Pickup';
+                const isReady = order.orderStatus === 'Ready for Pickup' || order.orderStatus === 'Done';
+                const remainingSeconds = isPreparing ? getOrderRemainingSeconds(order) : 0;
 
                 return (
                   <div key={order.id} className="bg-card p-4 rounded-xl border border-border-light shadow-2xs space-y-3 flex flex-col justify-between">
@@ -267,12 +395,12 @@ export default function BakerDashboard() {
                         <span className="font-bold text-sm text-primary block">ORDER #{order.saleNumber}</span>
                         <span className="text-2xs text-muted">Placed: {formatDate(order.date)}</span>
                       </div>
-                      <span className={`px-2.5 py-1 rounded-full text-2xs font-extrabold border ${
-                        isReady ? 'bg-green-100 text-green-700 border-green-200' :
-                        isPreparing ? 'bg-blue-100 text-blue-700 border-blue-200 animate-pulse' :
+                      <span className={`px-2.5 py-1 rounded-full text-2xs font-extrabold border transition-all ${
+                        isReady ? 'bg-green-100 text-green-700 border-green-300' :
+                        isPreparing ? 'bg-blue-100 text-blue-700 border-blue-300 animate-pulse' :
                         'bg-amber-100 text-amber-700 border-amber-200'
                       }`}>
-                        {order.orderStatus}
+                        {isReady ? 'Done' : isPreparing ? `Preparing (${remainingSeconds}s)` : order.orderStatus}
                       </span>
                     </div>
 
@@ -294,8 +422,8 @@ export default function BakerDashboard() {
                     {!isPreparing && !isReady && (
                       <button
                         type="button"
-                        className="btn-primary w-full py-2.5 rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-1.5"
-                        onClick={() => handleAdvanceStatus(order.id, 'Preparing')}
+                        className="btn-primary w-full py-2.5 rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                        onClick={() => handleStartPreparing(order.id)}
                       >
                         <Play size={14} />
                         <span>Start Preparing</span>
@@ -303,20 +431,46 @@ export default function BakerDashboard() {
                     )}
 
                     {isPreparing && (
-                      <button
-                        type="button"
-                        className="bg-green-600 hover:bg-green-700 text-white w-full py-2.5 rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 transition-all"
-                        onClick={() => handleAdvanceStatus(order.id, 'Ready for Pickup')}
-                      >
-                        <CheckCircle2 size={14} />
-                        <span>Mark as Ready (Fresh from Oven)</span>
-                      </button>
+                      <div className="p-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50/80 border border-blue-200 shadow-2xs space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          <div className="flex items-center gap-1.5 font-bold text-blue-900">
+                            <Flame size={15} className="text-amber-500 animate-bounce" />
+                            <span>Baking in Oven</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs font-mono font-extrabold text-blue-700 bg-white px-2 py-0.5 rounded-md border border-blue-200 shadow-2xs">
+                            <Clock size={12} className="animate-spin text-blue-600" />
+                            <span>{remainingSeconds}s remaining</span>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="w-full bg-blue-200/70 h-2.5 rounded-full overflow-hidden p-0.5">
+                          <div
+                            className="bg-gradient-to-r from-blue-500 via-amber-500 to-green-500 h-full rounded-full transition-all duration-500 ease-linear shadow-xs"
+                            style={{ width: `${((PREP_DURATION - remainingSeconds) / PREP_DURATION) * 100}%` }}
+                          />
+                        </div>
+
+                        <div className="flex justify-between items-center pt-0.5">
+                          <span className="text-3xs text-blue-700/80 font-medium">
+                            Turns into Done when timer reaches 0s
+                          </span>
+                          <button
+                            type="button"
+                            className="text-3xs font-bold text-blue-700 hover:text-blue-900 underline flex items-center gap-0.5 cursor-pointer"
+                            onClick={() => handleMarkDoneImmediately(order.id)}
+                          >
+                            <span>Skip to Done</span>
+                            <CheckCircle2 size={11} />
+                          </button>
+                        </div>
+                      </div>
                     )}
 
                     {isReady && (
-                      <div className="p-2 bg-green-50 rounded-xl text-center text-xs font-bold text-green-700 border border-green-200 flex items-center justify-center gap-1.5">
-                        <CheckCircle size={15} />
-                        <span>Ready at Counter for Customer</span>
+                      <div className="p-3 bg-green-50 rounded-xl text-center text-xs font-bold text-green-700 border border-green-200 flex items-center justify-center gap-2 shadow-2xs">
+                        <CheckCircle size={16} className="text-green-600" />
+                        <span>Done — Ready for Pickup at Counter</span>
                       </div>
                     )}
                   </div>
