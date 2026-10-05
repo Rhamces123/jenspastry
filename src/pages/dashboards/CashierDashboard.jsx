@@ -33,7 +33,8 @@ import {
   QrCode,
   Wallet,
   Check,
-  CheckCheck
+  CheckCheck,
+  Clock
 } from 'lucide-react';
 
 export default function CashierDashboard() {
@@ -210,7 +211,7 @@ export default function CashierDashboard() {
   const todaySalesTotal = allOrders.reduce((sum, s) => sum + (s.total || 0), 0);
   const pendingOrdersCount = allOrders.filter(o => !o.orderStatus || o.orderStatus === 'Pending').length;
   const preparingOrdersCount = allOrders.filter(o => o.orderStatus === 'Preparing').length;
-  const readyOrdersCount = allOrders.filter(o => o.orderStatus === 'Ready for Pickup').length;
+  const readyOrdersCount = allOrders.filter(o => o.orderStatus === 'Ready for Pickup' || o.orderStatus === 'Done').length;
   const completedOrdersCount = allOrders.filter(o => o.orderStatus === 'Completed').length;
 
   // Tender breakdowns
@@ -233,6 +234,7 @@ export default function CashierDashboard() {
   const filteredOrders = allOrders.filter(o => {
     if (orderFilter === 'All') return true;
     if (orderFilter === 'Pending') return !o.orderStatus || o.orderStatus === 'Pending';
+    if (orderFilter === 'Ready for Pickup') return o.orderStatus === 'Ready for Pickup' || o.orderStatus === 'Done';
     return o.orderStatus === orderFilter;
   });
 
@@ -818,7 +820,7 @@ export default function CashierDashboard() {
                       </div>
                       <span className={`px-2 py-0.5 rounded-full text-3xs font-extrabold border ${
                         order.orderStatus === 'Completed' ? 'bg-green-100 text-green-700 border-green-200' :
-                        order.orderStatus === 'Ready for Pickup' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                        (order.orderStatus === 'Ready for Pickup' || order.orderStatus === 'Done') ? 'bg-blue-100 text-blue-700 border-blue-200' :
                         order.orderStatus === 'Preparing' ? 'bg-amber-100 text-amber-700 border-amber-200' :
                         order.orderStatus === 'Confirmed' ? 'bg-purple-100 text-purple-700 border-purple-200' :
                         'bg-rose-100 text-primary border-rose-200 animate-pulse'
@@ -846,7 +848,7 @@ export default function CashierDashboard() {
                     {(!order.orderStatus || order.orderStatus === 'Pending') && (
                       <button
                         type="button"
-                        className="btn-primary py-1 px-3 rounded-xl text-2xs font-bold flex-1 flex items-center justify-center gap-1"
+                        className="btn-primary py-1 px-3 rounded-xl text-2xs font-bold flex-1 flex items-center justify-center gap-1 cursor-pointer"
                         onClick={() => handleUpdateOrderStatus(order.id || order.saleNumber, 'Confirmed')}
                       >
                         <Check size={12} />
@@ -854,15 +856,46 @@ export default function CashierDashboard() {
                       </button>
                     )}
 
-                    {order.orderStatus === 'Ready for Pickup' && (
+                    {order.orderStatus === 'Confirmed' && (
+                      <div 
+                        className="py-1 px-2.5 rounded-xl text-3xs font-extrabold flex-1 flex items-center justify-center gap-1 border"
+                        style={{ backgroundColor: '#faf5ff', color: '#7e22ce', borderColor: '#e9d5ff' }}
+                      >
+                        <Clock size={11} className="text-purple-600" />
+                        <span>Dispatched to Baker</span>
+                      </div>
+                    )}
+
+                    {order.orderStatus === 'Preparing' && (
+                      <div 
+                        className="py-1 px-2.5 rounded-xl text-3xs font-extrabold flex-1 flex items-center justify-center gap-1 border animate-pulse"
+                        style={{ backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' }}
+                      >
+                        <Clock size={11} className="text-blue-600" />
+                        <span>Baking in Kitchen</span>
+                      </div>
+                    )}
+
+                    {(order.orderStatus === 'Ready for Pickup' || order.orderStatus === 'Done') && (
                       <button
                         type="button"
-                        className="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded-xl text-2xs font-bold flex-1 flex items-center justify-center gap-1 shadow-2xs"
+                        className="btn-done-pickup py-1.5 px-3 rounded-xl text-2xs font-extrabold flex-1 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                        style={{ backgroundColor: '#16a34a', color: '#ffffff' }}
                         onClick={() => handleUpdateOrderStatus(order.id || order.saleNumber, 'Completed')}
                       >
-                        <CheckCheck size={13} />
-                        <span>Handover / Pickup</span>
+                        <CheckCheck size={14} />
+                        <span>Done Pickup</span>
                       </button>
+                    )}
+
+                    {order.orderStatus === 'Completed' && (
+                      <div 
+                        className="py-1 px-2.5 rounded-xl text-3xs font-extrabold flex-1 flex items-center justify-center gap-1 border"
+                        style={{ backgroundColor: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0' }}
+                      >
+                        <CheckCircle size={11} className="text-green-600" />
+                        <span>Picked Up</span>
+                      </div>
                     )}
 
                     <button
