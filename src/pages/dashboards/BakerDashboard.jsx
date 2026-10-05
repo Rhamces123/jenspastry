@@ -7,7 +7,8 @@ import React, { useState, useEffect } from 'react';
 import { useShop } from '../../hooks/useShop.js';
 import { ROLES } from '../../constants/roles.js';
 import DashboardLayout from '../../components/DashboardLayout.jsx';
-import { formatDate } from '../../utils/formatters.js';
+import NotificationToast from '../../components/NotificationToast.jsx';
+import { formatCurrency, formatDate } from '../../utils/formatters.js';
 import { 
   Flame, 
   Clock, 
@@ -19,11 +20,17 @@ import {
   Play, 
   CheckCircle2,
   Wheat,
-  ListOrdered
+  ListOrdered,
+  Plus,
+  Minus,
+  Package,
+  Search,
+  Zap,
+  Check
 } from 'lucide-react';
 
 export default function BakerDashboard() {
-  const { products, sales } = useShop();
+  const { products, sales, updateStock } = useShop();
   const [activeTab, setActiveTab] = useState('overview');
 
   // Shared production orders state
@@ -223,19 +230,99 @@ export default function BakerDashboard() {
     });
   });
 
-  // Sample Bakery Ingredients Stock
-  const [ingredients] = useState([
-    { name: 'All-Purpose Flour', quantity: 45, unit: 'kg', status: 'Good' },
-    { name: 'Granulated Sugar', quantity: 22, unit: 'kg', status: 'Good' },
-    { name: 'Pure Unsalted Butter', quantity: 8, unit: 'kg', status: 'Low' },
-    { name: 'Fresh Farm Eggs', quantity: 36, unit: 'pcs', status: 'Low' },
-    { name: 'Active Dry Yeast', quantity: 4.5, unit: 'kg', status: 'Good' },
-    { name: 'Fresh Whole Milk', quantity: 18, unit: 'L', status: 'Good' },
-    { name: 'Dutch Cocoa Powder', quantity: 6, unit: 'kg', status: 'Good' },
-    { name: 'Pure Vanilla Extract', quantity: 1.2, unit: 'L', status: 'Good' }
-  ]);
+  // Toast notification feedback
+  const [toast, setToast] = useState({ message: '', type: 'success' });
+  const showToast = (message, type = 'success') => setToast({ message, type });
+
+  // Low stock replenishment state & filters
+  const [stockSearchQuery, setStockSearchQuery] = useState('');
+  const [stockFilterCategory, setStockFilterCategory] = useState('All');
+  const [showLowStockOnly, setShowLowStockOnly] = useState(true);
+  const [customAddQtys, setCustomAddQtys] = useState({});
+
+  const getCustomQty = (productId) => customAddQtys[productId] ?? 12;
+  const setCustomQty = (productId, val) => {
+    setCustomAddQtys(prev => ({
+      ...prev,
+      [productId]: Math.max(1, Math.min(100, Number(val) || 1))
+    }));
+  };
+
+  const handleAddStock = (productId, amountToAdd) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    const current = Number(product.stock) || 0;
+    const newStock = Math.max(0, current + Number(amountToAdd));
+    updateStock(productId, newStock);
+    showToast(`Fresh batch baked! Added +${amountToAdd} to ${product.name} (Now: ${newStock} units)`, 'success');
+  };
+
+  const handleRestockAllLowStock = () => {
+    if (lowStockProducts.length === 0) return;
+    let count = 0;
+    lowStockProducts.forEach(p => {
+      const current = Number(p.stock) || 0;
+      updateStock(p.id, current + 12);
+      count++;
+    });
+    showToast(`Oven batch complete! Added +12 units to all ${count} low-stock pastries! 🥐`, 'success');
+  };
+
+  // Sample Bakery Ingredients Stock with localStorage persistence
+  const [ingredients, setIngredients] = useState(() => {
+    try {
+      const stored = localStorage.getItem('bakeology_ingredients');
+      return stored ? JSON.parse(stored) : [
+        { name: 'All-Purpose Flour', quantity: 45, unit: 'kg', status: 'Good' },
+        { name: 'Granulated Sugar', quantity: 22, unit: 'kg', status: 'Good' },
+        { name: 'Pure Unsalted Butter', quantity: 8, unit: 'kg', status: 'Low' },
+        { name: 'Fresh Farm Eggs', quantity: 36, unit: 'pcs', status: 'Low' },
+        { name: 'Active Dry Yeast', quantity: 4.5, unit: 'kg', status: 'Good' },
+        { name: 'Fresh Whole Milk', quantity: 18, unit: 'L', status: 'Good' },
+        { name: 'Dutch Cocoa Powder', quantity: 6, unit: 'kg', status: 'Good' },
+        { name: 'Pure Vanilla Extract', quantity: 1.2, unit: 'L', status: 'Good' }
+      ];
+    } catch {
+      return [
+        { name: 'All-Purpose Flour', quantity: 45, unit: 'kg', status: 'Good' },
+        { name: 'Granulated Sugar', quantity: 22, unit: 'kg', status: 'Good' },
+        { name: 'Pure Unsalted Butter', quantity: 8, unit: 'kg', status: 'Low' },
+        { name: 'Fresh Farm Eggs', quantity: 36, unit: 'pcs', status: 'Low' },
+        { name: 'Active Dry Yeast', quantity: 4.5, unit: 'kg', status: 'Good' },
+        { name: 'Fresh Whole Milk', quantity: 18, unit: 'L', status: 'Good' },
+        { name: 'Dutch Cocoa Powder', quantity: 6, unit: 'kg', status: 'Good' },
+        { name: 'Pure Vanilla Extract', quantity: 1.2, unit: 'L', status: 'Good' }
+      ];
+    }
+  });
+
+  const handleRestockIngredient = (name, amount) => {
+    setIngredients(prev => {
+      const updated = prev.map(ing => {
+        if (ing.name === name) {
+          const newQty = Math.round((ing.quantity + amount) * 10) / 10;
+          return {
+            ...ing,
+            quantity: newQty,
+            status: (name === 'Fresh Farm Eggs' && newQty >= 40) || (name !== 'Fresh Farm Eggs' && newQty >= 10) ? 'Good' : 'Low'
+          };
+        }
+        return ing;
+      });
+      localStorage.setItem('bakeology_ingredients', JSON.stringify(updated));
+      return updated;
+    });
+    showToast(`Ingredient replenished: +${amount} to ${name}!`, 'success');
+  };
 
   const lowStockProducts = products.filter(p => p.stock <= 10);
+
+  const displayedStockProducts = products.filter(p => {
+    const matchesSearch = !stockSearchQuery.trim() || p.name.toLowerCase().includes(stockSearchQuery.toLowerCase());
+    const matchesCategory = stockFilterCategory === 'All' || (p.category && p.category.toLowerCase() === stockFilterCategory.toLowerCase());
+    const matchesLowStock = !showLowStockOnly || p.stock <= 10;
+    return matchesSearch && matchesCategory && matchesLowStock;
+  });
 
   const navItems = [
     { id: 'overview', label: 'Dashboard', icon: Flame },
@@ -253,26 +340,35 @@ export default function BakerDashboard() {
         activeTab === 'overview' ? 'Baker Station & Oven Overview' :
         activeTab === 'queue' ? 'Live Bakery Production Queue' :
         activeTab === 'today-orders' ? "Today's Baking Requirements" :
-        activeTab === 'ingredients' ? 'Bakery Raw Ingredients' :
-        activeTab === 'low-stock' ? 'Low Stock Warnings' :
+        activeTab === 'ingredients' ? 'Bakery Raw Ingredients & Restock' :
+        activeTab === 'low-stock' ? 'Bakery Inventory & Counter Restock' :
         'Daily Baking Production Summary'
       }
       subtitle={
         activeTab === 'overview' ? 'Real-time baking orders, batch quantities, and oven status' :
         activeTab === 'queue' ? 'Start baking orders and mark hot batches as ready for counter' :
         activeTab === 'today-orders' ? 'Aggregated quantities of pastries required for current shift' :
-        activeTab === 'ingredients' ? 'Monitor dough, butter, and pantry supplies' :
-        activeTab === 'low-stock' ? 'Pastries and ingredients requiring restock attention' :
+        activeTab === 'ingredients' ? 'Monitor and replenish dough, butter, and pantry supplies' :
+        activeTab === 'low-stock' ? 'Bake fresh batches, replenish display trays, and manage stock levels' :
         'Completed loaves, cakes, and pastry tallies'
       }
       navigationItems={navItems}
       activeItem={activeTab}
       onSelectItem={setActiveTab}
       headerActions={
-        activeTab !== 'queue' && (pendingOrders.length + preparingOrders.length) > 0 ? (
+        activeTab === 'low-stock' && lowStockProducts.length > 0 ? (
           <button
             type="button"
-            className="btn-primary py-1.5 px-3 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
+            className="btn-primary py-1.5 px-3 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+            onClick={handleRestockAllLowStock}
+          >
+            <Zap size={14} className="text-amber-300 fill-amber-300" />
+            <span>Restock All Low ({lowStockProducts.length})</span>
+          </button>
+        ) : activeTab !== 'queue' && (pendingOrders.length + preparingOrders.length) > 0 ? (
+          <button
+            type="button"
+            className="btn-primary py-1.5 px-3 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
             onClick={() => setActiveTab('queue')}
           >
             <Clock size={14} />
@@ -512,21 +608,51 @@ export default function BakerDashboard() {
       {/* 4. INGREDIENTS TAB */}
       {activeTab === 'ingredients' && (
         <div className="space-y-3">
-          <h3 className="font-bold text-xs text-primary">Bakery Raw Ingredients Inventory</h3>
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="font-bold text-xs text-primary flex items-center gap-1.5">
+                <Wheat size={16} className="text-amber-600" />
+                <span>Bakery Raw Ingredients & Pantry Inventory</span>
+              </h3>
+              <p className="text-3xs text-muted">Monitor and restock dough, butter, eggs, and sugars</p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             {ingredients.map(ing => (
-              <div key={ing.name} className="bg-card p-3 rounded-xl border border-border-light space-y-2 shadow-2xs">
-                <div className="flex justify-between items-start">
-                  <span className="font-bold text-xs text-primary">{ing.name}</span>
-                  <span className={`text-2xs px-2 py-0.5 rounded-full font-bold ${
-                    ing.status === 'Low' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
-                  }`}>
-                    {ing.status}
-                  </span>
+              <div key={ing.name} className="bg-card p-3.5 rounded-2xl border border-border-light space-y-2.5 shadow-2xs flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start">
+                    <span className="font-bold text-xs text-text-primary leading-tight">{ing.name}</span>
+                    <span className={`text-3xs px-2 py-0.5 rounded-full font-black border ${
+                      ing.status === 'Low' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-green-100 text-green-700 border-green-200'
+                    }`}>
+                      {ing.status}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-border-light flex justify-between text-xs mt-2">
+                    <span className="text-muted text-3xs font-bold">In Stock:</span>
+                    <span className="font-black text-primary">{ing.quantity} {ing.unit}</span>
+                  </div>
                 </div>
-                <div className="pt-2 border-t border-border-light flex justify-between text-xs">
-                  <span className="text-muted">In Stock:</span>
-                  <span className="font-bold text-text-primary">{ing.quantity} {ing.unit}</span>
+
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    className="py-1 px-1 rounded-lg bg-cream-pure border border-border-medium hover:border-primary text-3xs font-black text-primary transition-all flex items-center justify-center gap-0.5 cursor-pointer shadow-2xs"
+                    onClick={() => handleRestockIngredient(ing.name, ing.unit === 'pcs' ? 12 : 5)}
+                  >
+                    <Plus size={10} />
+                    <span>+{ing.unit === 'pcs' ? '12 pcs' : '5 ' + ing.unit}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="py-1 px-1 rounded-lg bg-cream-pure border border-border-medium hover:border-primary text-3xs font-black text-primary transition-all flex items-center justify-center gap-0.5 cursor-pointer shadow-2xs"
+                    onClick={() => handleRestockIngredient(ing.name, ing.unit === 'pcs' ? 30 : 15)}
+                  >
+                    <Plus size={10} />
+                    <span>+{ing.unit === 'pcs' ? '30 pcs' : '15 ' + ing.unit}</span>
+                  </button>
                 </div>
               </div>
             ))}
@@ -534,32 +660,358 @@ export default function BakerDashboard() {
         </div>
       )}
 
-      {/* 5. LOW STOCK TAB */}
+      {/* 5. LOW STOCK & INVENTORY REPLENISHMENT TAB */}
       {activeTab === 'low-stock' && (
-        <div className="space-y-3 max-w-xl mx-auto">
-          <div className="bg-card p-4 rounded-xl border border-border-light space-y-3 shadow-2xs">
-            <h3 className="font-bold text-xs text-primary flex items-center gap-1.5">
-              <AlertTriangle size={16} className="text-amber-600" />
-              <span>Low Stock Bakery Alerts (&lt; 10 units)</span>
-            </h3>
+        <div className="space-y-4">
+          {/* Top Hero Replenishment Card */}
+          <div className="bg-gradient-to-r from-primary to-pink-900 p-5 rounded-2xl text-white shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="space-y-1">
+              <span className="text-2xs font-extrabold uppercase tracking-widest text-pink-200 bg-white/20 px-2.5 py-0.5 rounded-full inline-block">
+                Oven Production & Counter Restock
+              </span>
+              <h2 className="text-lg font-black font-serif tracking-tight">
+                {lowStockProducts.length > 0 ? `${lowStockProducts.length} Pastries Require Oven Restock` : 'All Pastry Trays Are Fully Stocked!'}
+              </h2>
+              <p className="text-xs text-pink-100 max-w-xl leading-relaxed">
+                Bake and replenish freshly prepared loaves, delicate cakes, and pastries directly to the counter to keep customer trays full.
+              </p>
+            </div>
 
-            {lowStockProducts.length === 0 ? (
-              <p className="text-xs text-muted text-center py-4">All pastries are well stocked!</p>
+            {lowStockProducts.length > 0 ? (
+              <button
+                type="button"
+                className="bg-white text-primary px-4 py-2.5 rounded-xl text-xs font-black shadow-md hover:bg-cream transition-all flex items-center gap-2 cursor-pointer shrink-0"
+                onClick={handleRestockAllLowStock}
+              >
+                <Zap size={16} className="text-amber-500 fill-amber-500" />
+                <span>Bake & Restock All (+12 Each)</span>
+              </button>
             ) : (
-              <div className="divide-y divide-border-light">
-                {lowStockProducts.map(p => (
-                  <div key={p.id} className="py-2.5 flex justify-between items-center text-xs">
-                    <div>
-                      <span className="font-bold text-primary block">{p.name}</span>
-                      <span className="text-2xs text-muted">{p.category}</span>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full text-2xs font-extrabold bg-red-100 text-red-700 border border-red-200">
-                      {p.stock} units left
-                    </span>
-                  </div>
-                ))}
+              <div className="bg-white/20 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 text-white shrink-0">
+                <CheckCircle size={16} className="text-green-300" />
+                <span>Counter Trays Fully Stocked</span>
               </div>
             )}
+          </div>
+
+          {/* Key Metrics Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-card p-3 rounded-xl border border-border-light shadow-2xs">
+              <span className="text-3xs font-extrabold uppercase tracking-wider text-muted block">Low Stock Alerts</span>
+              <span className="text-xl font-black text-amber-600 block mt-0.5">{lowStockProducts.length}</span>
+              <span className="text-3xs text-muted block mt-0.5">&le; 10 units left</span>
+            </div>
+
+            <div className="bg-card p-3 rounded-xl border border-border-light shadow-2xs">
+              <span className="text-3xs font-extrabold uppercase tracking-wider text-muted block">Out of Stock</span>
+              <span className="text-xl font-black text-danger block mt-0.5">{products.filter(p => p.stock === 0).length}</span>
+              <span className="text-3xs text-muted block mt-0.5">Sold out / critical</span>
+            </div>
+
+            <div className="bg-card p-3 rounded-xl border border-border-light shadow-2xs">
+              <span className="text-3xs font-extrabold uppercase tracking-wider text-muted block">Healthy Trays</span>
+              <span className="text-xl font-black text-success block mt-0.5">{products.filter(p => p.stock > 10).length}</span>
+              <span className="text-3xs text-muted block mt-0.5">&gt; 10 units available</span>
+            </div>
+
+            <div className="bg-card p-3 rounded-xl border border-border-light shadow-2xs">
+              <span className="text-3xs font-extrabold uppercase tracking-wider text-muted block">Total Finished Stock</span>
+              <span className="text-xl font-black text-primary block mt-0.5">{products.reduce((acc, p) => acc + (Number(p.stock) || 0), 0)}</span>
+              <span className="text-3xs text-muted block mt-0.5">Units in display</span>
+            </div>
+          </div>
+
+          {/* Search, Filter Mode & Category Controls */}
+          <div className="bg-card p-3.5 rounded-2xl border border-border-light shadow-2xs space-y-3">
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2.5">
+              {/* Search Bar */}
+              <div className="relative flex-1">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <input
+                  type="text"
+                  placeholder="Search pastry by name to add stock..."
+                  value={stockSearchQuery}
+                  onChange={(e) => setStockSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-border-medium text-xs bg-cream-pure focus:bg-white focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              {/* View Toggle: Only Low vs All */}
+              <div className="flex rounded-xl p-0.5 bg-cream-pure border border-border-light shrink-0">
+                <button
+                  type="button"
+                  className={`px-3 py-1 text-2xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                    showLowStockOnly 
+                      ? 'bg-amber-500 text-white shadow-2xs' 
+                      : 'text-muted hover:text-primary'
+                  }`}
+                  onClick={() => setShowLowStockOnly(true)}
+                >
+                  Low Stock Only ({lowStockProducts.length})
+                </button>
+                <button
+                  type="button"
+                  className={`px-3 py-1 text-2xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                    !showLowStockOnly 
+                      ? 'bg-primary text-white shadow-2xs' 
+                      : 'text-muted hover:text-primary'
+                  }`}
+                  onClick={() => setShowLowStockOnly(false)}
+                >
+                  All Pastries ({products.length})
+                </button>
+              </div>
+            </div>
+
+            {/* Category Filter Pills */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {['All', 'Bread', 'Cake', 'Pastry', 'Beverage', 'Dessert'].map(cat => (
+                <button
+                  key={cat}
+                  type="button"
+                  className={`px-3 py-1 rounded-full text-2xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    stockFilterCategory === cat
+                      ? 'bg-primary text-white shadow-2xs'
+                      : 'bg-white text-muted border border-border-light hover:border-primary'
+                  }`}
+                  onClick={() => setStockFilterCategory(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Pastries Restock Grid */}
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-xs text-primary flex items-center gap-1.5">
+                <Package size={15} className="text-primary" />
+                <span>Pastry Counter Trays ({displayedStockProducts.length})</span>
+              </h3>
+              <span className="text-3xs text-muted">Tap quick batch or enter custom amount to add stock</span>
+            </div>
+
+            {displayedStockProducts.length === 0 ? (
+              <div className="bg-card p-10 rounded-2xl border border-dashed border-border-medium text-center space-y-2">
+                <CheckCircle size={32} className="mx-auto text-success" />
+                <h4 className="font-bold text-sm text-primary">No pastries matching filter</h4>
+                <p className="text-xs text-muted">All pastries in this view have healthy stock levels above 10 units.</p>
+                <button
+                  type="button"
+                  className="btn-secondary py-1.5 px-3 text-xs font-bold rounded-xl mt-2 cursor-pointer"
+                  onClick={() => {
+                    setShowLowStockOnly(false);
+                    setStockFilterCategory('All');
+                    setStockSearchQuery('');
+                  }}
+                >
+                  Show All Pastries
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {displayedStockProducts.map(p => {
+                  const isOutOfStock = p.stock === 0;
+                  const isCritical = p.stock > 0 && p.stock <= 5;
+                  const isLow = p.stock > 5 && p.stock <= 10;
+                  const currentCustomQty = getCustomQty(p.id);
+                  const progressPct = Math.min(100, Math.round((p.stock / 50) * 100));
+
+                  return (
+                    <div 
+                      key={p.id} 
+                      className={`bg-card p-3.5 rounded-2xl border transition-all shadow-2xs space-y-3 flex flex-col justify-between ${
+                        isOutOfStock ? 'border-red-300 bg-red-50/20' :
+                        isCritical ? 'border-amber-300 bg-amber-50/20' :
+                        'border-border-light hover:border-border-medium'
+                      }`}
+                    >
+                      <div>
+                        {/* Top Card Header */}
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-xl bg-pink-50 border border-border-light flex items-center justify-center shrink-0">
+                              {p.imageUrl ? (
+                                <img src={p.imageUrl} alt={p.name} className="w-7 h-7 object-contain" />
+                              ) : (
+                                <span className="text-xl">{p.icon || '🥐'}</span>
+                              )}
+                            </div>
+                            <div>
+                              <h4 className="font-extrabold text-xs text-primary leading-tight">{p.name}</h4>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-3xs font-extrabold px-2 py-0.5 rounded-full bg-pink-100 text-primary">
+                                  {p.category}
+                                </span>
+                                <span className="text-3xs text-muted font-bold">
+                                  {formatCurrency(p.price)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Status Badge */}
+                          <span className={`px-2 py-0.5 rounded-full text-3xs font-black border ${
+                            isOutOfStock ? 'bg-red-100 text-red-700 border-red-300' :
+                            isCritical ? 'bg-red-100 text-red-700 border-red-300' :
+                            isLow ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                            'bg-green-100 text-green-800 border-green-300'
+                          }`}>
+                            {isOutOfStock ? 'Sold Out' : isCritical ? `Critical (${p.stock})` : isLow ? `${p.stock} left` : `${p.stock} units`}
+                          </span>
+                        </div>
+
+                        {/* Stock Capacity Progress Bar */}
+                        <div className="mt-3 space-y-1">
+                          <div className="flex justify-between text-3xs font-bold text-muted">
+                            <span>Counter Display Level</span>
+                            <span>{p.stock} / 50 units</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden border border-border-light">
+                            <div 
+                              className={`h-full transition-all duration-300 rounded-full ${
+                                isOutOfStock ? 'bg-red-500 w-0' :
+                                isCritical ? 'bg-red-500' :
+                                isLow ? 'bg-amber-500' :
+                                'bg-green-600'
+                              }`}
+                              style={{ width: `${progressPct}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Replenish Actions */}
+                      <div className="pt-2 border-t border-border-light space-y-2">
+                        {/* Quick Preset Buttons */}
+                        <div>
+                          <span className="text-3xs font-bold text-muted uppercase tracking-wider block mb-1">Quick Batch Bake:</span>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <button
+                              type="button"
+                              className="py-1 px-1.5 rounded-lg border border-border-medium bg-cream-pure hover:bg-pink-100 text-3xs font-black text-primary transition-all flex items-center justify-center gap-0.5 cursor-pointer"
+                              onClick={() => handleAddStock(p.id, 6)}
+                              title="Bake half dozen"
+                            >
+                              <Plus size={10} />
+                              <span>6 pcs</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="py-1 px-1.5 rounded-lg border border-border-medium bg-cream-pure hover:bg-pink-100 text-3xs font-black text-primary transition-all flex items-center justify-center gap-0.5 cursor-pointer"
+                              onClick={() => handleAddStock(p.id, 12)}
+                              title="Bake 1 dozen batch"
+                            >
+                              <Plus size={10} />
+                              <span>12 pcs</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="py-1 px-1.5 rounded-lg border border-border-medium bg-cream-pure hover:bg-pink-100 text-3xs font-black text-primary transition-all flex items-center justify-center gap-0.5 cursor-pointer"
+                              onClick={() => handleAddStock(p.id, 24)}
+                              title="Bake full tray"
+                            >
+                              <Plus size={10} />
+                              <span>24 pcs</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Custom Counter & Add Stock Button */}
+                        <div className="flex items-center gap-1.5 pt-0.5">
+                          <div className="flex items-center border border-border-medium rounded-lg bg-white overflow-hidden shadow-2xs shrink-0">
+                            <button
+                              type="button"
+                              className="px-2 py-1 text-primary hover:bg-pink-50 transition-colors disabled:opacity-30 cursor-pointer"
+                              onClick={() => setCustomQty(p.id, currentCustomQty - 1)}
+                              disabled={currentCustomQty <= 1}
+                              aria-label="Decrease quantity"
+                            >
+                              <Minus size={11} />
+                            </button>
+                            <span className="px-2 py-0.5 text-2xs font-black text-primary min-w-[24px] text-center">
+                              {currentCustomQty}
+                            </span>
+                            <button
+                              type="button"
+                              className="px-2 py-1 text-primary hover:bg-pink-50 transition-colors cursor-pointer"
+                              onClick={() => setCustomQty(p.id, currentCustomQty + 1)}
+                              aria-label="Increase quantity"
+                            >
+                              <Plus size={11} />
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="btn-primary py-1 px-2.5 rounded-lg text-2xs font-extrabold flex-1 flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
+                            onClick={() => handleAddStock(p.id, currentCustomQty)}
+                          >
+                            <ChefHat size={12} />
+                            <span>Add Stock</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Raw Ingredients Restock Box */}
+          <div className="bg-card p-4 rounded-2xl border border-border-light space-y-3 shadow-2xs mt-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-xs text-primary flex items-center gap-1.5">
+                  <Wheat size={16} className="text-amber-600" />
+                  <span>Bakery Raw Ingredients & Supplies</span>
+                </h3>
+                <p className="text-3xs text-muted">Keep baking supplies stocked to prevent kitchen production halts</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+              {ingredients.map(ing => (
+                <div key={ing.name} className="p-3 rounded-xl bg-cream-pure border border-border-light space-y-2 flex flex-col justify-between">
+                  <div className="flex justify-between items-start">
+                    <span className="font-bold text-xs text-text-primary leading-tight">{ing.name}</span>
+                    <span className={`text-3xs px-2 py-0.5 rounded-full font-black border ${
+                      ing.status === 'Low' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-green-100 text-green-700 border-green-200'
+                    }`}>
+                      {ing.status}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs pt-1 border-t border-border-light">
+                    <span className="text-3xs text-muted font-bold">In Stock:</span>
+                    <span className="font-black text-primary">{ing.quantity} {ing.unit}</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1 pt-1">
+                    <button
+                      type="button"
+                      className="py-1 px-1 rounded-lg bg-white border border-border-medium hover:border-primary text-3xs font-black text-primary transition-all flex items-center justify-center gap-0.5 cursor-pointer shadow-2xs"
+                      onClick={() => handleRestockIngredient(ing.name, ing.unit === 'pcs' ? 12 : 5)}
+                    >
+                      <Plus size={9} />
+                      <span>+{ing.unit === 'pcs' ? '12 pcs' : '5 ' + ing.unit}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="py-1 px-1 rounded-lg bg-white border border-border-medium hover:border-primary text-3xs font-black text-primary transition-all flex items-center justify-center gap-0.5 cursor-pointer shadow-2xs"
+                      onClick={() => handleRestockIngredient(ing.name, ing.unit === 'pcs' ? 30 : 15)}
+                    >
+                      <Plus size={9} />
+                      <span>+{ing.unit === 'pcs' ? '30 pcs' : '15 ' + ing.unit}</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -590,6 +1042,13 @@ export default function BakerDashboard() {
           </div>
         </div>
       )}
+
+      {/* Real-time Notification Toast Feedback */}
+      <NotificationToast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ message: '', type: 'success' })}
+      />
     </DashboardLayout>
   );
 }
