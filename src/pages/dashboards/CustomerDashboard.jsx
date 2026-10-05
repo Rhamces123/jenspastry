@@ -9,6 +9,7 @@ import { useShop } from '../../hooks/useShop.js';
 import { ROLES } from '../../constants/roles.js';
 import DashboardLayout from '../../components/DashboardLayout.jsx';
 import ReceiptModal from '../../components/ReceiptModal.jsx';
+import NotificationToast from '../../components/NotificationToast.jsx';
 import { formatCurrency, formatDate } from '../../utils/formatters.js';
 import { isFirebaseConfigured, db } from '../../firebase.js';
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
@@ -30,7 +31,8 @@ import {
   ArrowRight,
   Package,
   Calendar,
-  Croissant
+  Croissant,
+  X
 } from 'lucide-react';
 
 export default function CustomerDashboard() {
@@ -56,6 +58,12 @@ export default function CustomerDashboard() {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [profileName, setProfileName] = useState(userProfile?.fullName || currentUser?.displayName || '');
   const [profileMessage, setProfileMessage] = useState('');
+
+  // Pastry Quick-Buy & Details Modal State
+  const [selectedPastryModal, setSelectedPastryModal] = useState(null);
+  const [modalQty, setModalQty] = useState(1);
+  const [toast, setToast] = useState({ message: '', type: 'success' });
+  const showToast = (message, type = 'success') => setToast({ message, type });
 
   const displayName = userProfile?.fullName || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Pastry Lover';
 
@@ -96,14 +104,42 @@ export default function CustomerDashboard() {
   }, [currentUser]);
 
   // Cart operations
-  const addToCart = (product) => {
+  const addToCart = (product, quantity = 1) => {
+    if (!product || product.stock <= 0) return;
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
-        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+        const nextQty = Math.min(product.stock, existing.quantity + quantity);
+        return prev.map(item => item.id === product.id ? { ...item, quantity: nextQty } : item);
       }
-      return [...prev, { ...product, quantity: 1 }];
+      const initialQty = Math.min(product.stock, Math.max(1, quantity));
+      return [...prev, { ...product, quantity: initialQty }];
     });
+  };
+
+  // Pastry Quick-Buy & Details Modal Handlers
+  const handleOpenPastryModal = (product) => {
+    setSelectedPastryModal(product);
+    setModalQty(1);
+  };
+
+  const handleClosePastryModal = () => {
+    setSelectedPastryModal(null);
+  };
+
+  const handleAddToCartFromModal = () => {
+    if (!selectedPastryModal || selectedPastryModal.stock <= 0) return;
+    addToCart(selectedPastryModal, modalQty);
+    showToast(`Added ${modalQty}x "${selectedPastryModal.name}" to your basket! 🥐`, 'success');
+    handleClosePastryModal();
+  };
+
+  const handleBuyNowFromModal = () => {
+    if (!selectedPastryModal || selectedPastryModal.stock <= 0) return;
+    addToCart(selectedPastryModal, modalQty);
+    showToast(`Proceeding to checkout with "${selectedPastryModal.name}"!`, 'success');
+    handleClosePastryModal();
+    setActiveTab('cart');
   };
 
   const updateCartQty = (productId, delta) => {
@@ -212,7 +248,12 @@ export default function CustomerDashboard() {
     const isLowStock = product.stock > 0 && product.stock <= 10;
 
     return (
-      <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs relative hover:border-primary-light transition-all">
+      <div 
+        key={product.id} 
+        className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs relative hover:border-primary-light transition-all cursor-pointer group hover:shadow-md"
+        onClick={() => handleOpenPastryModal(product)}
+        title={`Click to view price and order ${product.name}`}
+      >
         <div>
           {/* Picture Holder Frame */}
           <div className="picture-holder mb-2.5">
@@ -220,17 +261,20 @@ export default function CustomerDashboard() {
               <img
                 src={product.imageUrl}
                 alt={product.name}
-                className="w-full h-full object-contain p-1.5 hover:scale-105 transition-transform"
+                className="w-full h-full object-contain p-1.5 group-hover:scale-105 transition-transform"
               />
             ) : (
-              <span className="text-4xl">{product.icon || '🥐'}</span>
+              <span className="text-4xl group-hover:scale-110 transition-transform inline-block">{product.icon || '🥐'}</span>
             )}
 
             {/* Favorite button inside picture holder (Top Right) */}
             <button
               type="button"
               className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white/90 text-muted hover:text-red-500 flex items-center justify-center shadow-xs hover:bg-white transition-all cursor-pointer"
-              onClick={() => toggleFavorite(product.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFavorite(product.id);
+              }}
               title={isFav ? "Remove favorite" : "Add to favorites"}
             >
               <Heart size={13} className={isFav ? "fill-red-500 text-red-500" : ""} />
@@ -251,7 +295,7 @@ export default function CustomerDashboard() {
           {/* Product Details */}
           <div className="space-y-0.5 text-center">
             <span className="text-2xs text-muted block uppercase tracking-wider font-semibold">{product.category}</span>
-            <h4 className="font-bold text-xs text-primary truncate" title={product.name}>{product.name}</h4>
+            <h4 className="font-bold text-xs text-primary truncate group-hover:text-accent transition-colors" title={product.name}>{product.name}</h4>
             <span className="text-2xs font-medium text-muted block">
               Stock: <strong className={isOutOfStock ? "text-danger" : "text-primary"}>{product.stock}</strong>
             </span>
@@ -263,12 +307,16 @@ export default function CustomerDashboard() {
           <span className="font-bold text-sm text-primary shrink-0">{formatCurrency(product.price)}</span>
           <button
             type="button"
-            className="px-2.5 py-1 rounded-lg bg-primary text-white text-2xs font-bold flex items-center gap-1 hover:bg-primary-dark transition-all disabled:opacity-50 shrink-0"
-            onClick={() => addToCart(product)}
+            className="px-2.5 py-1 rounded-lg bg-primary text-white text-2xs font-bold flex items-center gap-1 hover:bg-primary-dark transition-all disabled:opacity-50 shrink-0 shadow-2xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenPastryModal(product);
+            }}
             disabled={isOutOfStock}
+            title={isOutOfStock ? "Out of Stock" : `Click to view price & buy ${product.name}`}
           >
-            <Plus size={11} />
-            <span>{isOutOfStock ? 'Out' : 'Add'}</span>
+            <span>{isOutOfStock ? 'Sold Out' : 'Buy'}</span>
+            {!isOutOfStock && <ArrowRight size={11} />}
           </button>
         </div>
       </div>
@@ -877,6 +925,180 @@ export default function CustomerDashboard() {
         isOpen={isReceiptModalOpen}
         onClose={() => setIsReceiptModalOpen(false)}
         sale={activeReceiptSale}
+      />
+
+      {/* Pastry Quick-Buy & Details Modal */}
+      {selectedPastryModal && (
+        <div className="modal-backdrop" onClick={handleClosePastryModal}>
+          <div 
+            className="modal-content mobile-card pastry-buy-modal" 
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pastry-modal-title"
+          >
+            {/* Modal Header */}
+            <div className="modal-header">
+              <div className="flex items-center gap-2">
+                <span className="text-xl" role="img" aria-label={selectedPastryModal.category}>
+                  {selectedPastryModal.icon || '🥐'}
+                </span>
+                <div>
+                  <h3 id="pastry-modal-title" className="modal-title leading-tight">
+                    {selectedPastryModal.name}
+                  </h3>
+                  <span className="text-2xs font-semibold text-muted uppercase tracking-wider">
+                    {selectedPastryModal.category}
+                  </span>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                className="close-btn" 
+                onClick={handleClosePastryModal}
+                aria-label="Close modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="space-y-3.5">
+              {/* Picture Frame */}
+              <div className="picture-holder h-44 relative rounded-2xl overflow-hidden bg-gradient-to-b from-pink-50 to-pink-100 flex items-center justify-center border border-border-light shadow-2xs">
+                {selectedPastryModal.imageUrl ? (
+                  <img
+                    src={selectedPastryModal.imageUrl}
+                    alt={selectedPastryModal.name}
+                    className="w-full h-full object-contain p-2 hover:scale-105 transition-transform"
+                  />
+                ) : (
+                  <span className="text-6xl">{selectedPastryModal.icon || '🥐'}</span>
+                )}
+
+                {/* Category Pill Tag */}
+                <span className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full text-2xs font-extrabold bg-white/95 text-primary border border-border-light shadow-xs">
+                  {selectedPastryModal.category}
+                </span>
+
+                {/* Favorite Heart Button */}
+                <button
+                  type="button"
+                  className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/95 text-muted hover:text-red-500 flex items-center justify-center shadow-xs hover:bg-white transition-all cursor-pointer z-10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFavorite(selectedPastryModal.id);
+                  }}
+                  title={favorites.includes(selectedPastryModal.id) ? "Remove favorite" : "Add to favorites"}
+                >
+                  <Heart 
+                    size={15} 
+                    className={favorites.includes(selectedPastryModal.id) ? "fill-red-500 text-red-500" : ""} 
+                  />
+                </button>
+              </div>
+
+              {/* Description */}
+              <p className="text-xs text-muted leading-relaxed">
+                {selectedPastryModal.category === 'Bread' ? 'Freshly baked artisanal bread with a golden crisp crust and soft, fragrant interior. Baked fresh every morning.' :
+                 selectedPastryModal.category === 'Cake' ? 'Decadent layered confectionery made with pure butter, rich chocolate or fruits, and velvety smooth cream.' :
+                 selectedPastryModal.category === 'Pastry' ? 'Flaky French-style pastry crafted by hand with layers of golden butter baked to perfection.' :
+                 selectedPastryModal.category === 'Beverage' ? 'Freshly brewed artisan coffee or refreshing blended beverage, the perfect companion for your pastry.' :
+                 'Handcrafted artisanal bakery specialty prepared with pure butter, love, and natural ingredients.'}
+              </p>
+
+              {/* Price & Subtotal Highlight Card */}
+              <div className="p-3 rounded-xl bg-pink-50/80 border border-pink-200/80 flex items-center justify-between shadow-2xs">
+                <div>
+                  <span className="text-2xs font-extrabold text-muted uppercase tracking-wider block">Unit Price</span>
+                  <span className="text-2xl font-black text-primary">{formatCurrency(selectedPastryModal.price)}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xs font-extrabold text-muted uppercase tracking-wider block">Total Due</span>
+                  <span className="text-xl font-black text-accent">
+                    {formatCurrency(selectedPastryModal.price * modalQty)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Stock Status & Quantity Controls */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-cream-pure border border-border-light">
+                <div>
+                  <span className="text-2xs font-bold text-muted block mb-0.5">Availability</span>
+                  {selectedPastryModal.stock <= 0 ? (
+                    <span className="text-xs font-bold text-danger flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span> Sold Out
+                    </span>
+                  ) : selectedPastryModal.stock <= 10 ? (
+                    <span className="text-xs font-bold text-amber-700 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span> Low Stock ({selectedPastryModal.stock} left)
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-green-700 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span> In Stock ({selectedPastryModal.stock} units)
+                    </span>
+                  )}
+                </div>
+
+                {selectedPastryModal.stock > 0 && (
+                  <div className="flex items-center border border-border-medium rounded-xl bg-white overflow-hidden shadow-2xs">
+                    <button
+                      type="button"
+                      className="px-2.5 py-1.5 text-primary hover:bg-pink-50 transition-colors disabled:opacity-30"
+                      onClick={() => setModalQty(prev => Math.max(1, prev - 1))}
+                      disabled={modalQty <= 1}
+                      aria-label="Decrease quantity"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <span className="px-3 py-1 text-sm font-extrabold text-primary min-w-[32px] text-center">
+                      {modalQty}
+                    </span>
+                    <button
+                      type="button"
+                      className="px-2.5 py-1.5 text-primary hover:bg-pink-50 transition-colors disabled:opacity-30"
+                      onClick={() => setModalQty(prev => Math.min(selectedPastryModal.stock, prev + 1))}
+                      disabled={modalQty >= selectedPastryModal.stock}
+                      aria-label="Increase quantity"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons: Add to Basket & Buy Now */}
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <button
+                  type="button"
+                  className="btn-secondary py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs hover:border-primary disabled:opacity-50"
+                  onClick={handleAddToCartFromModal}
+                  disabled={selectedPastryModal.stock <= 0}
+                >
+                  <ShoppingCart size={15} />
+                  <span>Add to Basket</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-primary py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md disabled:opacity-50"
+                  onClick={handleBuyNowFromModal}
+                  disabled={selectedPastryModal.stock <= 0}
+                >
+                  <CheckCircle size={15} />
+                  <span>Buy Now</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Toast */}
+      <NotificationToast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ message: '', type: 'success' })}
       />
     </DashboardLayout>
   );
