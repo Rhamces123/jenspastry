@@ -3,7 +3,7 @@
 // Section 7: Home, Browse Products, Cart, My Orders, Order Tracking, Favorites, Notifications, My Account, Logout
 // ==========================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/useAuth.js';
 import { useShop } from '../../hooks/useShop.js';
 import { ROLES } from '../../constants/roles.js';
@@ -67,41 +67,78 @@ export default function CustomerDashboard() {
 
   const displayName = userProfile?.fullName || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Pastry Lover';
 
-  // Sync Customer Orders from Firestore & LocalStorage
-  useEffect(() => {
+  // Sync Customer Orders from Firestore & LocalStorage + Global Sales (Baker / Cashier updates)
+  const fetchCustomerOrders = useCallback(async () => {
     if (!currentUser) return;
-    const fetchOrders = async () => {
-      setOrdersLoading(true);
-      const ordersKey = `bakeology_customer_orders_${currentUser.uid}`;
-      const localOrders = JSON.parse(localStorage.getItem(ordersKey) || '[]');
+    setOrdersLoading(true);
+    const ordersKey = `bakeology_customer_orders_${currentUser.uid}`;
+    let localOrders = JSON.parse(localStorage.getItem(ordersKey) || '[]');
 
-      if (isFirebaseConfigured() && db) {
-        try {
-          const q = query(collection(db, 'orders'), where('userId', '==', currentUser.uid));
-          const snapshot = await getDocs(q);
-          const liveOrders = [];
-          snapshot.forEach(doc => liveOrders.push({ id: doc.id, ...doc.data() }));
-          
-          // Merge live orders with local orders without duplicates
-          const orderMap = new Map();
-          [...liveOrders, ...localOrders].forEach(o => {
-            const key = o.id || o.saleNumber;
-            if (!orderMap.has(key)) orderMap.set(key, o);
-          });
-          const merged = Array.from(orderMap.values()).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-          setCustomerOrders(merged);
-        } catch (e) {
-          console.warn("Could not query Firestore orders:", e);
-          setCustomerOrders(localOrders);
+    // Global sales lookup to ensure latest status from Baker / Cashier is synced
+    try {
+      const globalSales = JSON.parse(localStorage.getItem('bakeology_sales') || '[]');
+      const statusMap = new Map();
+      globalSales.forEach(s => {
+        if (s.orderStatus) {
+          if (s.id) statusMap.set(String(s.id), s.orderStatus);
+          if (s.saleNumber) statusMap.set(String(s.saleNumber), s.orderStatus);
         }
-      } else {
+      });
+      if (statusMap.size > 0) {
+        let changed = false;
+        localOrders = localOrders.map(o => {
+          const updatedStatus = statusMap.get(String(o.id)) || statusMap.get(String(o.saleNumber));
+          if (updatedStatus && updatedStatus !== o.orderStatus) {
+            changed = true;
+            return { ...o, orderStatus: updatedStatus };
+          }
+          return o;
+        });
+        if (changed) {
+          localStorage.setItem(ordersKey, JSON.stringify(localOrders));
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    if (isFirebaseConfigured() && db) {
+      try {
+        const q = query(collection(db, 'orders'), where('userId', '==', currentUser.uid));
+        const snapshot = await getDocs(q);
+        const liveOrders = [];
+        snapshot.forEach(doc => liveOrders.push({ id: doc.id, ...doc.data() }));
+        
+        // Merge live orders with local orders without duplicates
+        const orderMap = new Map();
+        [...liveOrders, ...localOrders].forEach(o => {
+          const key = o.id || o.saleNumber;
+          if (!orderMap.has(key)) orderMap.set(key, o);
+        });
+        const merged = Array.from(orderMap.values()).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+        setCustomerOrders(merged);
+      } catch (e) {
+        console.warn("Could not query Firestore orders:", e);
         setCustomerOrders(localOrders);
       }
-      setOrdersLoading(false);
-    };
-
-    fetchOrders();
+    } else {
+      setCustomerOrders(localOrders);
+    }
+    setOrdersLoading(false);
   }, [currentUser]);
+
+  useEffect(() => {
+    fetchCustomerOrders();
+
+    const handleOrderEvent = () => fetchCustomerOrders();
+    window.addEventListener('storage', handleOrderEvent);
+    window.addEventListener('bakeology_order_updated', handleOrderEvent);
+
+    return () => {
+      window.removeEventListener('storage', handleOrderEvent);
+      window.removeEventListener('bakeology_order_updated', handleOrderEvent);
+    };
+  }, [fetchCustomerOrders, activeTab]);
 
   // Cart operations
   const addToCart = (product, quantity = 1) => {
@@ -325,6 +362,7 @@ export default function CustomerDashboard() {
 
   const featuredProducts = products.slice(0, 4);
   const activeOrders = customerOrders.filter(o => ['Pending', 'Confirmed', 'Preparing', 'Ready for Pickup'].includes(o.orderStatus));
+  const readyOrders = activeOrders.filter(o => o.orderStatus === 'Ready for Pickup');
 
   // Navigation items for the sidebar
   const navItems = [
@@ -334,7 +372,7 @@ export default function CustomerDashboard() {
     { id: 'orders', label: 'My Orders', icon: Clock, badge: customerOrders.length > 0 ? customerOrders.length : undefined },
     { id: 'tracking', label: 'Order Tracking', icon: MapPin, badge: activeOrders.length > 0 ? activeOrders.length : undefined },
     { id: 'favorites', label: 'Favorites', icon: Heart, badge: favorites.length > 0 ? favorites.length : undefined },
-    { id: 'notifications', label: 'Notifications', icon: Bell, badge: 2 },
+    { id: 'notifications', label: 'Notifications', icon: Bell, badge: readyOrders.length > 0 ? `${readyOrders.length} Ready` : 2 },
     { id: 'account', label: 'My Account', icon: User }
   ];
 
@@ -446,8 +484,12 @@ export default function CustomerDashboard() {
                       <span className="font-bold text-primary block">Order #{order.saleNumber}</span>
                       <span className="text-2xs text-muted">{order.items?.length || 0} pastry item(s)</span>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-2xs font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
-                      {order.orderStatus}
+                    <span className={`px-2 py-0.5 rounded-full text-2xs font-extrabold border ${
+                      order.orderStatus === 'Ready for Pickup' ? 'bg-green-100 text-green-800 border-green-300' :
+                      order.orderStatus === 'Preparing' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                      'bg-amber-100 text-amber-800 border-amber-200'
+                    }`}>
+                      {order.orderStatus === 'Ready for Pickup' ? 'Ready for Pickup 🎉' : order.orderStatus}
                     </span>
                   </div>
                 ))}
@@ -783,6 +825,31 @@ export default function CustomerDashboard() {
                     </span>
                   </div>
 
+                  {/* Status Banner Alert */}
+                  {order.orderStatus === 'Ready for Pickup' && (
+                    <div className="p-3.5 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3 text-green-900 shadow-2xs">
+                      <div className="w-10 h-10 rounded-full bg-green-200 flex items-center justify-center shrink-0 text-xl font-bold">
+                        🥐
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-extrabold text-xs text-green-900">Your order is fresh from the oven and ready for pickup!</p>
+                        <p className="text-2xs text-green-700 mt-0.5">Please proceed to the bakery pickup counter and present <strong>Order #{order.saleNumber}</strong> to the staff.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {order.orderStatus === 'Preparing' && (
+                    <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3 text-blue-900 shadow-2xs">
+                      <div className="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center shrink-0 text-xl font-bold">
+                        👨‍🍳
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-extrabold text-xs text-blue-900">The Baker is preparing your order!</p>
+                        <p className="text-2xs text-blue-700 mt-0.5">Your artisanal pastries are being prepared and baked in the oven right now.</p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Tracking Timeline */}
                   <div className="space-y-3">
                     {statuses.slice(0, 4).map((status, idx) => {
@@ -838,6 +905,61 @@ export default function CustomerDashboard() {
       {/* TAB 7: NOTIFICATIONS */}
       {activeTab === 'notifications' && (
         <div className="space-y-2 max-w-xl mx-auto">
+          {/* Real-time Order Readiness Alerts */}
+          {activeOrders.map(order => {
+            if (order.orderStatus === 'Ready for Pickup') {
+              return (
+                <div key={`notif-ready-${order.id}`} className="bg-green-50 p-3.5 rounded-xl border border-green-200 flex gap-3 items-start shadow-2xs">
+                  <div className="w-8 h-8 rounded-full bg-green-200 text-green-800 flex items-center justify-center shrink-0 font-bold text-base">
+                    🥐
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <h4 className="font-bold text-xs text-green-900">Order #{order.saleNumber} Ready for Pickup!</h4>
+                      <span className="text-3xs font-extrabold bg-green-200 text-green-900 px-2 py-0.5 rounded-full">Ready</span>
+                    </div>
+                    <p className="text-2xs text-green-800 mt-0.5">
+                      Your pastries are fresh from the oven and waiting at the counter. Please present <strong>Order #{order.saleNumber}</strong> to claim them!
+                    </p>
+                    <button 
+                      type="button" 
+                      className="mt-2 text-2xs font-extrabold text-green-900 underline cursor-pointer"
+                      onClick={() => setActiveTab('tracking')}
+                    >
+                      Track Order & Status →
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+            if (order.orderStatus === 'Preparing') {
+              return (
+                <div key={`notif-prep-${order.id}`} className="bg-blue-50 p-3.5 rounded-xl border border-blue-200 flex gap-3 items-start shadow-2xs">
+                  <div className="w-8 h-8 rounded-full bg-blue-200 text-blue-800 flex items-center justify-center shrink-0 font-bold text-base">
+                    👨‍🍳
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <h4 className="font-bold text-xs text-blue-900">Order #{order.saleNumber} is Baking</h4>
+                      <span className="text-3xs font-extrabold bg-blue-200 text-blue-900 px-2 py-0.5 rounded-full">Preparing</span>
+                    </div>
+                    <p className="text-2xs text-blue-800 mt-0.5">
+                      The baker has started preparing your order in the kitchen. We will notify you the moment it is ready!
+                    </p>
+                    <button 
+                      type="button" 
+                      className="mt-2 text-2xs font-extrabold text-blue-900 underline cursor-pointer"
+                      onClick={() => setActiveTab('tracking')}
+                    >
+                      View Live Tracking →
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })}
+
           <div className="bg-card p-3.5 rounded-xl border border-border-light flex gap-3 items-start shadow-2xs">
             <div className="w-8 h-8 rounded-full bg-pink-100 text-primary flex items-center justify-center shrink-0">
               <Sparkles size={16} />

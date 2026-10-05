@@ -53,6 +53,30 @@ export default function BakerDashboard() {
       localStorage.setItem('bakeology_sales', JSON.stringify(updated));
       return updated;
     });
+
+    // Also update any customer orders in localStorage and notify listeners
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('bakeology_customer_orders_')) {
+          const custOrders = JSON.parse(localStorage.getItem(key) || '[]');
+          let changed = false;
+          const updatedCustOrders = custOrders.map(o => {
+            if (o.id === orderId || o.saleNumber === orderId) {
+              changed = true;
+              return { ...o, orderStatus: targetStatus };
+            }
+            return o;
+          });
+          if (changed) {
+            localStorage.setItem(key, JSON.stringify(updatedCustOrders));
+          }
+        }
+      }
+      window.dispatchEvent(new CustomEvent('bakeology_order_updated', { detail: { orderId, targetStatus } }));
+    } catch (e) {
+      console.warn("Could not sync customer orders on status advance:", e);
+    }
   };
 
   // Metrics

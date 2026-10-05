@@ -164,7 +164,7 @@ export default function CashierDashboard() {
     }
   };
 
-  // Advance Order Status (Cashier confirms order -> moves to Preparing for Baker)
+  // Advance Order Status (Cashier confirms order -> moves to Preparing for Baker, or Handover / Pickup -> Completed)
   const handleUpdateOrderStatus = (orderId, newStatus) => {
     setAllOrders(prev => {
       const updated = prev.map(order => {
@@ -180,6 +180,30 @@ export default function CashierDashboard() {
       }
       return updated;
     });
+
+    // Also update customer orders in localStorage and notify listeners
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('bakeology_customer_orders_')) {
+          const custOrders = JSON.parse(localStorage.getItem(key) || '[]');
+          let changed = false;
+          const updatedCustOrders = custOrders.map(o => {
+            if (o.id === orderId || o.saleNumber === orderId) {
+              changed = true;
+              return { ...o, orderStatus: newStatus };
+            }
+            return o;
+          });
+          if (changed) {
+            localStorage.setItem(key, JSON.stringify(updatedCustOrders));
+          }
+        }
+      }
+      window.dispatchEvent(new CustomEvent('bakeology_order_updated', { detail: { orderId, newStatus } }));
+    } catch (e) {
+      console.warn("Could not sync customer orders on cashier update:", e);
+    }
   };
 
   // Metrics
