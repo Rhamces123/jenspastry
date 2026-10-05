@@ -226,23 +226,23 @@ export default function CustomerDashboard() {
               <span className="text-4xl">{product.icon || '🥐'}</span>
             )}
 
-            {/* Favorite button inside picture holder */}
+            {/* Favorite button inside picture holder (Top Right) */}
             <button
               type="button"
-              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 text-muted hover:text-red-500 flex items-center justify-center shadow-xs hover:bg-white transition-all cursor-pointer"
+              className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white/90 text-muted hover:text-red-500 flex items-center justify-center shadow-xs hover:bg-white transition-all cursor-pointer"
               onClick={() => toggleFavorite(product.id)}
               title={isFav ? "Remove favorite" : "Add to favorites"}
             >
               <Heart size={13} className={isFav ? "fill-red-500 text-red-500" : ""} />
             </button>
 
-            {/* Stock status badge overlay */}
+            {/* Stock status badge overlay (Bottom Left - prevents overlap with favorite button) */}
             {isOutOfStock ? (
-              <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-2xs font-extrabold bg-red-500 text-white shadow-xs">
+              <span className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-full text-2xs font-extrabold bg-red-500 text-white shadow-xs">
                 Out of Stock
               </span>
             ) : isLowStock ? (
-              <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-2xs font-extrabold bg-amber-100 text-amber-800 border border-amber-200 shadow-xs">
+              <span className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-full text-2xs font-extrabold bg-amber-100 text-amber-800 border border-amber-200 shadow-xs">
                 Low Stock ({product.stock})
               </span>
             ) : null}
@@ -259,11 +259,11 @@ export default function CustomerDashboard() {
         </div>
 
         {/* Price & Action */}
-        <div className="mt-2.5 pt-2 border-t border-border-light flex justify-between items-center">
-          <span className="font-bold text-sm text-primary">{formatCurrency(product.price)}</span>
+        <div className="mt-2.5 pt-2 border-t border-border-light flex justify-between items-center gap-1.5">
+          <span className="font-bold text-sm text-primary shrink-0">{formatCurrency(product.price)}</span>
           <button
             type="button"
-            className="px-2.5 py-1 rounded-lg bg-primary text-white text-2xs font-bold flex items-center gap-1 hover:bg-primary-dark transition-all disabled:opacity-50"
+            className="px-2.5 py-1 rounded-lg bg-primary text-white text-2xs font-bold flex items-center gap-1 hover:bg-primary-dark transition-all disabled:opacity-50 shrink-0"
             onClick={() => addToCart(product)}
             disabled={isOutOfStock}
           >
@@ -780,28 +780,8 @@ export default function CustomerDashboard() {
               <p className="text-xs text-muted">Tap the heart icon on any pastry in the Browse tab to save it here for fast re-ordering.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {products.filter(p => favorites.includes(p.id)).map(product => (
-                <div key={product.id} className="bg-card rounded-xl border border-border-light p-3 flex flex-col justify-between shadow-2xs">
-                  <div>
-                    {product.imageUrl ? (
-                      <img src={product.imageUrl} alt={product.name} className="w-full h-16 object-cover rounded-lg" />
-                    ) : (
-                      <div className="text-2xl text-center">{product.icon || '🥐'}</div>
-                    )}
-                    <h4 className="font-bold text-xs text-primary truncate text-center mt-1">{product.name}</h4>
-                    <span className="text-2xs text-muted block text-center">{formatCurrency(product.price)}</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn-primary w-full py-1.5 rounded-lg text-2xs font-bold mt-2 flex items-center justify-center gap-1 shadow-2xs"
-                    onClick={() => addToCart(product)}
-                  >
-                    <Plus size={11} />
-                    <span>Add to Basket</span>
-                  </button>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {products.filter(p => favorites.includes(p.id)).map(product => renderProductCard(product))}
             </div>
           )}
         </div>

@@ -70,8 +70,7 @@ export default function DashboardLayout({
         <div className="dashboard-brand">
           <button
             type="button"
-            className="header-btn"
-            style={{ display: 'none', background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}
+            className="dashboard-menu-toggle-btn"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle navigation menu"
           >
