@@ -964,15 +964,20 @@ class BakeryWorkflowManager {
   }
 
   /**
-   * Advances Production Request status (Pending -> Accepted -> Preparing)
+   * Advances Production Request status (Pending -> Accepted -> Preparing -> Ready for Cashier)
    */
   updateProductionRequestStatus(requestId, newStatus) {
     const index = this.productionRequests.findIndex(r => r.id === requestId);
     if (index === -1) return null;
 
+    const currentReq = this.productionRequests[index];
     const updated = {
-      ...this.productionRequests[index],
+      ...currentReq,
       status: newStatus,
+      ...(newStatus === 'Preparing' ? {
+        cookingStartedAt: Date.now(),
+        cookingDurationSeconds: 10
+      } : {}),
       updatedAt: new Date().toISOString()
     };
     this.productionRequests[index] = updated;
@@ -981,8 +986,39 @@ class BakeryWorkflowManager {
     if (isFirebaseConfigured() && db) {
       updateDoc(doc(db, 'productionRequests', requestId), {
         status: newStatus,
+        ...(newStatus === 'Preparing' ? {
+          cookingStartedAt: updated.cookingStartedAt,
+          cookingDurationSeconds: 10
+        } : {}),
         updatedAt: updated.updatedAt
       }).catch(err => console.warn("Firestore updateProductionRequestStatus error:", err));
+    }
+
+    this.notify();
+    return updated;
+  }
+
+  /**
+   * Updates requested quantity on an active production request before or during cooking.
+   */
+  updateProductionRequestQuantity(requestId, newQuantity) {
+    const index = this.productionRequests.findIndex(r => r.id === requestId);
+    if (index === -1) return null;
+
+    const qty = Math.max(1, Number(newQuantity) || 1);
+    const updated = {
+      ...this.productionRequests[index],
+      requestedQuantity: qty,
+      updatedAt: new Date().toISOString()
+    };
+    this.productionRequests[index] = updated;
+    this.persistProductionRequests();
+
+    if (isFirebaseConfigured() && db) {
+      updateDoc(doc(db, 'productionRequests', requestId), {
+        requestedQuantity: qty,
+        updatedAt: updated.updatedAt
+      }).catch(err => console.warn("Firestore updateProductionRequestQuantity error:", err));
     }
 
     this.notify();

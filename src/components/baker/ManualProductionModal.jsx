@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   X, 
   ChefHat, 
@@ -28,6 +28,12 @@ export default function ManualProductionModal({ isOpen, onClose, products = [], 
 
   const defaultBatch = selectedProduct?.productionBatchSize || 30;
   const [productionQty, setProductionQty] = useState(defaultBatch);
+
+  useEffect(() => {
+    if (selectedProduct?.productionBatchSize) {
+      setProductionQty(selectedProduct.productionBatchSize);
+    }
+  }, [selectedProduct]);
   const [bakerNotes, setBakerNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');

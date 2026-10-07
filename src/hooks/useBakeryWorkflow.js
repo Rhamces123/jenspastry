@@ -69,6 +69,10 @@ export function useBakeryWorkflow() {
     return manager.updateProductionRequestStatus(requestId, status);
   }, [manager]);
 
+  const updateProductionRequestQuantity = useCallback((requestId, newQuantity) => {
+    return manager.updateProductionRequestQuantity(requestId, newQuantity);
+  }, [manager]);
+
   const startProduction = useCallback((requestId, bakerName) => {
     return manager.startProduction(requestId, bakerName);
   }, [manager]);
@@ -116,6 +120,7 @@ export function useBakeryWorkflow() {
     checkIngredientsSufficiency,
     createProductionRequest,
     updateProductionRequestStatus,
+    updateProductionRequestQuantity,
     startProduction,
     completeProduction,
     receiveProductionBatch,

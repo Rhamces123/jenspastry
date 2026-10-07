@@ -4,7 +4,7 @@
 // Section 5: Dashboard, Production Queue, Ingredient Inventory, Recipes, Production History, Low Ingredient Alerts, Logout
 // ==========================================
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useShop } from '../../hooks/useShop.js';
 import { useAuth } from '../../context/useAuth.js';
 import { ROLES } from '../../constants/roles.js';
@@ -28,7 +28,11 @@ import {
   Plus, 
   Package, 
   Search, 
-  TrendingDown
+  TrendingDown,
+  Check,
+  Timer,
+  Bell,
+  Minus
 } from 'lucide-react';
 
 export default function BakerDashboard() {
@@ -46,6 +50,7 @@ export default function BakerDashboard() {
     checkIngredientsSufficiency,
     createProductionRequest,
     updateProductionRequestStatus,
+    updateProductionRequestQuantity,
     startProduction,
     completeProduction,
     addNotification,
@@ -168,6 +173,93 @@ export default function BakerDashboard() {
     return ['ALL', ...Array.from(set)];
   }, [ingredients]);
 
+  // Live ticker for 10-second oven countdown timer
+  const [now, setNow] = useState(Date.now());
+  const completedRef = useRef(new Set());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Web Audio chime for oven timer completion
+  const playOvenChime = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.7);
+    } catch {
+      // Audio autoplay policy or not supported
+    }
+  }, []);
+
+  // Calculate remaining seconds for any active preparing batch (10-second timer)
+  const getSecondsLeft = useCallback((req) => {
+    if (!req || req.status !== 'Preparing') return 0;
+    const startedAt = req.cookingStartedAt ? Number(req.cookingStartedAt) : (req.updatedAt ? new Date(req.updatedAt).getTime() : Date.now());
+    const elapsed = Math.floor((now - startedAt) / 1000);
+    return Math.max(0, 10 - elapsed);
+  }, [now]);
+
+  // Quantity to cook state per product (persists user's custom choice)
+  const [cookQuantities, setCookQuantities] = useState({});
+
+  const getTargetQty = useCallback((product) => {
+    if (!product) return 30;
+    const key = String(product.id || product.name);
+    if (cookQuantities[key] !== undefined) {
+      return cookQuantities[key];
+    }
+    return Number(product.productionBatchSize) || 30;
+  }, [cookQuantities]);
+
+  const setTargetQty = useCallback((product, newQty) => {
+    const key = String(product.id || product.name);
+    const val = Math.max(1, Math.min(1000, Number(newQty) || 1));
+    setCookQuantities(prev => ({ ...prev, [key]: val }));
+  }, []);
+
+  const adjustTargetQty = useCallback((product, delta) => {
+    const current = getTargetQty(product);
+    setTargetQty(product, current + delta);
+  }, [getTargetQty, setTargetQty]);
+
+  // Auto-complete batches when 10-second timer reaches 0
+  useEffect(() => {
+    preparingRequests.forEach(req => {
+      const secondsLeft = getSecondsLeft(req);
+      if (secondsLeft === 0 && !completedRef.current.has(req.id)) {
+        completedRef.current.add(req.id);
+        try {
+          const batch = completeProduction({
+            requestId: req.id,
+            productName: req.productName,
+            productId: req.productId,
+            quantity: req.requestedQuantity,
+            bakerName
+          });
+          showToast(`🔔 Ding! 10s Baking complete for ${batch.quantity} pcs ${batch.productName}! Ingredients deducted. Status: Ready for Cashier.`, 'success');
+          playOvenChime();
+        } catch (err) {
+          console.warn("Auto-baking completion warning:", err);
+        }
+      }
+    });
+  }, [now, preparingRequests, getSecondsLeft, completeProduction, bakerName, playOvenChime]);
+
   // Helper to find existing active request for a product
   const getActiveRequestForProduct = (product) => {
     const prodId = String(product.id || '').toLowerCase();
@@ -188,10 +280,14 @@ export default function BakerDashboard() {
     }
   };
 
-  const handleStartProduction = (requestId) => {
+  const handleStartProduction = (requestId, customQty = null) => {
     try {
+      if (customQty !== null) {
+        updateProductionRequestQuantity(requestId, customQty);
+      }
+      completedRef.current.delete(requestId);
       startProduction(requestId, bakerName);
-      showToast('🔥 Oven started! Status updated to "Preparing".', 'success');
+      showToast('🔥 Oven started! 10-second baking countdown running.', 'success');
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -199,6 +295,7 @@ export default function BakerDashboard() {
 
   const handleCompleteProduction = (request) => {
     try {
+      completedRef.current.add(request.id);
       const batch = completeProduction({
         requestId: request.id,
         productName: request.productName,
@@ -212,17 +309,17 @@ export default function BakerDashboard() {
     }
   };
 
-  // Start Cooking a pastry directly from the Low Stock counter view
-  const handleCookPastry = (product) => {
+  // Start Cooking a pastry directly from the Low Stock counter view or Monitor
+  const handleCookPastry = (product, customQty = null) => {
     try {
-      const batchSize = Number(product.productionBatchSize) || 30;
+      const batchSize = customQty !== null ? Math.max(1, Number(customQty) || 30) : getTargetQty(product);
       const recipe = getRecipeForProduct({ id: product.id, name: product.name });
       
-      // Ingredient check
+      // Ingredient check for this exact quantity
       const check = checkIngredientsSufficiency(recipe, batchSize);
       if (!check.sufficient) {
         const missingMsg = check.shortages.map(s => `${s.ingredientName} (needs ${s.required} ${s.unit}, have ${s.available} ${s.unit})`).join(', ');
-        showToast(`Cannot start cooking ${product.name}: Insufficient ingredients in pantry. Missing: ${missingMsg}`, 'error');
+        showToast(`Cannot cook ${batchSize} pcs ${product.name}: Insufficient ingredients in pantry. Missing: ${missingMsg}`, 'error');
         return;
       }
 
@@ -237,11 +334,14 @@ export default function BakerDashboard() {
           minimumStock: product.minimumStock !== undefined ? product.minimumStock : 20,
           triggeredBy: 'Baker Cooking Station'
         });
+      } else {
+        updateProductionRequestQuantity(req.id, batchSize);
       }
 
-      // Transition to Preparing ("Cooking in Oven")
+      completedRef.current.delete(req.id);
+      // Transition to Preparing ("Cooking in Oven" with 10s timer)
       startProduction(req.id, bakerName);
-      showToast(`🔥 Oven started for ${batchSize} pcs of ${product.name}! Cooking in progress.`, 'success');
+      showToast(`🔥 Oven started for ${batchSize} pcs of ${product.name}! 10-second baking timer started.`, 'success');
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -421,6 +521,8 @@ export default function BakerDashboard() {
                 {preparingRequests.map(req => {
                   const recipe = getRecipeForProduct({ id: req.productId, name: req.productName });
                   const check = checkIngredientsSufficiency(recipe, req.requestedQuantity);
+                  const secondsLeft = getSecondsLeft(req);
+                  const progressPercent = Math.min(100, Math.round(((10 - secondsLeft) / 10) * 100));
 
                   return (
                     <div 
@@ -470,13 +572,46 @@ export default function BakerDashboard() {
                         )}
                       </div>
 
+                      {/* 10-Second Oven Baking Timer Display */}
+                      <div className="bg-gradient-to-r from-amber-100 to-orange-100 border border-amber-300 rounded-xl p-3 space-y-2 shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Timer className="w-5 h-5 text-amber-700 animate-spin" style={{ animationDuration: '4s' }} />
+                            <div>
+                              <span className="text-[10px] uppercase font-black text-amber-900 block leading-tight">
+                                Oven Baking Timer (10 Seconds)
+                              </span>
+                              <span className="text-xs font-bold text-amber-800">
+                                {secondsLeft > 0 ? `${secondsLeft}s left until done` : '✓ Baking Complete! Ready to Send'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-mono text-2xl font-black text-amber-950 block leading-none">
+                              00:{String(secondsLeft).padStart(2, '0')}
+                            </span>
+                            <span className="text-[10px] text-amber-700 font-semibold">
+                              {progressPercent}% baked
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Animated Baking Progress Bar */}
+                        <div className="w-full bg-amber-200/90 h-2 rounded-full overflow-hidden shadow-inner">
+                          <div 
+                            className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 transition-all duration-300 ease-linear rounded-full"
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
+                      </div>
+
                       <button
                         type="button"
                         onClick={() => handleCompleteProduction(req)}
                         className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer hover:shadow-md"
                       >
                         <CheckCircle className="w-4 h-4" />
-                        <span>Finish Cooking & Send to Cashier</span>
+                        <span>{secondsLeft > 0 ? `⚡ Complete Now (${secondsLeft}s left)` : 'Finish Cooking & Send to Cashier'}</span>
                       </button>
                     </div>
                   );
@@ -526,15 +661,17 @@ export default function BakerDashboard() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {cashierLowStockPastries.map(product => {
-                  const batchSize = Number(product.productionBatchSize) || 30;
+                  const targetQty = getTargetQty(product);
                   const minStock = product.minimumStock !== undefined ? Number(product.minimumStock) : 20;
                   const recipe = getRecipeForProduct({ id: product.id, name: product.name });
-                  const check = checkIngredientsSufficiency(recipe, batchSize);
+                  const check = checkIngredientsSufficiency(recipe, targetQty);
                   const activeReq = getActiveRequestForProduct(product);
                   const isCooking = activeReq && activeReq.status === 'Preparing';
                   const isReady = activeReq && activeReq.status === 'Ready for Cashier';
                   const isPending = activeReq && (activeReq.status === 'Pending' || activeReq.status === 'Accepted');
                   const isOutOfStock = Number(product.stock) === 0;
+                  const secondsLeft = isCooking ? getSecondsLeft(activeReq) : 0;
+                  const progressPercent = isCooking ? Math.min(100, Math.round(((10 - secondsLeft) / 10) * 100)) : 0;
 
                   return (
                     <div 
@@ -591,8 +728,8 @@ export default function BakerDashboard() {
                         </div>
 
                         <div className="flex justify-between text-[11px] text-gray-500 pt-0.5">
-                          <span>Standard Batch Size:</span>
-                          <strong className="text-gray-800 font-mono font-bold">{batchSize} pcs</strong>
+                          <span>Target to Bake:</span>
+                          <strong className="text-gray-800 font-mono font-bold">{targetQty} pcs</strong>
                         </div>
                       </div>
 
@@ -603,7 +740,7 @@ export default function BakerDashboard() {
                         {check.sufficient ? (
                           <div className="flex items-center gap-1.5 text-[11px] font-medium">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            <span>Pantry ingredients ready for {batchSize} pcs</span>
+                            <span>Pantry ingredients ready for {targetQty} pcs</span>
                           </div>
                         ) : (
                           <div className="space-y-0.5 text-[11px]">
@@ -629,22 +766,92 @@ export default function BakerDashboard() {
                             'text-blue-600'
                           }`}>
                             {isCooking && <Flame className="w-3 h-3 animate-pulse" />}
-                            {isCooking ? 'In Oven (Cooking)' : isReady ? 'Ready for Cashier' : activeReq.status}
+                            {isCooking ? `In Oven (${secondsLeft}s left)` : isReady ? 'Ready for Cashier' : activeReq.status}
                           </span>
                         </div>
                       )}
 
-                      {/* Action Button */}
+                      {/* Quantity Stepper (if not currently cooking) */}
+                      {!isCooking && !isReady && (
+                        <div className="flex items-center justify-between gap-1.5 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                          <span className="text-[11px] font-semibold text-gray-600">Batch Quantity:</span>
+                          <div className="flex items-center gap-1">
+                            <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white shadow-2xs">
+                              <button
+                                type="button"
+                                onClick={() => adjustTargetQty(product, -5)}
+                                className="px-2 py-0.5 text-gray-700 hover:bg-gray-100 font-bold text-xs cursor-pointer"
+                                title="Decrease 5"
+                              >
+                                -
+                              </button>
+                              <input
+                                type="number"
+                                min="1"
+                                max="999"
+                                value={targetQty}
+                                onChange={(e) => setTargetQty(product, e.target.value)}
+                                className="w-12 text-center font-mono font-bold text-xs py-0.5 border-x border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#D81B60]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => adjustTargetQty(product, 5)}
+                                className="px-2 py-0.5 text-gray-700 hover:bg-gray-100 font-bold text-xs cursor-pointer"
+                                title="Increase 5"
+                              >
+                                +
+                              </button>
+                            </div>
+                            <div className="flex gap-0.5">
+                              {[20, 30, 50].map(preset => (
+                                <button
+                                  key={preset}
+                                  type="button"
+                                  onClick={() => setTargetQty(product, preset)}
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border cursor-pointer ${
+                                    targetQty === preset 
+                                      ? 'bg-[#D81B60] text-white border-[#D81B60]' 
+                                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {preset}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Button & 10s Countdown */}
                       <div>
                         {isCooking ? (
-                          <button
-                            type="button"
-                            onClick={() => handleCompleteProduction(activeReq)}
-                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
-                          >
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            <span>Finish Cooking ({batchSize} pcs)</span>
-                          </button>
+                          <div className="space-y-1.5">
+                            <div className="bg-amber-100 border border-amber-300 p-2 rounded-lg text-xs space-y-1">
+                              <div className="flex items-center justify-between text-amber-900 font-bold">
+                                <span className="flex items-center gap-1">
+                                  <Flame className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                                  <span>Baking in Oven ({activeReq.requestedQuantity} pcs)</span>
+                                </span>
+                                <span className="font-mono text-sm bg-amber-200/90 px-1.5 py-0.5 rounded border border-amber-400">
+                                  00:{String(secondsLeft).padStart(2, '0')}
+                                </span>
+                              </div>
+                              <div className="w-full bg-amber-200 h-1.5 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300"
+                                  style={{ width: `${progressPercent}%` }}
+                                />
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleCompleteProduction(activeReq)}
+                              className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              <span>{secondsLeft > 0 ? `⚡ Complete Now (${secondsLeft}s left)` : 'Finish Cooking & Send to Cashier'}</span>
+                            </button>
+                          </div>
                         ) : isReady ? (
                           <div className="w-full py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold text-center">
                             ✓ Baked & Ready on Pass
@@ -653,21 +860,21 @@ export default function BakerDashboard() {
                           <button
                             type="button"
                             disabled={!check.sufficient}
-                            onClick={() => handleStartProduction(activeReq.id)}
+                            onClick={() => handleStartProduction(activeReq.id, targetQty)}
                             className="w-full py-2 bg-[#D81B60] hover:bg-[#C2185B] disabled:opacity-40 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                           >
                             <Flame className="w-3.5 h-3.5" />
-                            <span>Start Cooking Batch ({batchSize} pcs)</span>
+                            <span>Start Cooking Batch ({targetQty} pcs)</span>
                           </button>
                         ) : (
                           <button
                             type="button"
                             disabled={!check.sufficient}
-                            onClick={() => handleCookPastry(product)}
+                            onClick={() => handleCookPastry(product, targetQty)}
                             className="w-full py-2 bg-[#D81B60] hover:bg-[#C2185B] disabled:opacity-40 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                           >
                             <Flame className="w-3.5 h-3.5" />
-                            <span>Cook Batch Now ({batchSize} pcs)</span>
+                            <span>Cook Batch Now ({targetQty} pcs)</span>
                           </button>
                         )}
                       </div>
@@ -724,13 +931,21 @@ export default function BakerDashboard() {
                 const minStock = product.minimumStock !== undefined ? Number(product.minimumStock) : 20;
                 const isLow = stock <= minStock;
                 const isOut = stock === 0;
+                const targetQty = getTargetQty(product);
+                const recipe = getRecipeForProduct({ id: product.id, name: product.name });
+                const check = checkIngredientsSufficiency(recipe, targetQty);
                 const activeReq = getActiveRequestForProduct(product);
                 const isCooking = activeReq && activeReq.status === 'Preparing';
+                const isReady = activeReq && activeReq.status === 'Ready for Cashier';
+                const secondsLeft = isCooking ? getSecondsLeft(activeReq) : 0;
+                const progressPercent = isCooking ? Math.min(100, Math.round(((10 - secondsLeft) / 10) * 100)) : 0;
 
                 return (
                   <div 
                     key={product.id || product.name} 
                     className={`p-3 rounded-xl border flex flex-col justify-between transition-all ${
+                      isCooking ? 'border-amber-400 ring-2 ring-amber-100 bg-amber-50/30' :
+                      isReady ? 'border-emerald-300 ring-1 ring-emerald-100 bg-emerald-50/20' :
                       isOut ? 'border-rose-300 bg-rose-50/30' :
                       isLow ? 'border-amber-300 bg-amber-50/20' :
                       'border-gray-100 bg-gray-50/50 hover:border-gray-200'
@@ -764,17 +979,65 @@ export default function BakerDashboard() {
                       </div>
 
                       {isCooking ? (
-                        <div className="w-full py-1 bg-amber-100 text-amber-800 rounded text-[10px] font-bold text-center flex items-center justify-center gap-1">
-                          <Flame className="w-2.5 h-2.5 animate-pulse" /> In Oven
+                        <div className="w-full py-1.5 px-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-[10px] font-bold text-center flex flex-col items-center justify-center gap-1 shadow-2xs">
+                          <div className="flex items-center gap-1">
+                            <Flame className="w-3 h-3 text-amber-600 animate-pulse" />
+                            <span>In Oven ({secondsLeft}s)</span>
+                          </div>
+                          <div className="w-full bg-amber-200/90 h-1 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300"
+                              style={{ width: `${progressPercent}%` }}
+                            />
+                          </div>
+                        </div>
+                      ) : isReady ? (
+                        <div className="w-full py-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-[10px] font-bold text-center flex items-center justify-center gap-1 shadow-2xs">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Ready on Pass</span>
                         </div>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleCookPastry(product)}
-                          className="w-full py-1 bg-white hover:bg-gray-100 text-gray-800 border border-gray-200 rounded text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                        >
-                          <Flame className="w-2.5 h-2.5 text-[#D81B60]" /> Cook
-                        </button>
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[10px] text-gray-500 font-semibold">Cook:</span>
+                            <div className="flex items-center border border-gray-200 rounded-md overflow-hidden bg-white shadow-2xs">
+                              <button
+                                type="button"
+                                onClick={() => adjustTargetQty(product, -5)}
+                                className="px-1.5 py-0.5 text-gray-600 hover:bg-gray-100 text-xs font-bold leading-none cursor-pointer"
+                                title="Decrease 5"
+                              >
+                                -
+                              </button>
+                              <input
+                                type="number"
+                                min="1"
+                                max="999"
+                                value={targetQty}
+                                onChange={(e) => setTargetQty(product, e.target.value)}
+                                className="w-8 text-center font-mono font-bold text-[11px] py-0.5 border-x border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#D81B60]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => adjustTargetQty(product, 5)}
+                                className="px-1.5 py-0.5 text-gray-600 hover:bg-gray-100 text-xs font-bold leading-none cursor-pointer"
+                                title="Increase 5"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={!check.sufficient}
+                            onClick={() => handleCookPastry(product, targetQty)}
+                            className="w-full py-1.5 bg-[#D81B60] hover:bg-[#C2185B] disabled:opacity-40 text-white rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-xs"
+                          >
+                            <Flame className="w-3 h-3 text-amber-300" />
+                            <span>Cook {targetQty} pcs</span>
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -956,15 +1219,17 @@ export default function BakerDashboard() {
               filteredCashierPastries.map(product => {
                 const stock = Number(product.stock) || 0;
                 const minStock = product.minimumStock !== undefined ? Number(product.minimumStock) : 20;
-                const batchSize = Number(product.productionBatchSize) || 30;
+                const targetQty = getTargetQty(product);
                 const isLow = stock <= minStock;
                 const isOut = stock === 0;
                 const recipe = getRecipeForProduct({ id: product.id, name: product.name });
-                const check = checkIngredientsSufficiency(recipe, batchSize);
+                const check = checkIngredientsSufficiency(recipe, targetQty);
                 const activeReq = getActiveRequestForProduct(product);
                 const isCooking = activeReq && activeReq.status === 'Preparing';
                 const isReady = activeReq && activeReq.status === 'Ready for Cashier';
                 const isPending = activeReq && (activeReq.status === 'Pending' || activeReq.status === 'Accepted');
+                const secondsLeft = isCooking ? getSecondsLeft(activeReq) : 0;
+                const progressPercent = isCooking ? Math.min(100, Math.round(((10 - secondsLeft) / 10) * 100)) : 0;
 
                 return (
                   <div
@@ -1022,8 +1287,8 @@ export default function BakerDashboard() {
                         </div>
 
                         <div className="flex justify-between text-[11px] text-gray-500 pt-0.5">
-                          <span>Standard Batch Size:</span>
-                          <strong className="text-gray-800 font-mono font-bold">{batchSize} pcs</strong>
+                          <span>Target to Bake:</span>
+                          <strong className="text-gray-800 font-mono font-bold">{targetQty} pcs</strong>
                         </div>
                       </div>
 
@@ -1034,7 +1299,7 @@ export default function BakerDashboard() {
                         {check.sufficient ? (
                           <div className="flex items-center gap-1.5 text-[11px] font-medium">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            <span>Pantry ingredients ready ({batchSize} pcs)</span>
+                            <span>Pantry ingredients ready ({targetQty} pcs)</span>
                           </div>
                         ) : (
                           <div className="space-y-0.5 text-[11px]">
@@ -1058,23 +1323,75 @@ export default function BakerDashboard() {
                             'text-blue-600'
                           }`}>
                             {isCooking && <Flame className="w-3 h-3 animate-pulse" />}
-                            {isCooking ? 'In Oven (Cooking)' : isReady ? 'Ready for Cashier' : activeReq.status}
+                            {isCooking ? `In Oven (${secondsLeft}s left)` : isReady ? 'Ready for Cashier' : activeReq.status}
                           </span>
+                        </div>
+                      )}
+
+                      {/* Quantity Stepper (if not cooking and not ready) */}
+                      {!isCooking && !isReady && (
+                        <div className="flex items-center justify-between gap-1.5 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                          <span className="text-[11px] font-semibold text-gray-600">To cook:</span>
+                          <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => adjustTargetQty(product, -5)}
+                              className="px-2 py-0.5 text-gray-700 hover:bg-gray-100 font-bold text-xs cursor-pointer"
+                              title="Decrease 5"
+                            >
+                              -
+                            </button>
+                            <input
+                              type="number"
+                              min="1"
+                              max="999"
+                              value={targetQty}
+                              onChange={(e) => setTargetQty(product, e.target.value)}
+                              className="w-12 text-center font-mono font-bold text-xs py-0.5 border-x border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#D81B60]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => adjustTargetQty(product, 5)}
+                              className="px-2 py-0.5 text-gray-700 hover:bg-gray-100 font-bold text-xs cursor-pointer"
+                              title="Increase 5"
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Action Button */}
+                    {/* Action Button & 10s Timer */}
                     <div className="pt-2 border-t border-gray-100">
                       {isCooking ? (
-                        <button
-                          type="button"
-                          onClick={() => handleCompleteProduction(activeReq)}
-                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          <span>Finish Cooking & Send to Cashier</span>
-                        </button>
+                        <div className="space-y-1.5">
+                          <div className="bg-amber-100 border border-amber-300 p-2 rounded-lg text-xs space-y-1">
+                            <div className="flex items-center justify-between text-amber-900 font-bold">
+                              <span className="flex items-center gap-1">
+                                <Flame className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                                <span>Baking in Oven ({activeReq.requestedQuantity} pcs)</span>
+                              </span>
+                              <span className="font-mono text-sm bg-amber-200/90 px-1.5 py-0.5 rounded border border-amber-400">
+                                00:{String(secondsLeft).padStart(2, '0')}
+                              </span>
+                            </div>
+                            <div className="w-full bg-amber-200 h-1.5 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300"
+                                style={{ width: `${progressPercent}%` }}
+                              />
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleCompleteProduction(activeReq)}
+                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            <span>{secondsLeft > 0 ? `⚡ Complete Now (${secondsLeft}s left)` : 'Finish Cooking & Send to Cashier'}</span>
+                          </button>
+                        </div>
                       ) : isReady ? (
                         <div className="w-full py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold text-center">
                           ✓ Baked & Awaiting Cashier Pickup
@@ -1083,21 +1400,21 @@ export default function BakerDashboard() {
                         <button
                           type="button"
                           disabled={!check.sufficient}
-                          onClick={() => handleStartProduction(activeReq.id)}
+                          onClick={() => handleStartProduction(activeReq.id, targetQty)}
                           className="w-full py-2 bg-[#D81B60] hover:bg-[#C2185B] disabled:opacity-40 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                         >
                           <Flame className="w-3.5 h-3.5" />
-                          <span>Start Cooking Batch ({batchSize} pcs)</span>
+                          <span>Start Cooking Batch ({targetQty} pcs)</span>
                         </button>
                       ) : (
                         <button
                           type="button"
                           disabled={!check.sufficient}
-                          onClick={() => handleCookPastry(product)}
+                          onClick={() => handleCookPastry(product, targetQty)}
                           className="w-full py-2 bg-[#D81B60] hover:bg-[#C2185B] disabled:opacity-40 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                         >
                           <Flame className="w-3.5 h-3.5" />
-                          <span>Cook Batch ({batchSize} pcs)</span>
+                          <span>Cook Batch ({targetQty} pcs)</span>
                         </button>
                       )}
                     </div>
@@ -1338,16 +1655,25 @@ export default function BakerDashboard() {
                         )}
 
                         {/* Status: Preparing */}
-                        {req.status === 'Preparing' && (
-                          <button
-                            type="button"
-                            onClick={() => handleCompleteProduction(req)}
-                            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            <span>Mark Production Complete</span>
-                          </button>
-                        )}
+                        {req.status === 'Preparing' && (() => {
+                          const secondsLeft = getSecondsLeft(req);
+                          return (
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-1 rounded-md flex items-center gap-1">
+                                <Timer className="w-3.5 h-3.5 text-amber-700 animate-spin" style={{ animationDuration: '4s' }} />
+                                00:{String(secondsLeft).padStart(2, '0')}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleCompleteProduction(req)}
+                                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                                <span>{secondsLeft > 0 ? `⚡ Complete Now (${secondsLeft}s left)` : 'Mark Production Complete'}</span>
+                              </button>
+                            </div>
+                          );
+                        })()}
 
                         {/* Status: Ready for Cashier */}
                         {req.status === 'Ready for Cashier' && (

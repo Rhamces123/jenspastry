@@ -506,6 +506,25 @@ try {
 
   const hasSaleTx = txs.some(t => t.type?.toLowerCase().includes('sale'));
   assert(hasSaleTx, "Test 12: Customer sale transaction recorded");
+
+  // Test 13: Baker customizes how many to cook (50 pcs instead of default 30)
+  console.log("\n  Test 13: Baker customizes how many to cook...");
+  const customReq = workflow.createProductionRequest({
+    productId: 'test-pandesal-custom',
+    productName: 'Ensaymada',
+    requestedQuantity: 20,
+    currentStock: 5,
+    minimumStock: 15
+  });
+  const updatedCustomReq = workflow.updateProductionRequestQuantity(customReq.id, 50);
+  assert(updatedCustomReq.requestedQuantity === 50, "Test 13: Custom quantity to cook updated to 50 pcs");
+
+  // Test 14: Starting production initializes 10-second baking timer
+  console.log("\n  Test 14: 10-second baking timer initialization...");
+  const startedReq = workflow.startProduction(customReq.id, 'Baker Mario');
+  assert(startedReq.status === 'Preparing', "Test 14: Production status is 'Preparing'");
+  assert(typeof startedReq.cookingStartedAt === 'number', "Test 14: cookingStartedAt timestamp recorded");
+  assert(startedReq.cookingDurationSeconds === 10, "Test 14: cookingDurationSeconds is 10");
 } catch (e) {
   console.error("Workflow Tests error:", e);
   throw e;
