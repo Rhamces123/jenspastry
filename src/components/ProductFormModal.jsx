@@ -13,6 +13,8 @@ export default function ProductFormModal({ isOpen, onClose, onSubmit, initialPro
   const [category, setCategory] = useState(initialProduct ? (initialProduct.category || 'Bread') : 'Bread');
   const [price, setPrice] = useState(initialProduct && initialProduct.price !== undefined ? String(initialProduct.price) : '');
   const [stock, setStock] = useState(initialProduct && initialProduct.stock !== undefined ? String(initialProduct.stock) : '');
+  const [minimumStock, setMinimumStock] = useState(initialProduct && initialProduct.minimumStock !== undefined ? String(initialProduct.minimumStock) : '20');
+  const [productionBatchSize, setProductionBatchSize] = useState(initialProduct && initialProduct.productionBatchSize !== undefined ? String(initialProduct.productionBatchSize) : '30');
   const [imageUrl, setImageUrl] = useState(initialProduct ? (initialProduct.imageUrl || '') : '');
   const [errors, setErrors] = useState({});
 
@@ -67,6 +69,8 @@ export default function ProductFormModal({ isOpen, onClose, onSubmit, initialPro
       category: category,
       price: Number(price),
       stock: Number(stock),
+      minimumStock: Number(minimumStock) || 20,
+      productionBatchSize: Number(productionBatchSize) || 30,
       imageUrl: imageUrl.trim() || undefined
     };
 
@@ -170,6 +174,39 @@ export default function ProductFormModal({ isOpen, onClose, onSubmit, initialPro
               {errors.stock && (
                 <span className="form-error"><AlertCircle size={14} /> {errors.stock}</span>
               )}
+            </div>
+          </div>
+
+          {/* Bakery Workflow Settings Grid */}
+          <div className="form-grid-2">
+            <div className="form-group">
+              <label className="form-label" htmlFor="prod-min-stock">Minimum Stock (Low Stock Alert) *</label>
+              <input
+                id="prod-min-stock"
+                type="number"
+                min="1"
+                step="1"
+                className="form-input"
+                placeholder="20"
+                value={minimumStock}
+                onChange={(e) => setMinimumStock(e.target.value)}
+              />
+              <span className="text-3xs text-muted mt-0.5 block">When stock falls to this level, requests Baker production</span>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="prod-batch-size">Production Batch Size (pcs) *</label>
+              <input
+                id="prod-batch-size"
+                type="number"
+                min="1"
+                step="1"
+                className="form-input"
+                placeholder="30"
+                value={productionBatchSize}
+                onChange={(e) => setProductionBatchSize(e.target.value)}
+              />
+              <span className="text-3xs text-muted mt-0.5 block">Units requested when low stock triggers production</span>
             </div>
           </div>
 

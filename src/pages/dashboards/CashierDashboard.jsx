@@ -3,16 +3,19 @@
 // Section 8: Dashboard, POS / New Order, Orders, Payments, Receipts, Customers, Shift Summary
 // ==========================================
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useShop } from '../../hooks/useShop.js';
+import { useAuth } from '../../context/useAuth.js';
 import { ROLES } from '../../constants/roles.js';
 import DashboardLayout from '../../components/DashboardLayout.jsx';
 import ReceiptModal from '../../components/ReceiptModal.jsx';
-import { formatCurrency, formatDate } from '../../utils/formatters.js';
+import NotificationToast from '../../components/NotificationToast.jsx';
+import { useBakeryWorkflow } from '../../hooks/useBakeryWorkflow.js';
+import ShopManager from '../../patterns/ShopManager.js';
+import { formatCurrency, formatDate, formatDateTime } from '../../utils/formatters.js';
 import { 
   LayoutDashboard, 
   CreditCard, 
-  ClipboardList, 
   DollarSign, 
   Receipt, 
   Users, 
@@ -23,22 +26,47 @@ import {
   CheckCircle, 
   Search, 
   Printer, 
-  ArrowRight,
-  TrendingUp,
-  AlertCircle,
-  Sparkles,
-  ShoppingBag,
-  RotateCcw,
-  Banknote,
-  QrCode,
-  Wallet,
-  Check,
-  CheckCheck,
-  Clock
+  ArrowRight, 
+  TrendingUp, 
+  AlertCircle, 
+  Sparkles, 
+  ShoppingBag, 
+  RotateCcw, 
+  Banknote, 
+  QrCode, 
+  Wallet, 
+  Package, 
+  PackageCheck, 
+  CheckCircle2, 
+  ChefHat
 } from 'lucide-react';
 
 export default function CashierDashboard() {
   const { products, sales, completeSale } = useShop();
+  const { currentUser, userProfile } = useAuth();
+  const cashierName = userProfile?.fullName || currentUser?.displayName || 'Cashier Staff';
+
+  const { 
+    productionBatches, 
+    productionRequests, 
+    receiveProductionBatch, 
+    checkAndTriggerLowStock 
+  } = useBakeryWorkflow();
+
+  const [toast, setToast] = useState({ message: '', type: 'success' });
+  const showToast = (message, type = 'success') => setToast({ message, type });
+
+  // Auto trigger low-stock check
+  useEffect(() => {
+    if (products && products.length > 0) {
+      checkAndTriggerLowStock(products);
+    }
+  }, [products, checkAndTriggerLowStock]);
+
+  const readyBatches = useMemo(() => {
+    return (productionBatches || []).filter(b => b.status === 'Ready for Cashier');
+  }, [productionBatches]);
+  const readyBatchesCount = readyBatches.length;
 
   const [activeTab, setActiveTab] = useState('pos'); // Default directly to POS for cashier efficiency
   const [posCart, setPosCart] = useState([]);
@@ -48,7 +76,6 @@ export default function CashierDashboard() {
   const [amountReceived, setAmountReceived] = useState('');
   const [posSearch, setPosSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [orderFilter, setOrderFilter] = useState('All');
 
   // Drawer Balancing State
   const [openingFloat, setOpeningFloat] = useState(1000);
@@ -165,54 +192,11 @@ export default function CashierDashboard() {
     }
   };
 
-  // Advance Order Status (Cashier confirms order -> moves to Preparing for Baker, or Handover / Pickup -> Completed)
-  const handleUpdateOrderStatus = (orderId, newStatus) => {
-    setAllOrders(prev => {
-      const updated = prev.map(order => {
-        if (order.id === orderId || order.saleNumber === orderId) {
-          return { ...order, orderStatus: newStatus };
-        }
-        return order;
-      });
-      try {
-        localStorage.setItem('bakeology_sales', JSON.stringify(updated));
-      } catch {
-        // ignore
-      }
-      return updated;
-    });
-
-    // Also update customer orders in localStorage and notify listeners
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('bakeology_customer_orders_')) {
-          const custOrders = JSON.parse(localStorage.getItem(key) || '[]');
-          let changed = false;
-          const updatedCustOrders = custOrders.map(o => {
-            if (o.id === orderId || o.saleNumber === orderId) {
-              changed = true;
-              return { ...o, orderStatus: newStatus };
-            }
-            return o;
-          });
-          if (changed) {
-            localStorage.setItem(key, JSON.stringify(updatedCustOrders));
-          }
-        }
-      }
-      window.dispatchEvent(new CustomEvent('bakeology_order_updated', { detail: { orderId, newStatus } }));
-    } catch (e) {
-      console.warn("Could not sync customer orders on cashier update:", e);
-    }
-  };
-
   // Metrics
   const todaySalesTotal = allOrders.reduce((sum, s) => sum + (s.total || 0), 0);
-  const pendingOrdersCount = allOrders.filter(o => !o.orderStatus || o.orderStatus === 'Pending').length;
-  const preparingOrdersCount = allOrders.filter(o => o.orderStatus === 'Preparing').length;
-  const readyOrdersCount = allOrders.filter(o => o.orderStatus === 'Ready for Pickup' || o.orderStatus === 'Done').length;
-  const completedOrdersCount = allOrders.filter(o => o.orderStatus === 'Completed').length;
+  const lowStockPastriesCount = useMemo(() => {
+    return (products || []).filter(p => (p.stock || 0) <= (p.minimumStock !== undefined ? p.minimumStock : 10)).length;
+  }, [products]);
 
   // Tender breakdowns
   const cashSalesTotal = allOrders
@@ -231,13 +215,6 @@ export default function CashierDashboard() {
     return matchesCat && matchesSearch;
   });
 
-  const filteredOrders = allOrders.filter(o => {
-    if (orderFilter === 'All') return true;
-    if (orderFilter === 'Pending') return !o.orderStatus || o.orderStatus === 'Pending';
-    if (orderFilter === 'Ready for Pickup') return o.orderStatus === 'Ready for Pickup' || o.orderStatus === 'Done';
-    return o.orderStatus === orderFilter;
-  });
-
   // Drawer Balancing Math
   const expectedDrawerCash = openingFloat + cashSalesTotal;
   const numCountedCash = parseFloat(countedCash) || 0;
@@ -252,10 +229,19 @@ export default function CashierDashboard() {
     { label: '₱1,000', value: 1000 }
   ];
 
+  const handleReceiveBatch = (batch) => {
+    try {
+      receiveProductionBatch(batch.id, cashierName, ShopManager.getInstance());
+      showToast(`✓ Successfully received ${batch.quantity} pcs ${batch.productName}! Added to Cashier POS inventory.`, 'success');
+    } catch (err) {
+      showToast(`Failed to receive batch: ${err.message}`, 'error');
+    }
+  };
+
   const navItems = [
     { id: 'pos', label: 'POS Register', icon: CreditCard, badge: posCart.length > 0 ? posCart.length : undefined },
+    { id: 'receiving', label: 'Production Receiving', icon: Package, badge: readyBatchesCount > 0 ? readyBatchesCount : undefined },
     { id: 'overview', label: 'Shift Overview', icon: LayoutDashboard },
-    { id: 'orders', label: 'Order Pipeline', icon: ClipboardList, badge: pendingOrdersCount > 0 ? pendingOrdersCount : undefined },
     { id: 'payments', label: 'Tenders & Ledger', icon: DollarSign },
     { id: 'receipts', label: 'Receipt Archive', icon: Receipt, badge: allOrders.length },
     { id: 'customers', label: 'Counter Guests', icon: Users },
@@ -267,8 +253,8 @@ export default function CashierDashboard() {
       role={ROLES.CASHIER}
       title={
         activeTab === 'pos' ? 'Bakery POS Register' :
+        activeTab === 'receiving' ? 'Bakery Production Receiving' :
         activeTab === 'overview' ? 'Cashier Station & Shift Overview' :
-        activeTab === 'orders' ? 'Customer Order Pipeline' :
         activeTab === 'payments' ? 'Tenders & Payment Ledger' :
         activeTab === 'receipts' ? 'Transaction Receipt Archive' :
         activeTab === 'customers' ? 'Counter Guest Directory' :
@@ -276,8 +262,8 @@ export default function CashierDashboard() {
       }
       subtitle={
         activeTab === 'pos' ? 'Select pastries, apply discount strategies, calculate change, and print receipts' :
-        activeTab === 'overview' ? "Monitor today's receipts, active orders, and register balances" :
-        activeTab === 'orders' ? 'Confirm pending customer orders and dispatch to baker' :
+        activeTab === 'receiving' ? 'Receive finished pastries from Baker and replenish available register stock' :
+        activeTab === 'overview' ? "Monitor today's receipts, receiving batches, and register balances" :
         activeTab === 'payments' ? 'Review cash, GCash, and card payments received during shift' :
         activeTab === 'receipts' ? 'Lookup, search, and reprint customer receipts' :
         activeTab === 'customers' ? 'View walk-in and customer order history' :
@@ -386,11 +372,30 @@ export default function CashierDashboard() {
                         ) : (
                           <span className="pos-card-icon">{p.icon || '🥐'}</span>
                         )}
-                        <span className={`pos-stock-badge ${
-                          p.stock > 10 ? 'pos-stock-good' : p.stock > 0 ? 'pos-stock-low' : 'pos-stock-out'
-                        }`}>
-                          {p.stock > 0 ? `${p.stock} left` : 'Sold Out'}
-                        </span>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`pos-stock-badge ${
+                            p.stock > (p.minimumStock !== undefined ? p.minimumStock : 10) 
+                              ? 'pos-stock-good' 
+                              : p.stock > 0 
+                              ? 'pos-stock-low' 
+                              : 'pos-stock-out'
+                          }`}>
+                            {p.stock > 0 ? `${p.stock} left` : 'Sold Out'}
+                          </span>
+                          {readyBatches.some(b => String(b.productId) === String(p.id) || b.productName?.toLowerCase() === p.name?.toLowerCase()) ? (
+                            <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 animate-pulse">
+                              🟢 Ready to Receive
+                            </span>
+                          ) : productionRequests.some(r => (String(r.productId) === String(p.id) || r.productName?.toLowerCase() === p.name?.toLowerCase()) && r.status !== 'Completed' && r.status !== 'Received') ? (
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                              🟡 In Production
+                            </span>
+                          ) : p.stock <= (p.minimumStock !== undefined ? p.minimumStock : 20) ? (
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-700">
+                              ⚠️ Low Stock
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
 
                       <div className="mt-2.5">
@@ -645,7 +650,204 @@ export default function CashierDashboard() {
         </div>
       )}
 
-      {/* 2. SHIFT OVERVIEW TAB */}
+      {/* 2. PRODUCTION RECEIVING TAB (Section 13) */}
+      {activeTab === 'receiving' && (
+        <div className="space-y-6">
+          {/* Header & KPI Summary */}
+          <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                <Package className="w-6 h-6 text-[#D81B60]" />
+                Bakery Production Receiving
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Receive finished pastry batches baked by the kitchen and immediately replenish available cashier POS inventory.
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Ready to Receive</span>
+              <span className="text-2xl font-extrabold text-emerald-600 block mt-1">{readyBatchesCount}</span>
+              <span className="text-xs text-emerald-700 block mt-0.5">Fresh batches waiting at counter</span>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Total Received Today</span>
+              <span className="text-2xl font-extrabold text-[#D81B60] block mt-1">
+                {productionBatches.filter(b => b.status === 'Received').length}
+              </span>
+              <span className="text-xs text-gray-400 block mt-0.5">Batches added to POS stock</span>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Active in Kitchen</span>
+              <span className="text-2xl font-extrabold text-amber-600 block mt-1">
+                {productionRequests.filter(r => r.status === 'Preparing' || r.status === 'Accepted' || r.status === 'Pending').length}
+              </span>
+              <span className="text-xs text-amber-700 block mt-0.5">Production requests in progress</span>
+            </div>
+          </div>
+
+          {/* Active Batches Waiting for Cashier to Receive */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
+            <div className="border-b border-gray-100 pb-3 flex items-center justify-between">
+              <div>
+                <h4 className="font-bold text-gray-900 text-base flex items-center gap-2">
+                  <ChefHat className="w-5 h-5 text-amber-600" />
+                  Pastries Ready to Receive from Baker ({readyBatchesCount})
+                </h4>
+                <p className="text-xs text-gray-500">Click [Receive Stock] to increment finished product inventory in the POS register.</p>
+              </div>
+            </div>
+
+            {readyBatches.length === 0 ? (
+              <div className="py-12 text-center text-gray-400 space-y-2">
+                <PackageCheck className="w-12 h-12 mx-auto text-emerald-400" />
+                <p className="font-bold text-gray-800 text-base">No Pastries Waiting to be Received</p>
+                <p className="text-xs text-gray-500">All baked batches have already been received into register stock. Check back when the baker completes more batches!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {readyBatches.map(batch => {
+                  const product = products.find(p => String(p.id) === String(batch.productId) || (p.name && p.name.toLowerCase() === batch.productName.toLowerCase()));
+                  const currentStock = product ? Number(product.stock) || 0 : 0;
+                  const newStock = currentStock + (Number(batch.quantity) || 0);
+
+                  return (
+                    <div 
+                      key={batch.id} 
+                      className="bg-emerald-50/40 border-2 border-emerald-300 rounded-2xl p-5 space-y-4 shadow-sm relative overflow-hidden"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 inline-block mb-1">
+                            🟢 Ready for Cashier
+                          </span>
+                          <h4 className="font-bold text-gray-900 text-lg">{batch.productName}</h4>
+                          <span className="font-mono text-xs font-bold text-gray-500">
+                            Production #{batch.batchNumber || batch.id}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-2xl font-black font-mono text-[#D81B60]">
+                            +{batch.quantity}
+                          </span>
+                          <span className="text-xs text-gray-500 block font-bold">pieces</span>
+                        </div>
+                      </div>
+
+                      {/* Details & Stock Math */}
+                      <div className="bg-white p-3 rounded-xl border border-emerald-100 text-xs space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-500">Produced By:</span>
+                          <span className="font-semibold text-gray-800">{batch.producedBy || 'Baker Staff'}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-500">Completion Time:</span>
+                          <span className="font-mono text-gray-600">{formatDateTime(batch.completedAt)}</span>
+                        </div>
+                        <div className="pt-2 border-t border-gray-100 flex justify-between items-center text-xs">
+                          <span className="font-bold text-gray-700">Stock Adjustment:</span>
+                          <span className="font-mono">
+                            <span className="text-gray-500">{currentStock} pcs</span>
+                            <span className="mx-1 text-gray-400">→</span>
+                            <strong className="text-emerald-700 font-extrabold text-sm">{newStock} pcs</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Ingredients used reference */}
+                      {batch.ingredientsUsed && batch.ingredientsUsed.length > 0 && (
+                        <div className="text-[11px] text-gray-500 space-y-1">
+                          <span className="font-semibold text-gray-600">Deducted Ingredients:</span>
+                          <div className="flex flex-wrap gap-1">
+                            {batch.ingredientsUsed.map((ing, i) => (
+                              <span key={i} className="bg-white/80 border border-gray-200 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                                {ing.name || ing.ingredientName}: {ing.quantity} {ing.unit}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleReceiveBatch(batch)}
+                        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 shadow transition-all cursor-pointer"
+                      >
+                        <PackageCheck className="w-4 h-4" />
+                        <span>Receive Stock (+{batch.quantity} {batch.productName})</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Historical Received Batches Table */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
+            <h4 className="font-bold text-gray-900 text-base">Recently Received Pastry Batches</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-gray-100 text-gray-500 uppercase tracking-wider text-[11px] font-bold">
+                    <th className="py-2.5 px-3">Batch #</th>
+                    <th className="py-2.5 px-3">Pastry Name</th>
+                    <th className="py-2.5 px-3 text-center">Quantity</th>
+                    <th className="py-2.5 px-3">Produced By</th>
+                    <th className="py-2.5 px-3">Received Time</th>
+                    <th className="py-2.5 px-3 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {productionBatches.filter(b => b.status === 'Received').length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="py-6 text-center text-gray-400">
+                        No received batches yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    productionBatches
+                      .filter(b => b.status === 'Received')
+                      .slice(0, 10)
+                      .map(batch => (
+                        <tr key={batch.id} className="hover:bg-gray-50/50">
+                          <td className="py-2.5 px-3 font-mono font-bold text-[#D81B60]">
+                            {batch.batchNumber || batch.id}
+                          </td>
+                          <td className="py-2.5 px-3 font-bold text-gray-800">
+                            {batch.productName}
+                          </td>
+                          <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-700">
+                            +{batch.quantity} pcs
+                          </td>
+                          <td className="py-2.5 px-3 text-gray-600">
+                            {batch.producedBy || 'Baker Staff'}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-gray-500">
+                            {formatDateTime(batch.receivedAt || batch.completedAt)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Received
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. SHIFT OVERVIEW TAB */}
       {activeTab === 'overview' && (
         <div className="space-y-4">
           {/* Stat Cards */}
@@ -664,16 +866,16 @@ export default function CashierDashboard() {
               <span className="text-2xs text-muted font-medium block mt-1">Receipts Generated</span>
             </div>
 
-            <div className="bg-card p-4 rounded-2xl border border-border-light shadow-2xs">
-              <span className="text-3xs font-bold text-muted uppercase tracking-wider block">Pending Queue</span>
-              <span className="text-xl font-extrabold text-amber-600 block mt-1">{pendingOrdersCount}</span>
-              <span className="text-2xs text-amber-700 font-medium block mt-1">Need Confirmation</span>
+            <div className="bg-card p-4 rounded-2xl border border-emerald-100 bg-emerald-50/30 shadow-2xs">
+              <span className="text-3xs font-bold text-emerald-800 uppercase tracking-wider block">Ready to Receive</span>
+              <span className="text-xl font-extrabold text-emerald-600 block mt-1">{readyBatchesCount}</span>
+              <span className="text-2xs text-emerald-700 font-medium block mt-1">Batches from Baker</span>
             </div>
 
-            <div className="bg-card p-4 rounded-2xl border border-border-light shadow-2xs">
-              <span className="text-3xs font-bold text-muted uppercase tracking-wider block">Completed Pickups</span>
-              <span className="text-xl font-extrabold text-success block mt-1">{completedOrdersCount}</span>
-              <span className="text-2xs text-muted font-medium block mt-1">Fulfilled Orders</span>
+            <div className="bg-card p-4 rounded-2xl border border-rose-100 bg-rose-50/30 shadow-2xs">
+              <span className="text-3xs font-bold text-rose-800 uppercase tracking-wider block">Low Stock Pastries</span>
+              <span className="text-xl font-extrabold text-rose-600 block mt-1">{lowStockPastriesCount}</span>
+              <span className="text-2xs text-rose-700 font-medium block mt-1">Needs Replenishment</span>
             </div>
           </div>
 
@@ -774,150 +976,7 @@ export default function CashierDashboard() {
         </div>
       )}
 
-      {/* 3. ORDER PIPELINE TAB */}
-      {activeTab === 'orders' && (
-        <div className="space-y-4">
-          {/* Header & Filter Controls */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <div>
-              <h3 className="font-bold text-xs text-primary">Customer Order Pipeline ({filteredOrders.length})</h3>
-              <p className="text-3xs text-muted">Confirm incoming orders to dispatch preparation tickets to the Baker</p>
-            </div>
-
-            <div className="flex gap-1 overflow-x-auto pb-1">
-              {['All', 'Pending', 'Confirmed', 'Preparing', 'Ready for Pickup', 'Completed'].map(status => (
-                <button
-                  key={status}
-                  type="button"
-                  className={`px-2.5 py-1 rounded-xl text-3xs font-bold whitespace-nowrap transition-all ${
-                    orderFilter === status 
-                      ? 'bg-primary text-white shadow-2xs' 
-                      : 'bg-white text-muted border border-border-light hover:border-primary'
-                  }`}
-                  onClick={() => setOrderFilter(status)}
-                >
-                  {status}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {filteredOrders.length === 0 ? (
-            <div className="p-12 text-center text-xs text-muted bg-card rounded-2xl border border-dashed border-border-medium">
-              <ClipboardList size={32} className="mx-auto text-muted/50 mb-2" />
-              <p className="font-bold text-text-primary">No orders found in this pipeline state</p>
-              <p className="text-2xs text-muted mt-1">Orders placed online or through the POS terminal will appear here.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredOrders.map(order => (
-                <div key={order.id || order.saleNumber} className="bg-card p-3.5 rounded-2xl border border-border-light space-y-2.5 shadow-2xs flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className="font-extrabold text-xs text-primary block">Order #{order.saleNumber}</span>
-                        <span className="text-2xs text-muted">{order.customerName || 'Walk-in Guest'}</span>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded-full text-3xs font-extrabold border ${
-                        order.orderStatus === 'Completed' ? 'bg-green-100 text-green-700 border-green-200' :
-                        (order.orderStatus === 'Ready for Pickup' || order.orderStatus === 'Done') ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                        order.orderStatus === 'Preparing' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                        order.orderStatus === 'Confirmed' ? 'bg-purple-100 text-purple-700 border-purple-200' :
-                        'bg-rose-100 text-primary border-rose-200 animate-pulse'
-                      }`}>
-                        {order.orderStatus || 'Pending'}
-                      </span>
-                    </div>
-
-                    <div className="bg-cream-pure p-2 rounded-xl text-2xs space-y-1 mt-2 border border-border-light">
-                      {order.items?.map((it, idx) => (
-                        <div key={idx} className="flex justify-between">
-                          <span className="truncate pr-2">{it.name} × {it.quantity}</span>
-                          <span className="font-semibold text-text-primary">{formatCurrency(it.price * it.quantity)}</span>
-                        </div>
-                      ))}
-                      <div className="pt-1.5 border-t border-border-light flex justify-between font-extrabold text-primary text-xs">
-                        <span>Total Due</span>
-                        <span>{formatCurrency(order.total)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Cashier Actions */}
-                  <div className="flex gap-1.5 pt-1 border-t border-border-light">
-                    {(!order.orderStatus || order.orderStatus === 'Pending') && (
-                      <button
-                        type="button"
-                        className="btn-primary py-1 px-3 rounded-xl text-2xs font-bold flex-1 flex items-center justify-center gap-1 cursor-pointer"
-                        onClick={() => handleUpdateOrderStatus(order.id || order.saleNumber, 'Confirmed')}
-                      >
-                        <Check size={12} />
-                        <span>Confirm & Dispatch</span>
-                      </button>
-                    )}
-
-                    {order.orderStatus === 'Confirmed' && (
-                      <div 
-                        className="py-1 px-2.5 rounded-xl text-3xs font-extrabold flex-1 flex items-center justify-center gap-1 border"
-                        style={{ backgroundColor: '#faf5ff', color: '#7e22ce', borderColor: '#e9d5ff' }}
-                      >
-                        <Clock size={11} className="text-purple-600" />
-                        <span>Dispatched to Baker</span>
-                      </div>
-                    )}
-
-                    {order.orderStatus === 'Preparing' && (
-                      <div 
-                        className="py-1 px-2.5 rounded-xl text-3xs font-extrabold flex-1 flex items-center justify-center gap-1 border animate-pulse"
-                        style={{ backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' }}
-                      >
-                        <Clock size={11} className="text-blue-600" />
-                        <span>Baking in Kitchen</span>
-                      </div>
-                    )}
-
-                    {(order.orderStatus === 'Ready for Pickup' || order.orderStatus === 'Done') && (
-                      <button
-                        type="button"
-                        className="btn-done-pickup py-1.5 px-3 rounded-xl text-2xs font-extrabold flex-1 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
-                        style={{ backgroundColor: '#16a34a', color: '#ffffff' }}
-                        onClick={() => handleUpdateOrderStatus(order.id || order.saleNumber, 'Completed')}
-                      >
-                        <CheckCheck size={14} />
-                        <span>Done Pickup</span>
-                      </button>
-                    )}
-
-                    {order.orderStatus === 'Completed' && (
-                      <div 
-                        className="py-1 px-2.5 rounded-xl text-3xs font-extrabold flex-1 flex items-center justify-center gap-1 border"
-                        style={{ backgroundColor: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0' }}
-                      >
-                        <CheckCircle size={11} className="text-green-600" />
-                        <span>Picked Up</span>
-                      </div>
-                    )}
-
-                    <button
-                      type="button"
-                      className="p-1.5 rounded-xl border border-border-medium hover:bg-white text-muted text-2xs"
-                      onClick={() => {
-                        setActiveReceiptSale(order);
-                        setIsReceiptModalOpen(true);
-                      }}
-                      title="View Receipt"
-                    >
-                      <Receipt size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 4. PAYMENTS & TENDER LEDGER TAB */}
+      {/* 3. PAYMENTS & TENDER LEDGER TAB */}
       {activeTab === 'payments' && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1195,6 +1254,15 @@ export default function CashierDashboard() {
         onClose={() => setIsReceiptModalOpen(false)}
         sale={activeReceiptSale}
       />
+
+      {/* NOTIFICATION TOAST */}
+      {toast.message && (
+        <NotificationToast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast({ message: '', type: 'success' })}
+        />
+      )}
     </DashboardLayout>
   );
 }

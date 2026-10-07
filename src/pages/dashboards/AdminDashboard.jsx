@@ -14,6 +14,12 @@ import QuickRestockModal from '../../components/QuickRestockModal.jsx';
 import ReceiptModal from '../../components/ReceiptModal.jsx';
 import NotificationToast from '../../components/NotificationToast.jsx';
 import { formatCurrency, formatDate, formatDateTime, formatSaleNumber } from '../../utils/formatters.js';
+import { useBakeryWorkflow } from '../../hooks/useBakeryWorkflow.js';
+import InventoryOverviewSection from '../../components/admin/InventoryOverviewSection.jsx';
+import IngredientInventoryTab from '../../components/admin/IngredientInventoryTab.jsx';
+import ProductionManagementTab from '../../components/admin/ProductionManagementTab.jsx';
+import InventoryHistoryTab from '../../components/admin/InventoryHistoryTab.jsx';
+import RecipeModal from '../../components/admin/RecipeModal.jsx';
 import { 
   LayoutDashboard, 
   ShoppingBag, 
@@ -40,7 +46,11 @@ import {
   MapPin,
   Phone,
   Store,
-  Receipt
+  Receipt,
+  Wheat,
+  ChefHat,
+  History,
+  BookOpen
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -56,6 +66,11 @@ export default function AdminDashboard() {
 
   const { getAllUsers, createStaffAccount, updateUserRole } = useAuth();
 
+  const { 
+    ingredients, 
+    productionRequests 
+  } = useBakeryWorkflow();
+
   // Active navigation tab
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -65,6 +80,9 @@ export default function AdminDashboard() {
   // Modals
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+
+  const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
+  const [selectedRecipeProduct, setSelectedRecipeProduct] = useState(null);
 
   const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
   const [restockingProduct, setRestockingProduct] = useState(null);
@@ -151,9 +169,21 @@ export default function AdminDashboard() {
 
   const totalOrdersCount = orders.length;
   const activeProductsCount = products.length;
-  const lowStockCount = products.filter(p => p.stock <= 5).length;
-  const outOfStockCount = products.filter(p => p.stock === 0).length;
+  const lowStockCount = useMemo(() => {
+    return products.filter(p => (Number(p.stock) || 0) <= (p.minimumStock !== undefined ? Number(p.minimumStock) : 5)).length;
+  }, [products]);
+  const outOfStockCount = useMemo(() => {
+    return products.filter(p => (Number(p.stock) || 0) === 0).length;
+  }, [products]);
   const totalUsersCount = userList.length;
+
+  const lowIngredientsCount = useMemo(() => {
+    return (ingredients || []).filter(i => (Number(i.quantity) || 0) <= (Number(i.minimumStock) || 0)).length;
+  }, [ingredients]);
+
+  const activeProductionCount = useMemo(() => {
+    return (productionRequests || []).filter(r => r.status !== 'Completed' && r.status !== 'Ready for Cashier').length;
+  }, [productionRequests]);
 
   // Average Order Value
   const aov = totalOrdersCount > 0 ? totalRevenue / totalOrdersCount : 0;
@@ -378,13 +408,15 @@ export default function AdminDashboard() {
 
   // Navigation Items for DashboardLayout
   const navItems = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'orders', label: 'Orders', icon: ShoppingBag, badge: orders.filter(o => (o.orderStatus || 'Pending') === 'Pending').length || null },
     { id: 'products', label: 'Products', icon: Package },
-    { id: 'inventory', label: 'Inventory', icon: AlertTriangle, badge: lowStockCount > 0 ? lowStockCount : null },
-    { id: 'users', label: 'Staff & Users', icon: Users },
-    { id: 'reports', label: 'Sales Reports', icon: BarChart3 },
-    { id: 'settings', label: 'Store Settings', icon: Settings }
+    { id: 'ingredient-inventory', label: 'Ingredient Inventory', icon: Wheat, badge: lowIngredientsCount > 0 ? lowIngredientsCount : null },
+    { id: 'production', label: 'Production', icon: ChefHat, badge: activeProductionCount > 0 ? activeProductionCount : null },
+    { id: 'inventory-history', label: 'Inventory History', icon: History },
+    { id: 'users', label: 'Users', icon: Users },
+    { id: 'reports', label: 'Sales & Reports', icon: BarChart3 },
+    { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
   return (
@@ -485,6 +517,14 @@ export default function AdminDashboard() {
               <div className="admin-kpi-value">{totalUsersCount}</div>
               <div className="admin-kpi-subtext">Staff & customers</div>
             </div>
+          </div>
+
+          {/* Real-time Dual Inventory Overview (Raw Ingredients vs Finished Pastries) */}
+          <div style={{ marginTop: '24px', marginBottom: '24px' }}>
+            <InventoryOverviewSection 
+              onNavigateToIngredients={() => setActiveTab('ingredient-inventory')}
+              onNavigateToProduction={() => setActiveTab('production')}
+            />
           </div>
 
           {/* Sales Analytics Chart & Top Selling Pastries */}
@@ -901,6 +941,19 @@ export default function AdminDashboard() {
                         <button
                           type="button"
                           className="btn-admin-secondary"
+                          style={{ padding: '5px 10px', fontSize: '11px', color: '#BE185D', borderColor: '#FBCFE8', background: '#FDF2F8' }}
+                          onClick={() => {
+                            setSelectedRecipeProduct(prod);
+                            setIsRecipeModalOpen(true);
+                          }}
+                          title="Manage Recipe Ingredients & Ratios"
+                        >
+                          <BookOpen size={13} />
+                          <span>Recipe</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-admin-secondary"
                           style={{ padding: '5px 10px', fontSize: '11px' }}
                           onClick={() => {
                             setEditingProduct(prod);
@@ -946,109 +999,19 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* TAB 4: INVENTORY OVERVIEW */}
-      {activeTab === 'inventory' && (
-        <div>
-          <div className="admin-card" style={{ marginBottom: '20px' }}>
-            <div className="admin-card-header" style={{ margin: 0 }}>
-              <div>
-                <h3 className="admin-card-title">Inventory Levels & Restock Management</h3>
-                <p className="admin-card-subtitle">Real-time inventory levels, low stock alerts, and quick batch restock</p>
-              </div>
-              <span className="admin-status-badge status-preparing">
-                {lowStockCount} Low Items Needing Baking
-              </span>
-            </div>
-          </div>
+      {/* TAB 4: INGREDIENT INVENTORY */}
+      {(activeTab === 'ingredient-inventory' || activeTab === 'inventory') && (
+        <IngredientInventoryTab />
+      )}
 
-          {products.length === 0 ? (
-            <div className="admin-card" style={{ textAlign: 'center', padding: '40px 16px', color: '#8A92A0' }}>
-              <Package size={32} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.4 }} />
-              <p style={{ fontWeight: 700, fontSize: '14px', color: '#374151', margin: '0 0 6px' }}>No inventory items</p>
-              <p style={{ fontSize: '12px', margin: '0 0 16px', color: '#8A92A0' }}>Add pastries to your catalog first to monitor stock levels and restock items.</p>
-              <button
-                type="button"
-                className="btn-admin-primary"
-                onClick={() => {
-                  setEditingProduct(null);
-                  setIsProductModalOpen(true);
-                }}
-              >
-                <Plus size={14} />
-                <span>Add Pastry</span>
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-              {products.map(prod => {
-                const maxUnits = 100;
-                const stockPercent = Math.min(100, Math.round((prod.stock / maxUnits) * 100));
-                return (
-                  <div 
-                    key={prod.id}
-                    className="admin-card"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      border: prod.stock <= 5 ? '1px solid #FCD34D' : '1px solid #EDE4DC',
-                      boxShadow: prod.stock <= 5 ? '0 4px 12px rgba(245, 158, 11, 0.12)' : '0 2px 8px rgba(0,0,0,0.03)'
-                    }}
-                  >
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 800, color: '#8A92A0' }}>
-                          {prod.category}
-                        </span>
-                        <span className={`admin-status-badge ${prod.stock === 0 ? 'status-cancelled' : prod.stock <= 5 ? 'status-preparing' : 'status-completed'}`}>
-                          {prod.stock} in stock
-                        </span>
-                      </div>
+      {/* TAB: PRODUCTION MANAGEMENT */}
+      {activeTab === 'production' && (
+        <ProductionManagementTab onNavigateToRecipes={() => setActiveTab('products')} />
+      )}
 
-                      <h4 style={{ fontSize: '15px', fontWeight: 800, color: '#1F242E', marginBottom: '4px' }}>
-                        {prod.name}
-                      </h4>
-                      <p style={{ fontSize: '12px', color: '#717A88', marginBottom: '14px' }}>
-                        {formatCurrency(prod.price)} / unit
-                      </p>
-
-                      {/* Stock level bar */}
-                      <div style={{ width: '100%', height: '6px', background: '#F1EBE6', borderRadius: '4px', overflow: 'hidden', marginBottom: '16px' }}>
-                        <div 
-                          style={{
-                            width: `${stockPercent}%`,
-                            height: '100%',
-                            background: prod.stock <= 5 ? '#DC2626' : '#10B981',
-                            borderRadius: '4px',
-                            transition: 'width 0.3s ease'
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #F1EBE6', paddingTop: '12px' }}>
-                      <span style={{ fontSize: '11px', color: '#8A92A0', fontWeight: 600 }}>
-                        {prod.stock <= 5 ? '⚠ Bake soon' : '✓ In stock'}
-                      </span>
-                      <button
-                        type="button"
-                        className="btn-admin-primary"
-                        style={{ padding: '6px 12px', fontSize: '11px' }}
-                        onClick={() => {
-                          setRestockingProduct(prod);
-                          setIsRestockModalOpen(true);
-                        }}
-                      >
-                        <Plus size={13} />
-                        <span>Quick Restock</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+      {/* TAB: INVENTORY HISTORY & AUDIT LOG */}
+      {activeTab === 'inventory-history' && (
+        <InventoryHistoryTab />
       )}
 
       {/* TAB 5: USER & STAFF MANAGEMENT */}
@@ -1543,6 +1506,18 @@ export default function AdminDashboard() {
             setActiveReceiptSale(null);
           }}
           sale={activeReceiptSale}
+        />
+      )}
+
+      {/* RECIPE MANAGEMENT MODAL */}
+      {isRecipeModalOpen && (
+        <RecipeModal
+          isOpen={isRecipeModalOpen}
+          onClose={() => {
+            setIsRecipeModalOpen(false);
+            setSelectedRecipeProduct(null);
+          }}
+          product={selectedRecipeProduct}
         />
       )}
 

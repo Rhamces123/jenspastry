@@ -11,12 +11,14 @@ export const PRODUCT_CATEGORIES = ['Bread', 'Pastry', 'Cake', 'Dessert'];
  * Base Product representation
  */
 class BaseProduct {
-  constructor({ id, name, category, price, stock, icon, shelfLifeDays, imageUrl, description }) {
+  constructor({ id, name, category, price, stock, minimumStock, productionBatchSize, icon, shelfLifeDays, imageUrl, description }) {
     this.id = id;
     this.name = name;
     this.category = category;
     this.price = Number(price);
     this.stock = Number(stock);
+    this.minimumStock = minimumStock !== undefined ? Number(minimumStock) : 20;
+    this.productionBatchSize = productionBatchSize !== undefined ? Number(productionBatchSize) : 30;
     this.icon = icon || '🥐';
     this.shelfLifeDays = shelfLifeDays || 3;
     this.imageUrl = imageUrl || '';
@@ -27,7 +29,7 @@ class BaseProduct {
   // OBJECT METHOD: Check stock status
   getStatus() {
     if (this.stock === 0) return 'Out of Stock';
-    if (this.stock <= 10) return 'Low Stock';
+    if (this.stock <= this.minimumStock) return 'Low Stock';
     return 'In Stock';
   }
 }
@@ -102,7 +104,7 @@ export class PastryProductFactory {
       throw new Error("Product data is required to create a product.");
     }
 
-    const { id, name, category, price, stock, icon, imageUrl, description, shelfLifeDays } = productData;
+    const { id, name, category, price, stock, minimumStock, productionBatchSize, icon, imageUrl, description, shelfLifeDays } = productData;
 
     // Validate product name
     if (!name || typeof name !== 'string' || name.trim() === '') {
@@ -131,6 +133,8 @@ export class PastryProductFactory {
       category: normalizedCategory,
       price: parsedPrice,
       stock: parsedStock,
+      minimumStock: minimumStock !== undefined ? Number(minimumStock) : 20,
+      productionBatchSize: productionBatchSize !== undefined ? Number(productionBatchSize) : 30,
       icon,
       imageUrl,
       description,

@@ -1,5 +1,134 @@
 rules_version = '2';
 
+// =============================================================================
+// Jen's Pastry Shop (Bakeology) - Cloud Firestore Security Rules
+// =============================================================================
+// Assumed Data Models:
+//
+// 1. Collection: users (/users/{userId})
+//    - uid: string (required, 1..128, immutable)
+//    - fullName: string (required, 1..100)
+//    - email: string (required, valid RFC email, immutable for self)
+//    - role: string (required, 'customer' | 'cashier' | 'baker' | 'admin', immutable for self)
+//    - provider: string (optional, <= 50)
+//    - photoURL: string (optional, <= 2000)
+//    - status: string (optional, <= 50)
+//    - createdAt: date/timestamp (required, immutable)
+//    - updatedAt: date/timestamp (optional)
+//
+// 2. Collection: orders (/orders/{orderId})
+//    - id: string (required, 1..128, immutable)
+//    - saleNumber: number (required, >= 0, immutable for customer)
+//    - userId: string (required, 1..128, immutable)
+//    - customerName: string (required, 1..100)
+//    - customerEmail: string (required, email or '', immutable for customer)
+//    - date: date/timestamp (required, immutable)
+//    - items: list (required, 1..50 items)
+//    - total: number (required, 0..1000000, immutable for customer/baker)
+//    - orderStatus: string (required, enum)
+//    - deliveryNotes, notes, updatedAt, subtotal, discount, discountStrategyId,
+//      discountRate, customerType, paymentMethod, amountReceived, changeDue, change: optional
+//
+// 3. Collection: products (/products/{productId})
+//    - name: string (required, 1..100)
+//    - category: string (required, 1..50)
+//    - price: number (required, 0..1000000)
+//    - stock: number (required, 0..1000000)
+//    - minimumStock: number (optional, >= 0)
+//    - productionBatchSize: int (optional, 1..10000)
+//    - id, icon, shelfLifeDays, description, imageUrl, createdAt, updatedAt: optional
+//
+// 4. Collection: ingredients (/ingredients/{ingredientId})
+//    - name: string (required, 1..100)
+//    - category: string (required, 1..50)
+//    - quantity: number (required, >= 0)
+//    - unit: string (required, 1..20)
+//    - minimumStock: number (required, >= 0)
+//    - reorderLevel: number (optional, >= 0)
+//    - supplier: string (optional, <= 100)
+//    - expirationDate: string (optional, <= 50)
+//    - notes: string (optional, <= 500)
+//    - status: string (optional, <= 50)
+//    - disabled: bool (optional)
+//    - id: string (optional, <= 128, immutable)
+//    - createdAt: date/timestamp (optional, immutable)
+//    - updatedAt: date/timestamp (optional)
+//
+// 5. Collection: recipes (/recipes/{recipeId})
+//    - productName: string (required, 1..100)
+//    - baseQuantity: number (required, > 0)
+//    - ingredients: list of maps (required, 1..50, ingredientId, quantity > 0, unit)
+//    - id: string (optional, <= 128, immutable)
+//    - productId: string (optional, <= 128)
+//    - unit: string (optional, <= 20)
+//    - instructions: string (optional, <= 2000)
+//    - createdAt: date/timestamp (optional, immutable)
+//    - updatedAt: date/timestamp (optional)
+//
+// 6. Collection: productionRequests (/productionRequests/{requestId})
+//    - productName: string (required, 1..100, immutable for baker/cashier)
+//    - requestedQuantity: number (required, > 0, immutable for baker/cashier)
+//    - status: string (required, enum ['Pending', 'Accepted', 'Preparing', 'Ready for Cashier', 'Completed', 'Received'])
+//    - id: string (optional, <= 128, immutable)
+//    - requestNumber: string (optional, <= 128, immutable)
+//    - productId: string (optional, <= 128)
+//    - currentStock: number (optional)
+//    - minimumStock: number (optional, >= 0)
+//    - priority: string (optional, <= 50)
+//    - triggeredBy: string (optional, <= 100)
+//    - notes: string (optional, <= 1000)
+//    - createdAt: date/timestamp (optional, immutable)
+//    - updatedAt: date/timestamp (optional)
+//
+// 7. Collection: productionBatches (/productionBatches/{batchId})
+//    - productName: string (required, 1..100, immutable)
+//    - quantity: number (required, > 0, immutable)
+//    - status: string (required, enum ['Ready for Cashier', 'Received'])
+//    - id: string (optional, <= 128, immutable)
+//    - batchNumber: string (optional, <= 128, immutable)
+//    - requestId: string or null (optional, <= 128)
+//    - productId: string (optional, <= 128)
+//    - recipeId: string or null (optional, <= 128)
+//    - ingredientsUsed: list (optional, <= 50)
+//    - producedBy: string (optional, <= 100)
+//    - producedByRole: string (optional, <= 50)
+//    - completedAt: date/timestamp (optional, immutable)
+//    - receivedAt: date/timestamp or null (optional)
+//    - receivedBy: string or null (optional, <= 100)
+//    - createdAt: date/timestamp (optional, immutable)
+//    - updatedAt: date/timestamp (optional)
+//
+// 8. Collection: inventoryTransactions (/inventoryTransactions/{txId})
+//    - type: string (required, 1..100)
+//    - quantityChange: number (required, -1000000..1000000)
+//    - performedBy: string (required, 1..100)
+//    - previousStock: number (optional)
+//    - newStock: number (optional)
+//    - id: string (optional, <= 128)
+//    - inventoryType: string (optional, <= 50)
+//    - itemId: string (optional, <= 128)
+//    - itemName: string (optional, <= 100)
+//    - unit: string (optional, <= 20)
+//    - referenceId: string (optional, <= 100)
+//    - reason: string (optional, <= 500)
+//    - performedByRole: string (optional, <= 50)
+//    - timestamp: date/timestamp (optional)
+//    - createdAt: date/timestamp (optional)
+//    (Immutable audit trail: updates and deletes are denied)
+//
+// 9. Collection: workflowNotifications (/workflowNotifications/{notificationId})
+//    - title: string (required, 1..100)
+//    - message: string (required, 1..1000)
+//    - id: string (optional, <= 128)
+//    - type: string (optional, <= 50)
+//    - targetRole: string (optional, <= 50)
+//    - referenceId: string or null (optional, <= 128)
+//    - read: bool (optional)
+//    - timestamp: date/timestamp (optional)
+//    - createdAt: date/timestamp (optional)
+//    - updatedAt: date/timestamp (optional)
+// =============================================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -9,12 +138,12 @@ service cloud.firestore {
     // 1. Default Deny: All collections and documents are closed by default.
     // 2. Least Privilege & 4-Role RBAC:
     //    - Customer: Places orders, tracks own orders, edits profile details.
-    //    - Cashier: Manages POS orders, processes payments, advances status.
-    //    - Baker: Kitchen production queue, advances baking status (Preparing, Ready).
-    //    - Admin: Full management of catalog, users/staff, orders, and roles.
+    //    - Cashier: Manages POS orders, receives baked batches into counter stock.
+    //    - Baker: Views ingredients/recipes, accepts/prepares requests, logs completed batches.
+    //    - Admin: Full management of catalog, staff, orders, ingredients, recipes, and production.
     // 3. Authority Source: Derived from custom claims or verified server-side profile,
     //    never trusting client-supplied request payload for role checks.
-    // 4. Validator Function Pattern: Data shape, types, and constraints are enforced
+    // 4. Validator Function Pattern: Data shape, types, and bounds are enforced
     //    on BOTH create and update operations to eliminate Update Bypass attacks.
     // 5. Immutable Audit Fields: IDs, creation timestamps, and ownership fields
     //    cannot be modified or escalated.
@@ -199,8 +328,6 @@ service cloud.firestore {
         data.customerName is string &&
         data.customerName.size() >= 1 &&
         data.customerName.size() <= 100 &&
-        // Walk-in POS orders (cashier/admin) may omit the email via '' ;
-        // customer self-service creates additionally require a valid email (see orders create rule).
         (data.customerEmail == '' || isValidEmail(data.customerEmail)) &&
         isValidDate(data.date) &&
         data.items is list &&
@@ -232,6 +359,8 @@ service cloud.firestore {
           'category',
           'price',
           'stock',
+          'minimumStock',
+          'productionBatchSize',
           'icon',
           'shelfLifeDays',
           'description',
@@ -245,11 +374,227 @@ service cloud.firestore {
         data.price <= 1000000 &&
         isPositiveNumber(data.stock) &&
         data.stock <= 1000000 &&
+        (!('minimumStock' in data) || isPositiveNumber(data.minimumStock)) &&
+        (!('productionBatchSize' in data) || (data.productionBatchSize is int && data.productionBatchSize >= 1 && data.productionBatchSize <= 10000)) &&
         (!('id' in data) || (data.id is string || data.id is int)) &&
         (!('icon' in data) || (data.icon is string && data.icon.size() <= 20)) &&
         (!('shelfLifeDays' in data) || (data.shelfLifeDays is int && data.shelfLifeDays >= 1 && data.shelfLifeDays <= 365)) &&
         (!('description' in data) || (data.description is string && data.description.size() <= 1000)) &&
         (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 2000)) &&
+        (!('createdAt' in data) || isValidDate(data.createdAt)) &&
+        (!('updatedAt' in data) || isValidDate(data.updatedAt));
+    }
+
+    // Validates schema, types, and domain invariants for bakery raw ingredients.
+    function isValidIngredient(data) {
+      return data.keys().hasAll(['name', 'category', 'quantity', 'unit', 'minimumStock']) &&
+        data.keys().hasOnly([
+          'id',
+          'name',
+          'category',
+          'quantity',
+          'unit',
+          'minimumStock',
+          'reorderLevel',
+          'supplier',
+          'expirationDate',
+          'notes',
+          'status',
+          'disabled',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isNonEmptyString(data.name, 100) &&
+        isNonEmptyString(data.category, 50) &&
+        isPositiveNumber(data.quantity) &&
+        isNonEmptyString(data.unit, 20) &&
+        isPositiveNumber(data.minimumStock) &&
+        (!('reorderLevel' in data) || isPositiveNumber(data.reorderLevel)) &&
+        (!('supplier' in data) || (data.supplier is string && data.supplier.size() <= 100)) &&
+        (!('expirationDate' in data) || (data.expirationDate is string && data.expirationDate.size() <= 50)) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 500)) &&
+        (!('status' in data) || (data.status is string && data.status.size() <= 50)) &&
+        (!('disabled' in data) || data.disabled is bool) &&
+        (!('id' in data) || isNonEmptyString(data.id, 128)) &&
+        (!('createdAt' in data) || isValidDate(data.createdAt)) &&
+        (!('updatedAt' in data) || isValidDate(data.updatedAt));
+    }
+
+    // Validates schema, types, and domain invariants for pastry recipes.
+    function isValidRecipe(data) {
+      return data.keys().hasAll(['productName', 'baseQuantity', 'ingredients']) &&
+        data.keys().hasOnly([
+          'id',
+          'productId',
+          'productName',
+          'baseQuantity',
+          'unit',
+          'instructions',
+          'ingredients',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isNonEmptyString(data.productName, 100) &&
+        (data.baseQuantity is int || data.baseQuantity is float) &&
+        data.baseQuantity > 0 &&
+        data.baseQuantity <= 1000000 &&
+        data.ingredients is list &&
+        data.ingredients.size() >= 1 &&
+        data.ingredients.size() <= 50 &&
+        data.ingredients[0] is map &&
+        ('ingredientId' in data.ingredients[0]) &&
+        isNonEmptyString(data.ingredients[0].ingredientId, 128) &&
+        ('quantity' in data.ingredients[0]) &&
+        (data.ingredients[0].quantity is int || data.ingredients[0].quantity is float) &&
+        data.ingredients[0].quantity > 0 &&
+        ('unit' in data.ingredients[0]) &&
+        isNonEmptyString(data.ingredients[0].unit, 20) &&
+        (!('id' in data) || isNonEmptyString(data.id, 128)) &&
+        (!('productId' in data) || isNonEmptyString(data.productId, 128)) &&
+        (!('unit' in data) || (data.unit is string && data.unit.size() <= 20)) &&
+        (!('instructions' in data) || (data.instructions is string && data.instructions.size() <= 2000)) &&
+        (!('createdAt' in data) || isValidDate(data.createdAt)) &&
+        (!('updatedAt' in data) || isValidDate(data.updatedAt));
+    }
+
+    // Validates schema, types, and domain invariants for kitchen production requests.
+    function isValidProductionRequest(data) {
+      return data.keys().hasAll(['productName', 'requestedQuantity', 'status']) &&
+        data.keys().hasOnly([
+          'id',
+          'requestNumber',
+          'productId',
+          'productName',
+          'requestedQuantity',
+          'currentStock',
+          'minimumStock',
+          'priority',
+          'status',
+          'triggeredBy',
+          'notes',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isNonEmptyString(data.productName, 100) &&
+        (data.requestedQuantity is int || data.requestedQuantity is float) &&
+        data.requestedQuantity > 0 &&
+        data.requestedQuantity <= 1000000 &&
+        data.status in ['Pending', 'Accepted', 'Preparing', 'Ready for Cashier', 'Completed', 'Received'] &&
+        (!('id' in data) || isNonEmptyString(data.id, 128)) &&
+        (!('requestNumber' in data) || isNonEmptyString(data.requestNumber, 128)) &&
+        (!('productId' in data) || isNonEmptyString(data.productId, 128)) &&
+        (!('currentStock' in data) || (data.currentStock is int || data.currentStock is float)) &&
+        (!('minimumStock' in data) || isPositiveNumber(data.minimumStock)) &&
+        (!('priority' in data) || (data.priority is string && data.priority.size() <= 50)) &&
+        (!('triggeredBy' in data) || (data.triggeredBy is string && data.triggeredBy.size() <= 100)) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000)) &&
+        (!('createdAt' in data) || isValidDate(data.createdAt)) &&
+        (!('updatedAt' in data) || isValidDate(data.updatedAt));
+    }
+
+    // Validates schema, types, and domain invariants for kitchen production batches.
+    function isValidProductionBatch(data) {
+      return data.keys().hasAll(['productName', 'quantity', 'status']) &&
+        data.keys().hasOnly([
+          'id',
+          'batchNumber',
+          'requestId',
+          'productId',
+          'productName',
+          'quantity',
+          'recipeId',
+          'ingredientsUsed',
+          'status',
+          'producedBy',
+          'producedByRole',
+          'completedAt',
+          'receivedAt',
+          'receivedBy',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isNonEmptyString(data.productName, 100) &&
+        (data.quantity is int || data.quantity is float) &&
+        data.quantity > 0 &&
+        data.quantity <= 1000000 &&
+        data.status in ['Ready for Cashier', 'Received'] &&
+        (!('id' in data) || isNonEmptyString(data.id, 128)) &&
+        (!('batchNumber' in data) || isNonEmptyString(data.batchNumber, 128)) &&
+        (!('requestId' in data) || data.requestId == null || (data.requestId is string && data.requestId.size() <= 128)) &&
+        (!('productId' in data) || isNonEmptyString(data.productId, 128)) &&
+        (!('recipeId' in data) || data.recipeId == null || (data.recipeId is string && data.recipeId.size() <= 128)) &&
+        (!('ingredientsUsed' in data) || (data.ingredientsUsed is list && data.ingredientsUsed.size() <= 50)) &&
+        (!('producedBy' in data) || (data.producedBy is string && data.producedBy.size() <= 100)) &&
+        (!('producedByRole' in data) || (data.producedByRole is string && data.producedByRole.size() <= 50)) &&
+        (!('completedAt' in data) || isValidDate(data.completedAt)) &&
+        (!('receivedAt' in data) || data.receivedAt == null || isValidDate(data.receivedAt)) &&
+        (!('receivedBy' in data) || data.receivedBy == null || (data.receivedBy is string && data.receivedBy.size() <= 100)) &&
+        (!('createdAt' in data) || isValidDate(data.createdAt)) &&
+        (!('updatedAt' in data) || isValidDate(data.updatedAt));
+    }
+
+    // Validates schema, types, and domain invariants for inventory transactions.
+    function isValidInventoryTransaction(data) {
+      return data.keys().hasAll(['type', 'quantityChange', 'performedBy']) &&
+        data.keys().hasOnly([
+          'id',
+          'type',
+          'inventoryType',
+          'itemId',
+          'itemName',
+          'quantityChange',
+          'unit',
+          'previousStock',
+          'newStock',
+          'referenceId',
+          'reason',
+          'performedBy',
+          'performedByRole',
+          'timestamp',
+          'createdAt'
+        ]) &&
+        isNonEmptyString(data.type, 100) &&
+        (data.quantityChange is int || data.quantityChange is float) &&
+        data.quantityChange >= -1000000 &&
+        data.quantityChange <= 1000000 &&
+        isNonEmptyString(data.performedBy, 100) &&
+        (!('previousStock' in data) || (data.previousStock is int || data.previousStock is float)) &&
+        (!('newStock' in data) || (data.newStock is int || data.newStock is float)) &&
+        (!('id' in data) || isNonEmptyString(data.id, 128)) &&
+        (!('inventoryType' in data) || (data.inventoryType is string && data.inventoryType.size() <= 50)) &&
+        (!('itemId' in data) || isNonEmptyString(data.itemId, 128)) &&
+        (!('itemName' in data) || (data.itemName is string && data.itemName.size() <= 100)) &&
+        (!('unit' in data) || (data.unit is string && data.unit.size() <= 20)) &&
+        (!('referenceId' in data) || (data.referenceId is string && data.referenceId.size() <= 100)) &&
+        (!('reason' in data) || (data.reason is string && data.reason.size() <= 500)) &&
+        (!('performedByRole' in data) || (data.performedByRole is string && data.performedByRole.size() <= 50)) &&
+        (!('timestamp' in data) || isValidDate(data.timestamp)) &&
+        (!('createdAt' in data) || isValidDate(data.createdAt));
+    }
+
+    // Validates operational workflow notifications.
+    function isValidWorkflowNotification(data) {
+      return data.keys().hasAll(['title', 'message']) &&
+        data.keys().hasOnly([
+          'id',
+          'type',
+          'title',
+          'message',
+          'targetRole',
+          'referenceId',
+          'read',
+          'timestamp',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isNonEmptyString(data.title, 100) &&
+        isNonEmptyString(data.message, 1000) &&
+        (!('id' in data) || isNonEmptyString(data.id, 128)) &&
+        (!('type' in data) || (data.type is string && data.type.size() <= 50)) &&
+        (!('targetRole' in data) || (data.targetRole is string && data.targetRole.size() <= 50)) &&
+        (!('referenceId' in data) || data.referenceId == null || (data.referenceId is string && data.referenceId.size() <= 128)) &&
+        (!('read' in data) || data.read is bool) &&
+        (!('timestamp' in data) || isValidDate(data.timestamp)) &&
         (!('createdAt' in data) || isValidDate(data.createdAt)) &&
         (!('updatedAt' in data) || isValidDate(data.updatedAt));
     }
@@ -328,7 +673,7 @@ service cloud.firestore {
       // Update:
       // Path 1 (Customer Owner):
       // - Can only update delivery notes and updatedAt
-      // - Strictly disallowed from modifying orderStatus, total, items, saleNumber, id, date, or userId
+      // - Disallowed from modifying orderStatus, total, items, saleNumber, id, date, or userId
       // Path 2 (Baker):
       // - Kitchen production workflow: can update orderStatus (e.g. Preparing, Ready) and updatedAt
       // - Cannot modify order financial totals, items, customerEmail, or core metadata
@@ -410,6 +755,136 @@ service cloud.firestore {
 
       // Only administrators can remove products
       allow delete: if isAdmin();
+    }
+
+    // 4. Raw Ingredients Pantry (/ingredients/{ingredientId})
+    match /ingredients/{ingredientId} {
+      // Read: Staff members (Admin, Baker, Cashier)
+      allow read: if isStaff();
+
+      // Create: Only Store Owner / Admin can add new ingredients
+      allow create: if isAdmin() && isValidIngredient(request.resource.data);
+
+      // Update: Only Store Owner / Admin can update ingredient details or restock.
+      // Baker can view ingredients but cannot manage or create them.
+      allow update: if isAdmin() &&
+        (!('id' in resource.data) || request.resource.data.id == resource.data.id) &&
+        (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) &&
+        isValidIngredient(request.resource.data);
+
+      // Delete: Only Store Owner / Admin can remove ingredient records
+      allow delete: if isAdmin();
+    }
+
+    // 5. Pastry Formulation Recipes (/recipes/{recipeId})
+    match /recipes/{recipeId} {
+      // Read: Staff members (Admin, Baker, Cashier)
+      allow read: if isStaff();
+
+      // Create, Update, Delete: Controlled exclusively by Administrator
+      allow create: if isAdmin() && isValidRecipe(request.resource.data);
+
+      allow update: if isAdmin() &&
+        (!('id' in resource.data) || request.resource.data.id == resource.data.id) &&
+        (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) &&
+        isValidRecipe(request.resource.data);
+
+      allow delete: if isAdmin();
+    }
+
+    // 6. Kitchen Production Requests (/productionRequests/{requestId})
+    match /productionRequests/{requestId} {
+      // Read: Staff members (Admin, Baker, Cashier)
+      allow read: if isStaff();
+
+      // Create: Any staff member (created automatically on low stock or manually by Baker/Admin)
+      allow create: if isStaff() && isValidProductionRequest(request.resource.data);
+
+      // Update:
+      // - Baker, Cashier, or Admin advancing status (Pending -> Accepted -> Preparing -> Ready for Cashier -> Received)
+      // - Baker and Cashier can only touch status, notes, and updatedAt
+      // - Core request parameters (productName, requestedQuantity, id, createdAt) remain immutable
+      allow update: if (
+        (
+          (isBaker() || isCashier()) &&
+          (!('id' in resource.data) || request.resource.data.id == resource.data.id) &&
+          (!('requestNumber' in resource.data) || request.resource.data.requestNumber == resource.data.requestNumber) &&
+          (!('productId' in resource.data) || request.resource.data.productId == resource.data.productId) &&
+          request.resource.data.productName == resource.data.productName &&
+          request.resource.data.requestedQuantity == resource.data.requestedQuantity &&
+          (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'notes'])
+        ) ||
+        (
+          isAdmin() &&
+          (!('id' in resource.data) || request.resource.data.id == resource.data.id) &&
+          (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        )
+      ) && isValidProductionRequest(request.resource.data);
+
+      // Delete: Admin only
+      allow delete: if isAdmin();
+    }
+
+    // 7. Kitchen Production Batches (/productionBatches/{batchId})
+    match /productionBatches/{batchId} {
+      // Read: Staff members (Admin, Baker, Cashier)
+      allow read: if isStaff();
+
+      // Create: Baker or Admin completing production
+      // Initial batch status must be 'Ready for Cashier'
+      allow create: if (isBaker() || isAdmin()) &&
+        request.resource.data.status == 'Ready for Cashier' &&
+        isValidProductionBatch(request.resource.data);
+
+      // Update:
+      // - Cashier receiving stock into store counter inventory (transitioning status to 'Received')
+      // - Cashier can only touch status, receivedAt, receivedBy, updatedAt
+      // - Core production metadata (productName, quantity, batchNumber, id, completedAt) is immutable
+      // - Admin can manage batch updates
+      allow update: if (
+        (
+          isCashier() &&
+          resource.data.status == 'Ready for Cashier' &&
+          request.resource.data.status == 'Received' &&
+          request.resource.data.productName == resource.data.productName &&
+          request.resource.data.quantity == resource.data.quantity &&
+          (!('id' in resource.data) || request.resource.data.id == resource.data.id) &&
+          (!('batchNumber' in resource.data) || request.resource.data.batchNumber == resource.data.batchNumber) &&
+          (!('completedAt' in resource.data) || request.resource.data.completedAt == resource.data.completedAt) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'receivedAt', 'receivedBy', 'updatedAt'])
+        ) ||
+        (
+          isAdmin() &&
+          (!('id' in resource.data) || request.resource.data.id == resource.data.id) &&
+          (!('batchNumber' in resource.data) || request.resource.data.batchNumber == resource.data.batchNumber) &&
+          (!('completedAt' in resource.data) || request.resource.data.completedAt == resource.data.completedAt)
+        )
+      ) && isValidProductionBatch(request.resource.data);
+
+      // Delete: Admin only
+      allow delete: if isAdmin();
+    }
+
+    // 8. Inventory Transactions Audit Trail (/inventoryTransactions/{txId})
+    match /inventoryTransactions/{txId} {
+      // Read: Staff members (Admin, Baker, Cashier)
+      allow read: if isStaff();
+
+      // Create: Staff members logging audit events (deliveries, production usage, receiving, customer sales)
+      allow create: if isStaff() && isValidInventoryTransaction(request.resource.data);
+
+      // Update & Delete: STRICTLY FORBIDDEN (Immutable append-only audit trail)
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // 9. Operational Workflow Notifications (/workflowNotifications/{notificationId})
+    match /workflowNotifications/{notificationId} {
+      // Read & Write: Staff members (Admin, Baker, Cashier)
+      allow read: if isStaff();
+      allow create, update: if isStaff() && isValidWorkflowNotification(request.resource.data);
+      allow delete: if isStaff();
     }
   }
 }

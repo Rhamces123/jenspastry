@@ -5,6 +5,7 @@
 
 import { PastryProductFactory } from './PastryProductFactory.js';
 import { getDiscountStrategy } from './DiscountStrategies.js';
+import BakeryWorkflowManager from './BakeryWorkflowManager.js';
 import {
   saveProducts,
   loadProducts,
@@ -136,7 +137,11 @@ class ShopManager {
 
     if (storedProducts && Array.isArray(storedProducts) && storedProducts.length > 0) {
       // FACTORY PATTERN: Reconstruct product objects through the Factory
-      let prods = storedProducts.map(item => PastryProductFactory.createProduct(item));
+      let prods = storedProducts.map(item => PastryProductFactory.createProduct({
+        minimumStock: item.minimumStock !== undefined ? item.minimumStock : 20,
+        productionBatchSize: item.productionBatchSize !== undefined ? item.productionBatchSize : 30,
+        ...item
+      }));
       const hasBeverage = prods.some(p => p.category?.toLowerCase() === 'beverage');
       if (!hasBeverage) {
         const beverageSeeds = INITIAL_PRODUCTS
@@ -151,6 +156,13 @@ class ShopManager {
         PastryProductFactory.createProduct({ id: `seed-${i + 1}`, ...item })
       );
       saveProducts(this.products);
+    }
+
+    // Trigger low stock check on initialized products
+    try {
+      BakeryWorkflowManager.getInstance().checkAndTriggerLowStock(this.products);
+    } catch (e) {
+      console.warn("Could not check low stock on initialize:", e);
     }
 
     if (storedSales && Array.isArray(storedSales) && storedSales.length > 0) {
@@ -191,12 +203,15 @@ class ShopManager {
       category: rawData.category,
       price: rawData.price,
       stock: rawData.stock,
+      minimumStock: rawData.minimumStock !== undefined ? rawData.minimumStock : 20,
+      productionBatchSize: rawData.productionBatchSize !== undefined ? rawData.productionBatchSize : 30,
       imageUrl: defaultImage
     });
 
     // ARRAYS: Push to product list
     this.products = [newProduct, ...this.products];
     saveProducts(this.products);
+    BakeryWorkflowManager.getInstance().checkAndTriggerLowStock(this.products);
     this.notify();
     return newProduct;
   }
@@ -222,12 +237,15 @@ class ShopManager {
       category: updatedFields.category !== undefined ? updatedFields.category : current.category,
       price: updatedFields.price !== undefined ? updatedFields.price : current.price,
       stock: updatedFields.stock !== undefined ? updatedFields.stock : current.stock,
+      minimumStock: updatedFields.minimumStock !== undefined ? updatedFields.minimumStock : (current.minimumStock || 20),
+      productionBatchSize: updatedFields.productionBatchSize !== undefined ? updatedFields.productionBatchSize : (current.productionBatchSize || 30),
       imageUrl: updatedFields.imageUrl !== undefined ? updatedFields.imageUrl : current.imageUrl,
       icon: updatedFields.icon !== undefined ? updatedFields.icon : current.icon
     });
 
     this.products[index] = updated;
     saveProducts(this.products);
+    BakeryWorkflowManager.getInstance().checkAndTriggerLowStock(this.products);
     this.notify();
     return updated;
   }
@@ -256,6 +274,7 @@ class ShopManager {
     product.stock = parsedStock;
 
     saveProducts(this.products);
+    BakeryWorkflowManager.getInstance().checkAndTriggerLowStock(this.products);
     this.notify();
     return product;
   }
@@ -373,6 +392,17 @@ class ShopManager {
     // ARRAYS: Save sale to history
     this.sales = [newSale, ...this.sales];
     saveSales(this.sales);
+
+    // Audit finished product inventory deduction & trigger low-stock production requests
+    try {
+      BakeryWorkflowManager.getInstance().recordCustomerSale(
+        newSale,
+        customCustomerLabel || 'Cashier Staff',
+        this.products
+      );
+    } catch (e) {
+      console.warn("Could not log sale inventory transaction:", e);
+    }
 
     // Notify React components of state change
     this.notify();

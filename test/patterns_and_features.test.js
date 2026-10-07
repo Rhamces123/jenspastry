@@ -22,8 +22,9 @@ if (typeof globalThis.localStorage === 'undefined') {
   };
 }
 
-// Import ShopManager after localStorage polyfill
+// Import ShopManager and BakeryWorkflowManager after localStorage polyfill
 import ShopManager from '../src/patterns/ShopManager.js';
+import BakeryWorkflowManager from '../src/patterns/BakeryWorkflowManager.js';
 import { 
   checkIsAppInstalled, 
   markAppAsInstalled, 
@@ -325,7 +326,193 @@ try {
   console.error("RBAC Tests error:", e);
 }
 
+// ----------------------------------------------------
+// 6. CONNECTED BAKERY INVENTORY & PRODUCTION WORKFLOW TESTS (Section 28)
+// ----------------------------------------------------
+console.log("\n6. Testing Connected Bakery Inventory & Production Workflow (Section 28)...");
+
+try {
+  const workflow = BakeryWorkflowManager.getInstance();
+  const shop = ShopManager.getInstance();
+
+  // Test 1: Admin adds ingredient: Flour 25 kg -> Verify Flour stock = 25
+  console.log("\n  Test 1: Admin adds ingredient...");
+  const flour = workflow.addIngredient({
+    id: 'test-flour',
+    name: 'All-Purpose Flour',
+    category: 'Flour & Grains',
+    quantity: 25,
+    unit: 'kg',
+    minimumStock: 10,
+    reorderLevel: 15
+  }, 'Store Owner / Admin');
+
+  assert(flour.quantity === 25, "Test 1: Admin adds Flour 25 kg, stock equals 25 kg");
+  assert(workflow.getIngredientById('test-flour').quantity === 25, "Test 1: Flour stock verified via getIngredientById");
+
+  // Test 2: Admin restocks ingredient: Flour +10 kg -> Verify Flour stock = 35
+  console.log("\n  Test 2: Admin restocks ingredient...");
+  const restockedFlour = workflow.addIngredientStock('test-flour', 10, 'New Supplier Delivery', 'Bakery Supply Co.', 'Store Owner / Admin');
+  assert(restockedFlour.quantity === 35, "Test 2: Admin restocks +10 kg, Flour stock equals 35 kg");
+  assert(workflow.getIngredientById('test-flour').quantity === 35, "Test 2: Persisted stock is 35 kg");
+
+  // Set up recipe for Pandesal: 10 Pandesal = 1 kg Flour
+  workflow.saveRecipe({
+    id: 'test-recipe-pandesal',
+    productId: 'test-pandesal',
+    productName: 'Pandesal',
+    baseQuantity: 10,
+    unit: 'pcs',
+    ingredients: [
+      { ingredientId: 'test-flour', ingredientName: 'All-Purpose Flour', quantity: 1, unit: 'kg' }
+    ]
+  });
+
+  // Test 3: Baker produces 30 Pandesal. Recipe: 10 Pandesal = 1 kg Flour. System deducts 3 kg Flour. Verify Flour stock = 32
+  console.log("\n  Test 3: Baker produces 30 Pandesal (auto-deduct 3 kg Flour)...");
+  const pandesalReq = workflow.createProductionRequest({
+    productId: 'test-pandesal',
+    productName: 'Pandesal',
+    requestedQuantity: 30,
+    currentStock: 8,
+    minimumStock: 20
+  });
+
+  const batch1 = workflow.completeProduction({
+    requestId: pandesalReq.id,
+    productName: 'Pandesal',
+    productId: 'test-pandesal',
+    quantity: 30,
+    bakerName: 'Master Baker'
+  });
+
+  assert(batch1.status === 'Ready for Cashier', "Test 3: Batch status is 'Ready for Cashier'");
+  assert(workflow.getIngredientById('test-flour').quantity === 32, "Test 3: Flour stock decreased from 35 kg to 32 kg (-3 kg)");
+
+  // Test 4: Attempt production when ingredient is insufficient -> Verify production fails with shortage error
+  console.log("\n  Test 4: Attempt production when ingredient is insufficient...");
+  let errorCaught = false;
+  let shortageMsg = '';
+  try {
+    // Attempt to produce 400 Pandesal (requires 40 kg flour, only 32 kg available -> shortage 8 kg)
+    workflow.completeProduction({
+      productName: 'Pandesal',
+      productId: 'test-pandesal',
+      quantity: 400,
+      bakerName: 'Master Baker'
+    });
+  } catch (err) {
+    errorCaught = true;
+    shortageMsg = err.message;
+  }
+  assert(errorCaught === true, "Test 4: Insufficient ingredient throws an error");
+  assert(shortageMsg.includes("insufficient") || shortageMsg.includes("shortage"), "Test 4: Error message specifies shortage");
+  assert(workflow.getIngredientById('test-flour').quantity === 32, "Test 4: Flour stock untouched at 32 kg after failed attempt");
+
+  // Test 5: Finished pastry production output status = Ready for Cashier -> Verify Cashier stock not yet changed
+  console.log("\n  Test 5: Verify Cashier stock not changed while batch is Ready for Cashier...");
+  let pandesalProduct = shop.getProducts().find(p => p.name.toLowerCase() === 'pandesal');
+  if (pandesalProduct) {
+    shop.updateStock(pandesalProduct.id, 8);
+  } else {
+    pandesalProduct = shop.addProduct({
+      name: 'Pandesal',
+      category: 'Bread',
+      price: 15,
+      stock: 8,
+      minimumStock: 20,
+      productionBatchSize: 30
+    });
+  }
+  assert(shop.getProductById(pandesalProduct.id).stock === 8, "Test 5: Cashier stock remains 8 pcs before receiving batch");
+  assert(batch1.status === 'Ready for Cashier', "Test 5: Batch remains 'Ready for Cashier'");
+
+  // Test 6: Cashier receives production output -> Verify Cashier stock increases
+  console.log("\n  Test 6: Cashier receives production output...");
+  workflow.receiveProductionBatch(batch1.id, 'Cashier Jane', shop);
+  assert(shop.getProductById(pandesalProduct.id).stock === 38, "Test 6: Cashier stock increases from 8 to 38 pcs (+30 pcs)");
+  assert(workflow.getProductionBatches().find(b => b.id === batch1.id).status === 'Received', "Test 6: Batch status transitions to 'Received'");
+
+  // Test 7: Cashier sells pastry -> Verify Cashier stock decreases
+  console.log("\n  Test 7: Cashier sells pastry (5 Pandesal)...");
+  shop.completeSale({
+    cart: [{ id: pandesalProduct.id, name: 'Pandesal', price: 15, quantity: 5 }],
+    customerLabel: 'Walk-in Customer'
+  });
+  assert(shop.getProductById(pandesalProduct.id).stock === 33, "Test 7: Cashier stock decreases from 38 to 33 pcs after selling 5");
+
+  // Test 8: Cashier stock <= minimum stock -> Verify production request automatically created
+  console.log("\n  Test 8: Cashier stock drops <= minimum stock (trigger production request)...");
+  shop.updateStock(pandesalProduct.id, 15);
+  const activeRequests = workflow.getProductionRequests().filter(r => 
+    (r.productId === String(pandesalProduct.id) || r.productName === 'Pandesal') &&
+    ['Pending', 'Accepted', 'Preparing'].includes(r.status)
+  );
+  assert(activeRequests.length >= 1, "Test 8: Production request automatically generated when stock <= minimumStock");
+  assert(activeRequests[0].requestedQuantity === (pandesalProduct.productionBatchSize || 30), "Test 8: Request quantity matches productionBatchSize (30)");
+
+  // Test 9: Verify duplicate production requests are NOT created
+  console.log("\n  Test 9: Verify duplicate production requests are NOT created...");
+  const initialReqCount = workflow.getProductionRequests().length;
+  workflow.checkAndTriggerLowStock(shop.getProducts());
+  const finalReqCount = workflow.getProductionRequests().length;
+  assert(initialReqCount === finalReqCount, "Test 9: No duplicate production request created for same low-stock product");
+
+  // Test 10: Verify ingredient stock never drops below 0
+  console.log("\n  Test 10: Verify ingredient stock never drops below 0...");
+  const currentFlourStock = workflow.getIngredientById('test-flour').quantity;
+  assert(currentFlourStock >= 0, "Test 10: Ingredient quantity is positive");
+  let preventedNegative = false;
+  try {
+    workflow.completeProduction({
+      productName: 'Pandesal',
+      productId: 'test-pandesal',
+      quantity: 9999,
+      bakerName: 'Master Baker'
+    });
+  } catch (err) {
+    preventedNegative = true;
+  }
+  assert(preventedNegative === true, "Test 10: System blocks deduction that would drop ingredient stock below 0");
+  assert(workflow.getIngredientById('test-flour').quantity >= 0, "Test 10: Flour stock remains >= 0");
+
+  // Test 11: Verify finished product stock never drops below 0
+  console.log("\n  Test 11: Verify finished product stock never drops below 0...");
+  let saleBlocked = false;
+  try {
+    shop.completeSale({
+      cart: [{ id: pandesalProduct.id, name: 'Pandesal', price: 15, quantity: 9999 }],
+      customerLabel: 'Oversell attempt'
+    });
+  } catch (err) {
+    saleBlocked = true;
+  }
+  assert(saleBlocked === true, "Test 11: Oversell is rejected by ShopManager");
+  assert(shop.getProductById(pandesalProduct.id).stock >= 0, "Test 11: Finished product stock remains >= 0");
+
+  // Test 12: Verify inventory history transactions are created for all actions
+  console.log("\n  Test 12: Verify inventory history transactions created for all actions...");
+  const txs = workflow.getInventoryTransactions();
+  assert(txs.length > 0, "Test 12: Transactions recorded in inventory audit log");
+
+  const hasRestockTx = txs.some(t => t.type?.toLowerCase().includes('delivery') || t.type?.toLowerCase().includes('restock'));
+  assert(hasRestockTx, "Test 12: Supplier Restock transaction recorded");
+
+  const hasBakerTx = txs.some(t => t.type?.toLowerCase().includes('production used') || t.type?.toLowerCase().includes('deduction'));
+  assert(hasBakerTx, "Test 12: Baker production deduction transaction recorded");
+
+  const hasReceiveTx = txs.some(t => t.type?.toLowerCase().includes('received'));
+  assert(hasReceiveTx, "Test 12: Cashier receiving transaction recorded");
+
+  const hasSaleTx = txs.some(t => t.type?.toLowerCase().includes('sale'));
+  assert(hasSaleTx, "Test 12: Customer sale transaction recorded");
+} catch (e) {
+  console.error("Workflow Tests error:", e);
+  throw e;
+}
+
 console.log("\n==========================================");
 console.log(`TEST RESULTS: ${passedTests} / ${totalTests} PASSED`);
 console.log("==========================================");
+
 
