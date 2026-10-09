@@ -242,15 +242,14 @@ export default function CashierDashboard() {
 
   return (
     <div className="bakeology-pos-root">
-      {/* 1. FLOATING DECORATIONS LAYER (Matching User Mockup) */}
+      {/* 1. FLOATING DECORATIONS LAYER (Crisp Transparent PNGs) */}
       <div className="pos-decorations-layer" aria-hidden="true">
-        <img src="/decorations/cinnamon-plate.png" alt="" className="pos-decor-item decor-cinnamon-plate" />
-        <img src="/decorations/pretzel-top.png" alt="" className="pos-decor-item decor-pretzel-top" />
-        <img src="/decorations/croissant-top.png" alt="" className="pos-decor-item decor-croissant-top" />
-        <img src="/decorations/cookie-center.png" alt="" className="pos-decor-item decor-cookie-center" />
-        <img src="/decorations/brownie-bottom.png" alt="" className="pos-decor-item decor-brownie-bottom" />
-        <img src="/decorations/pretzel-bottom.png" alt="" className="pos-decor-item decor-pretzel-bottom" />
-        <img src="/decorations/croissant-bottom.png" alt="" className="pos-decor-item decor-croissant-bottom" />
+        <img src="/decorations/pretzel.png" alt="" className="pos-decor-item decor-pretzel-top" />
+        <img src="/decorations/croissant.png" alt="" className="pos-decor-item decor-croissant-top" />
+        <img src="/decorations/cookie.png" alt="" className="pos-decor-item decor-cookie-center" />
+        <img src="/decorations/brownie.png" alt="" className="pos-decor-item decor-brownie-bottom" />
+        <img src="/decorations/pretzel.png" alt="" className="pos-decor-item decor-pretzel-bottom" />
+        <img src="/decorations/croissant.png" alt="" className="pos-decor-item decor-croissant-bottom" />
       </div>
 
       {/* 2. 3-COLUMN BAKEOLOGY WORKSTATION */}
