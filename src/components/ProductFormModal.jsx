@@ -4,13 +4,13 @@
 // ==========================================
 
 import React, { useState } from 'react';
-import { PRODUCT_CATEGORIES } from '../patterns/PastryProductFactory.js';
+import { PRODUCT_CATEGORIES, CATEGORY_ICONS } from '../patterns/PastryProductFactory.js';
 import { PlusCircle, Save, X, AlertCircle } from 'lucide-react';
 
 export default function ProductFormModal({ isOpen, onClose, onSubmit, initialProduct = null }) {
   // VARIABLES: Form state initialized from initialProduct if present
   const [name, setName] = useState(initialProduct ? (initialProduct.name || '') : '');
-  const [category, setCategory] = useState(initialProduct ? (initialProduct.category || 'Bread') : 'Bread');
+  const [category, setCategory] = useState(initialProduct ? (initialProduct.category || 'Pastries') : 'Pastries');
   const [price, setPrice] = useState(initialProduct && initialProduct.price !== undefined ? String(initialProduct.price) : '');
   const [stock, setStock] = useState(initialProduct && initialProduct.stock !== undefined ? String(initialProduct.stock) : '');
   const [minimumStock, setMinimumStock] = useState(initialProduct && initialProduct.minimumStock !== undefined ? String(initialProduct.minimumStock) : '20');
@@ -127,11 +127,7 @@ export default function ProductFormModal({ isOpen, onClose, onSubmit, initialPro
             >
               {PRODUCT_CATEGORIES.map(cat => (
                 <option key={cat} value={cat}>
-                  {cat === 'Bread' && '🥖 '}
-                  {cat === 'Pastry' && '🥐 '}
-                  {cat === 'Cake' && '🎂 '}
-                  {cat === 'Dessert' && '🍮 '}
-                  {cat}
+                  {(CATEGORY_ICONS[cat] ? `${CATEGORY_ICONS[cat]} ` : '') + cat}
                 </option>
               ))}
             </select>

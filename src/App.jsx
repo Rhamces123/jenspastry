@@ -306,7 +306,7 @@ export default function App() {
   };
 
   const totalCartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
-  const isDashboardRoute = location.pathname.includes('/dashboard');
+  const isDashboardRoute = location.pathname.includes('/dashboard') || location.pathname === '/pos';
 
   return (
     <div className={`app-viewport-root ${deviceFrameMode && !isDashboardRoute ? 'mode-phone-frame' : 'mode-expanded'} ${isDashboardRoute ? 'is-dashboard-route' : ''}`}>
@@ -385,6 +385,7 @@ export default function App() {
                 <CashierDashboard />
               </RoleRoute>
             } />
+            <Route path="/pos" element={<CashierDashboard />} />
             <Route path="/baker/dashboard" element={
               <RoleRoute allowedRoles={[ROLES.BAKER, ROLES.ADMIN]}>
                 <BakerDashboard />

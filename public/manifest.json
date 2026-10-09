@@ -1,5 +1,5 @@
 {
-  "id": "com.jenspastry.app",
+  "id": "com.bakeology.app",
   "name": "BAKEOLOGY - Management System",
   "short_name": "BAKEOLOGY",
   "description": "Mobile Pastry Shop Management System for BAKEOLOGY",
@@ -14,7 +14,7 @@
     {
       "platform": "webapp",
       "url": "/manifest.json",
-      "id": "com.jenspastry.app"
+      "id": "com.bakeology.app"
     }
   ],
   "icons": [

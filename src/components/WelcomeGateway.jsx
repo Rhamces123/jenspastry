@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // BAKEOLOGY - Welcome Gateway Component
 // Displayed to visitors/guests: Only shows Login, Sign Up, and Install Button
 // 100x Modern, delightful artisanal pastry portal
@@ -22,12 +22,12 @@ export default function WelcomeGateway({ onOpenInstallModal, isInstalled = false
       <div className="welcome-gateway-card">
         {/* Animated Pastry Hero Badge */}
         <div className="welcome-hero-badge">
-          <Croissant size={34} />
+          <img src="/logo.png" alt="BAKEOLOGY Logo" className="welcome-hero-logo" />
         </div>
 
         {/* Brand Titles */}
         <h1 className="welcome-brand-title">BAKEOLOGY</h1>
-        <p className="welcome-brand-sub">Jen's Pastry Shop</p>
+        <p className="welcome-brand-sub">Artisanal Pastry Shop</p>
         <p className="welcome-brand-desc">
           Handcrafted artisanal breads, delicate pastries, and sweet oven delights baked fresh every morning with love.
         </p>
@@ -60,10 +60,32 @@ export default function WelcomeGateway({ onOpenInstallModal, isInstalled = false
           </div>
         )}
 
-        {/* 2 & 3. Primary Actions: Sign In & Create Account */}
+        {/* 2 & 3. Primary Actions: POS Register, Sign In & Create Account */}
         <div className="welcome-action-buttons">
+          {/* Quick Launch POS Register */}
+          <Link 
+            to="/pos" 
+            className="btn-welcome-primary" 
+            style={{ 
+              background: 'linear-gradient(135deg, #f2a9d6 0%, #ec4899 100%)', 
+              color: '#000000',
+              border: '2px solid rgba(255, 255, 255, 0.8)'
+            }}
+          >
+            <div className="welcome-btn-content">
+              <div className="welcome-btn-icon-wrap" style={{ background: '#ffffff', color: '#000000' }}>
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <div className="welcome-btn-title" style={{ color: '#000000', fontWeight: 900 }}>Launch Bakeology POS</div>
+                <div className="welcome-btn-sub" style={{ color: '#333333', fontWeight: 600 }}>Artisanal Pastel POS Register & Counter Station</div>
+              </div>
+            </div>
+            <ArrowRight size={18} className="shrink-0 text-black" />
+          </Link>
+
           {/* Sign In Button */}
-          <Link to="/login" className="btn-welcome-primary">
+          <Link to="/login" className="btn-welcome-secondary">
             <div className="welcome-btn-content">
               <div className="welcome-btn-icon-wrap">
                 <LogIn size={20} />

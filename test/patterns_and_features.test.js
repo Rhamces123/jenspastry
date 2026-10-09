@@ -314,11 +314,15 @@ try {
   assert(hasPermission(ROLES.ADMIN, PERMISSIONS.SYSTEM_SETTINGS) === true, "Admin has system settings permission");
 
   // Test resolveRoleForUser Helper
+  assert(resolveRoleForUser('admin@bakeology.com') === ROLES.ADMIN, "resolveRoleForUser identifies admin@bakeology.com as ADMIN");
+  assert(resolveRoleForUser('cashier@bakeology.com') === ROLES.CASHIER, "resolveRoleForUser identifies cashier@bakeology.com as CASHIER");
+  assert(resolveRoleForUser('baker@bakeology.com') === ROLES.BAKER, "resolveRoleForUser identifies baker@bakeology.com as BAKER");
   assert(resolveRoleForUser('admin@jenspastry.com') === ROLES.ADMIN, "resolveRoleForUser identifies admin@jenspastry.com as ADMIN");
   assert(resolveRoleForUser('cashier@jenspastry.com') === ROLES.CASHIER, "resolveRoleForUser identifies cashier@jenspastry.com as CASHIER");
   assert(resolveRoleForUser('baker@jenspastry.com') === ROLES.BAKER, "resolveRoleForUser identifies baker@jenspastry.com as BAKER");
   assert(resolveRoleForUser('admin@custom.com', 'admin') === ROLES.ADMIN, "resolveRoleForUser identifies admin prefix/name as ADMIN");
   assert(resolveRoleForUser('owner@store.com', 'Store Owner / Admin') === ROLES.ADMIN, "resolveRoleForUser identifies Store Owner title as ADMIN");
+  assert(resolveRoleForUser('admin@bakeology.com', 'admin', 'customer') === ROLES.ADMIN, "resolveRoleForUser overrides stale customer role for official bakeology admin");
   assert(resolveRoleForUser('admin@jenspastry.com', 'admin', 'customer') === ROLES.ADMIN, "resolveRoleForUser overrides stale customer role for official admin");
   assert(resolveRoleForUser('customer@gmail.com', 'John Customer') === ROLES.CUSTOMER, "resolveRoleForUser identifies regular user as CUSTOMER");
   assert(resolveRoleForUser('vladimir@gmail.com', 'Vladimir') === ROLES.CUSTOMER, "resolveRoleForUser does not false-positive on Vladimir");

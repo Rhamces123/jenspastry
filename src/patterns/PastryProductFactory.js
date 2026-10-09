@@ -3,7 +3,36 @@
 // ==========================================
 
 // VARIABLES
-export const PRODUCT_CATEGORIES = ['Bread', 'Pastry', 'Cake', 'Dessert'];
+export const PRODUCT_CATEGORIES = [
+  'Cakes',
+  'Cupcakes',
+  'Muffins',
+  'Cookies',
+  'Pastries',
+  'Tarts',
+  'Pies',
+  'Breads',
+  'Filipino Pastries',
+  'Brownies'
+];
+
+export const CATEGORY_ICONS = {
+  'Cakes': '🎂',
+  'Cupcakes': '🧁',
+  'Muffins': '🧁',
+  'Cookies': '🍪',
+  'Pastries': '🥐',
+  'Tarts': '🥧',
+  'Pies': '🥧',
+  'Breads': '🍞',
+  'Filipino Pastries': '🥖',
+  'Brownies': '🍫',
+  'Bread': '🥖',
+  'Pastry': '🥐',
+  'Cake': '🎂',
+  'Dessert': '🍮',
+  'Beverage': '☕'
+};
 
 // OBJECTS & CLASSES
 
@@ -38,8 +67,8 @@ class BreadProduct extends BaseProduct {
   constructor(data) {
     super({
       ...data,
-      category: 'Bread',
-      icon: data.icon || '🥖',
+      category: data.category || 'Bread',
+      icon: data.icon || (data.category === 'Breads' ? '🍞' : '🥖'),
       shelfLifeDays: 2
     });
   }
@@ -49,8 +78,8 @@ class PastryProductItem extends BaseProduct {
   constructor(data) {
     super({
       ...data,
-      category: 'Pastry',
-      icon: data.icon || '🥐',
+      category: data.category || 'Pastry',
+      icon: data.icon || (data.category === 'Filipino Pastries' ? '🥖' : '🥐'),
       shelfLifeDays: 3
     });
   }
@@ -60,7 +89,7 @@ class CakeProduct extends BaseProduct {
   constructor(data) {
     super({
       ...data,
-      category: 'Cake',
+      category: data.category || 'Cake',
       icon: data.icon || '🎂',
       shelfLifeDays: 5
     });
@@ -71,8 +100,8 @@ class DessertProduct extends BaseProduct {
   constructor(data) {
     super({
       ...data,
-      category: 'Dessert',
-      icon: data.icon || '🍮',
+      category: data.category || 'Dessert',
+      icon: data.icon || CATEGORY_ICONS[data.category] || '🍮',
       shelfLifeDays: 4
     });
   }
@@ -82,7 +111,7 @@ class BeverageProduct extends BaseProduct {
   constructor(data) {
     super({
       ...data,
-      category: 'Beverage',
+      category: data.category || 'Beverage',
       icon: data.icon || '☕',
       shelfLifeDays: 2
     });
@@ -127,6 +156,7 @@ export class PastryProductFactory {
     const normalizedCategory = category ? category.trim() : 'Pastry';
 
     // Normalize payload
+    const resolvedIcon = icon || CATEGORY_ICONS[normalizedCategory] || '🥐';
     const payload = {
       id: id || Date.now(),
       name: name.trim(),
@@ -135,7 +165,7 @@ export class PastryProductFactory {
       stock: parsedStock,
       minimumStock: minimumStock !== undefined ? Number(minimumStock) : 20,
       productionBatchSize: productionBatchSize !== undefined ? Number(productionBatchSize) : 30,
-      icon,
+      icon: resolvedIcon,
       imageUrl,
       description,
       shelfLifeDays
@@ -144,14 +174,24 @@ export class PastryProductFactory {
     // Instantiate appropriate product subclass based on category
     switch (normalizedCategory) {
       case 'Bread':
+      case 'Breads':
         return new BreadProduct(payload);
       case 'Cake':
+      case 'Cakes':
         return new CakeProduct(payload);
       case 'Dessert':
+      case 'Cupcakes':
+      case 'Muffins':
+      case 'Cookies':
+      case 'Tarts':
+      case 'Pies':
+      case 'Brownies':
         return new DessertProduct(payload);
       case 'Beverage':
         return new BeverageProduct(payload);
+      case 'Filipino Pastries':
       case 'Pastry':
+      case 'Pastries':
       default:
         return new PastryProductItem(payload);
     }

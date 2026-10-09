@@ -131,8 +131,8 @@ export default function Login() {
           <ArrowLeft size={14} />
           <span>Back to Store</span>
         </Link>
-        <span className="text-2xs font-semibold text-muted flex items-center gap-1">
-          <Croissant size={13} className="text-primary" /> Jen's Pastry Shop
+        <span className="text-2xs font-semibold text-muted flex items-center gap-1.5">
+          <img src="/logo.png" alt="BAKEOLOGY" className="w-4 h-4 rounded-full object-cover inline-block" /> BAKEOLOGY
         </span>
       </div>
 
@@ -140,9 +140,9 @@ export default function Login() {
         {/* Brand Header */}
         <div className="auth-header-center">
           <div className="auth-pastry-badge">
-            <Croissant size={28} />
+            <img src="/logo.png" alt="BAKEOLOGY Logo" className="auth-logo-img" />
           </div>
-          <h2 className="auth-title">Welcome to Jen's Pastry Shop 🍰</h2>
+          <h2 className="auth-title">Welcome to BAKEOLOGY 🍰</h2>
           <p className="auth-subtitle">Fresh artisanal breads & sweet delights baked daily</p>
         </div>
 
@@ -217,7 +217,7 @@ export default function Login() {
                 type="button"
                 className="text-2xs font-bold px-2 py-1 bg-white border border-pink-300 text-primary-dark rounded-lg hover:bg-pink-100 transition-colors"
                 onClick={() => {
-                  setEmail('admin@jenspastry.com');
+                  setEmail('admin@bakeology.com');
                   setPassword('JP_Admin@2026!');
                   setErrorMessage('');
                 }}
@@ -228,7 +228,7 @@ export default function Login() {
                 type="button"
                 className="text-2xs font-bold px-2 py-1 bg-white border border-pink-300 text-primary-dark rounded-lg hover:bg-pink-100 transition-colors"
                 onClick={() => {
-                  setEmail('cashier@jenspastry.com');
+                  setEmail('cashier@bakeology.com');
                   setPassword('JP_Cashier@2026!');
                   setErrorMessage('');
                 }}
@@ -239,7 +239,7 @@ export default function Login() {
                 type="button"
                 className="text-2xs font-bold px-2 py-1 bg-white border border-pink-300 text-primary-dark rounded-lg hover:bg-pink-100 transition-colors"
                 onClick={() => {
-                  setEmail('baker@jenspastry.com');
+                  setEmail('baker@bakeology.com');
                   setPassword('JP_Baker@2026!');
                   setErrorMessage('');
                 }}
@@ -263,7 +263,7 @@ export default function Login() {
                   id="staff-email"
                   type="email"
                   className="auth-input-field text-xs"
-                  placeholder="e.g. cashier@jenspastry.com"
+                  placeholder="e.g. cashier@bakeology.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
@@ -345,7 +345,7 @@ export default function Login() {
         {/* Demo Mode Notice */}
         {!isLiveFirebase && (
           <div className="mt-3 p-2 bg-pink-50 rounded-lg border border-border-light text-2xs text-muted text-center">
-            <span className="font-semibold text-primary">Demo Accounts Available:</span> cashier@jenspastry.com, baker@jenspastry.com, admin@jenspastry.com
+            <span className="font-semibold text-primary">Demo Accounts Available:</span> cashier@bakeology.com, baker@bakeology.com, admin@bakeology.com
           </div>
         )}
       </div>

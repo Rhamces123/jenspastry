@@ -113,6 +113,9 @@ export function hasPermission(role, permission) {
 }
 
 export const OFFICIAL_STAFF_EMAILS = {
+  'admin@bakeology.com': ROLES.ADMIN,
+  'cashier@bakeology.com': ROLES.CASHIER,
+  'baker@bakeology.com': ROLES.BAKER,
   'admin@jenspastry.com': ROLES.ADMIN,
   'cashier@jenspastry.com': ROLES.CASHIER,
   'baker@jenspastry.com': ROLES.BAKER
@@ -141,6 +144,7 @@ export function resolveRoleForUser(email = '', fullName = '', existingRole = nul
   const emailPrefix = cleanEmail.split('@')[0];
   if (
     cleanEmail.startsWith('admin@') ||
+    cleanEmail.endsWith('@admin.bakeology.com') ||
     cleanEmail.endsWith('@admin.jenspastry.com') ||
     cleanEmail === 'admin' ||
     emailPrefix === 'admin' ||

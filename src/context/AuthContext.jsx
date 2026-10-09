@@ -34,6 +34,36 @@ const DEMO_ACCOUNTS_KEY = 'bakeology_demo_accounts';
 // Seed initial staff accounts into demo store if not already present
 const INITIAL_DEMO_STAFF = [
   {
+    uid: 'demo-cashier-bakeology',
+    email: 'cashier@bakeology.com',
+    password: 'JP_Cashier@2026!',
+    fullName: 'Cashier Staff',
+    displayName: 'Cashier Staff',
+    role: ROLES.CASHIER,
+    provider: 'password',
+    createdAt: new Date().toISOString()
+  },
+  {
+    uid: 'demo-baker-bakeology',
+    email: 'baker@bakeology.com',
+    password: 'JP_Baker@2026!',
+    fullName: 'Master Baker',
+    displayName: 'Master Baker',
+    role: ROLES.BAKER,
+    provider: 'password',
+    createdAt: new Date().toISOString()
+  },
+  {
+    uid: 'demo-admin-bakeology',
+    email: 'admin@bakeology.com',
+    password: 'JP_Admin@2026!',
+    fullName: 'Store Owner / Admin',
+    displayName: 'Store Owner / Admin',
+    role: ROLES.ADMIN,
+    provider: 'password',
+    createdAt: new Date().toISOString()
+  },
+  {
     uid: 'demo-cashier-001',
     email: 'cashier@jenspastry.com',
     password: 'JP_Cashier@2026!',

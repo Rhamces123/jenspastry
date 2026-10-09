@@ -48,8 +48,8 @@ export default function Signup() {
           <ArrowLeft size={14} />
           <span>Back to Store</span>
         </Link>
-        <span className="text-2xs font-semibold text-muted flex items-center gap-1">
-          <Croissant size={13} className="text-primary" /> Jen's Pastry Shop
+        <span className="text-2xs font-semibold text-muted flex items-center gap-1.5">
+          <img src="/logo.png" alt="BAKEOLOGY" className="w-4 h-4 rounded-full object-cover inline-block" /> BAKEOLOGY
         </span>
       </div>
 
@@ -57,9 +57,9 @@ export default function Signup() {
         {/* Brand Header */}
         <div className="auth-header-center">
           <div className="auth-pastry-badge">
-            <Sparkles size={28} />
+            <img src="/logo.png" alt="BAKEOLOGY Logo" className="auth-logo-img" />
           </div>
-          <h2 className="auth-title">Join Jen's Pastry Club</h2>
+          <h2 className="auth-title">Join BAKEOLOGY Club</h2>
           <p className="auth-subtitle">Fast, secure customer access with Google</p>
         </div>
 

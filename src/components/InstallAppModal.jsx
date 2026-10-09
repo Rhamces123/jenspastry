@@ -94,8 +94,8 @@ export default function InstallAppModal({ isOpen, onClose, deferredPrompt, onIns
                   />
                 </div>
                 <div className="install-preview-details">
-                  <h4 className="install-preview-brand">Jen's Pastry Shop</h4>
-                  <p className="install-preview-subtitle">BAKEOLOGY • Mobile Pastry Ordering</p>
+                  <h4 className="install-preview-brand">BAKEOLOGY</h4>
+                  <p className="install-preview-subtitle">Artisanal Pastry Shop • Mobile Ordering</p>
                   <div className="install-preview-badges">
                     <span className="install-badge-pwa">✓ Standalone App</span>
                     <span className="install-badge-offline">⚡ Fast & Offline Ready</span>

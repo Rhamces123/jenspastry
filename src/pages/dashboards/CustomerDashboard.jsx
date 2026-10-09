@@ -3,10 +3,11 @@
 // Section 7: Home, Browse Products, Cart, My Orders, Order Tracking, Favorites, Notifications, My Account, Logout
 // ==========================================
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/useAuth.js';
 import { useShop } from '../../hooks/useShop.js';
 import { ROLES } from '../../constants/roles.js';
+import { PRODUCT_CATEGORIES, CATEGORY_ICONS } from '../../patterns/PastryProductFactory.js';
 import DashboardLayout from '../../components/DashboardLayout.jsx';
 import ReceiptModal from '../../components/ReceiptModal.jsx';
 import NotificationToast from '../../components/NotificationToast.jsx';
@@ -270,9 +271,18 @@ export default function CustomerDashboard() {
     }
   };
 
-  // Filtered Products
-  const categories = ['All', 'Bread', 'Cake', 'Pastry', 'Beverage'];
-  const menuCategories = ['Bread', 'Cake', 'Pastry', 'Beverage'];
+  // Filtered Products: derived dynamically from active catalog and standard categories
+  const productCategories = useMemo(() => {
+    const set = new Set();
+    products.forEach(p => {
+      if (p.category) set.add(p.category);
+    });
+    PRODUCT_CATEGORIES.forEach(c => set.add(c));
+    return Array.from(set);
+  }, [products]);
+
+  const categories = ['All', ...productCategories];
+  const menuCategories = productCategories;
   const filteredProducts = products.filter(p => {
     const matchesCategory = selectedCategory === 'All' || p.category.toLowerCase() === selectedCategory.toLowerCase();
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -422,7 +432,7 @@ export default function CustomerDashboard() {
           <div className="p-4 rounded-2xl bg-gradient-to-r from-pink-500 to-pink-700 text-white shadow-md relative overflow-hidden">
             <div className="relative z-10 max-w-md">
               <span className="text-2xs font-extrabold uppercase tracking-widest text-pink-200 bg-white/20 px-2 py-0.5 rounded-full inline-block mb-2">
-                Jen's Pastry Club Member
+                BAKEOLOGY Club Member
               </span>
               <h2 className="text-xl font-bold font-serif">
                 Good day, {displayName}!
@@ -571,7 +581,7 @@ export default function CustomerDashboard() {
               {menuCategories.map(cat => {
                 const catProducts = products.filter(p => p.category?.toLowerCase() === cat.toLowerCase());
                 if (catProducts.length === 0) return null;
-                const catIcon = cat === 'Bread' ? '🍞' : cat === 'Cake' ? '🍰' : cat === 'Pastry' ? '🥐' : '☕';
+                const catIcon = CATEGORY_ICONS[cat] || (cat === 'Bread' ? '🍞' : cat === 'Cake' ? '🍰' : cat === 'Pastry' ? '🥐' : '✨');
                 return (
                   <div key={cat} className="space-y-2">
                     <div className="flex justify-between items-center px-1">
@@ -965,7 +975,7 @@ export default function CustomerDashboard() {
               <Sparkles size={16} />
             </div>
             <div>
-              <h4 className="font-bold text-xs text-primary">Welcome to Jen's Pastry Shop!</h4>
+              <h4 className="font-bold text-xs text-primary">Welcome to BAKEOLOGY!</h4>
               <p className="text-2xs text-muted mt-0.5">
                 Thank you for signing in with Google. You can now browse pastries, track live orders, and enjoy customer discounts.
               </p>

@@ -79,11 +79,11 @@ export default function DashboardLayout({
 
           <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div className="dashboard-brand-logo">
-              <Croissant size={20} />
+              <img src="/logo.png" alt="BAKEOLOGY Logo" className="dashboard-brand-img" />
             </div>
             <div>
               <span className="dashboard-brand-title">BAKEOLOGY</span>
-              <span className="dashboard-brand-subtitle" style={{ display: 'block' }}>Jen's Pastry Shop</span>
+              <span className="dashboard-brand-subtitle" style={{ display: 'block' }}>Artisanal Pastry Shop</span>
             </div>
           </Link>
         </div>

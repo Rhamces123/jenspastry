@@ -15,46 +15,207 @@ import {
 } from '../utils/storage.js';
 
 // VARIABLES
-// Default catalog seeded on first launch (customers see a categorized menu out of the box)
-const INITIAL_PRODUCTS = [
-  { name: 'Pandesal', category: 'Bread', price: 15, stock: 50, icon: '🍞', imageUrl: '/products/bread.svg' },
-  { name: 'Ensaymada', category: 'Bread', price: 45, stock: 30, icon: '🥖', imageUrl: '/products/bread.svg' },
-  { name: 'Monay', category: 'Bread', price: 20, stock: 40, icon: '🍞', imageUrl: '/products/bread.svg' },
-  { name: 'Siopao', category: 'Bread', price: 35, stock: 25, icon: '🥟', imageUrl: '/products/bread.svg' },
-  { name: 'Pan de Coco', category: 'Bread', price: 25, stock: 30, icon: '🥥', imageUrl: '/products/bread.svg' },
-  { name: 'Loaf Bread', category: 'Bread', price: 70, stock: 20, icon: '🍞', imageUrl: '/products/bread.svg' },
-  { name: 'Dinner Rolls', category: 'Bread', price: 12, stock: 60, icon: '🥖', imageUrl: '/products/bread.svg' },
-  { name: 'Ube Pandesal', category: 'Bread', price: 20, stock: 40, icon: '🍞', imageUrl: '/products/bread.svg' },
+// Default catalog seeded on first launch with the official Bakeology 20-item menu
+export const INITIAL_PRODUCTS = [
+  // Cakes
+  { 
+    name: 'Chocolate Cake Slice', 
+    category: 'Cakes', 
+    price: 85.00, 
+    stock: 20, 
+    icon: '🍫', 
+    imageUrl: '/products/chocolate-cake-slice.jpg',
+    description: 'Rich, moist chocolate sponge layered with decadent fudge frosting.'
+  },
+  { 
+    name: 'Red Velvet Cake Slice', 
+    category: 'Cakes', 
+    price: 95.00, 
+    stock: 15, 
+    icon: '🎂', 
+    imageUrl: '/products/red-velvet-cake-slice.jpg',
+    description: 'Velvety crimson cake filled with smooth cream cheese icing.'
+  },
+  { 
+    name: 'Blueberry Cheesecake', 
+    category: 'Cakes', 
+    price: 110.00, 
+    stock: 12, 
+    icon: '🍰', 
+    imageUrl: '/products/blueberry-cheesecake.jpg',
+    description: 'Creamy New York style cheesecake topped with whole wild blueberries.'
+  },
 
-  { name: 'Croissant', category: 'Pastry', price: 55, stock: 30, icon: '🥐', imageUrl: '/products/pastry.svg' },
-  { name: 'Danish', category: 'Pastry', price: 50, stock: 25, icon: '🥐', imageUrl: '/products/pastry.svg' },
-  { name: 'Pain au Chocolat', category: 'Pastry', price: 60, stock: 20, icon: '🍫', imageUrl: '/products/pastry.svg' },
-  { name: 'Cinnamon Roll', category: 'Pastry', price: 48, stock: 25, icon: '🥮', imageUrl: '/products/pastry.svg' },
-  { name: 'Apple Pie', category: 'Pastry', price: 85, stock: 15, icon: '🥧', imageUrl: '/products/pastry.svg' },
-  { name: 'Empanada', category: 'Pastry', price: 40, stock: 30, icon: '🥟', imageUrl: '/products/pastry.svg' },
-  { name: 'Hopia', category: 'Pastry', price: 30, stock: 35, icon: '🥮', imageUrl: '/products/pastry.svg' },
-  { name: 'Pie', category: 'Pastry', price: 75, stock: 18, icon: '🥧', imageUrl: '/products/pastry.svg' },
+  // Cupcakes
+  { 
+    name: 'Chocolate Cupcake', 
+    category: 'Cupcakes', 
+    price: 45.00, 
+    stock: 30, 
+    icon: '🧁', 
+    imageUrl: '/products/chocolate-cupcake.jpg',
+    description: 'Fluffy chocolate cupcake with rich chocolate buttercream swirl.'
+  },
+  { 
+    name: 'Vanilla Cupcake', 
+    category: 'Cupcakes', 
+    price: 40.00, 
+    stock: 25, 
+    icon: '🧁', 
+    imageUrl: '/products/vanilla-cupcake.jpg',
+    description: 'Classic Madagascar vanilla cupcake with pastel buttercream swirl.'
+  },
 
-  { name: 'Chocolate Cake', category: 'Cake', price: 650, stock: 10, icon: '🍫', imageUrl: '/products/cake.svg' },
-  { name: 'Vanilla Sponge Cake', category: 'Cake', price: 550, stock: 10, icon: '🎂', imageUrl: '/products/cake.svg' },
-  { name: 'Red Velvet Cake', category: 'Cake', price: 700, stock: 8, icon: '🎂', imageUrl: '/products/cake.svg' },
-  { name: 'Carrot Cake', category: 'Cake', price: 600, stock: 10, icon: '🥕', imageUrl: '/products/cake.svg' },
-  { name: 'Ube Cake', category: 'Cake', price: 750, stock: 8, icon: '🍠', imageUrl: '/products/cake.svg' },
-  { name: 'Cheesecake', category: 'Cake', price: 680, stock: 10, icon: '🍰', imageUrl: '/products/cake.svg' },
+  // Muffins
+  { 
+    name: 'Blueberry Muffin', 
+    category: 'Muffins', 
+    price: 50.00, 
+    stock: 18, 
+    icon: '🧁', 
+    imageUrl: '/products/blueberry-muffin.jpg',
+    description: 'Freshly baked bakery muffin packed with plump berries and sugar crust.'
+  },
 
-  { name: 'Brewed Coffee', category: 'Beverage', price: 60, stock: 40, icon: '☕', imageUrl: '/products/beverage.svg' },
-  { name: 'Iced Cafe Latte', category: 'Beverage', price: 85, stock: 35, icon: '🧋', imageUrl: '/products/beverage.svg' },
-  { name: 'Hot Chocolate', category: 'Beverage', price: 75, stock: 25, icon: '🍫', imageUrl: '/products/beverage.svg' },
-  { name: 'Matcha Green Tea', category: 'Beverage', price: 90, stock: 20, icon: '🍵', imageUrl: '/products/beverage.svg' },
+  // Cookies
+  { 
+    name: 'Chocolate Chip Cookie', 
+    category: 'Cookies', 
+    price: 30.00, 
+    stock: 40, 
+    icon: '🍪', 
+    imageUrl: '/products/chocolate-chip-cookie.jpg',
+    description: 'Our signature Bakeology cookie loaded with gooey chocolate chips.'
+  },
+  { 
+    name: 'Oatmeal Raisin Cookie', 
+    category: 'Cookies', 
+    price: 35.00, 
+    stock: 25, 
+    icon: '🍪', 
+    imageUrl: '/products/oatmeal-raisin-cookie.jpg',
+    description: 'Chewy whole oats, warm cinnamon, and sweet plump raisins.'
+  },
 
-  { name: 'Brownie', category: 'Dessert', price: 45, stock: 30, icon: '🍫', imageUrl: '/products/dessert.svg' },
-  { name: 'Macarons', category: 'Dessert', price: 120, stock: 20, icon: '🍪', imageUrl: '/products/dessert.svg' },
-  { name: 'Pudding', category: 'Dessert', price: 40, stock: 25, icon: '🍮', imageUrl: '/products/dessert.svg' },
-  { name: 'Crème Brûlée', category: 'Dessert', price: 70, stock: 15, icon: '🍮', imageUrl: '/products/dessert.svg' },
-  { name: 'Fruit Tart', category: 'Dessert', price: 65, stock: 15, icon: '🍓', imageUrl: '/products/dessert.svg' },
-  { name: 'Cupcake', category: 'Dessert', price: 35, stock: 40, icon: '🧁', imageUrl: '/products/dessert.svg' },
-  { name: 'Doughnut', category: 'Dessert', price: 30, stock: 40, icon: '🍩', imageUrl: '/products/dessert.svg' },
-  { name: 'Tart', category: 'Dessert', price: 55, stock: 20, icon: '🥧', imageUrl: '/products/dessert.svg' }
+  // Pastries
+  { 
+    name: 'Butter Croissant', 
+    category: 'Pastries', 
+    price: 55.00, 
+    stock: 20, 
+    icon: '🥐', 
+    imageUrl: '/products/butter-croissant.jpg',
+    description: 'Golden flaky French pastry folded with 100% pure butter layers.'
+  },
+  { 
+    name: 'Chocolate Croissant', 
+    category: 'Pastries', 
+    price: 65.00, 
+    stock: 15, 
+    icon: '🥐', 
+    imageUrl: '/products/chocolate-croissant.jpg',
+    description: 'Crisp laminated pastry stuffed with dual batons of dark chocolate.'
+  },
+  { 
+    name: 'Cheese Danish', 
+    category: 'Pastries', 
+    price: 60.00, 
+    stock: 12, 
+    icon: '🥐', 
+    imageUrl: '/products/cheese-danish.jpg',
+    description: 'Tender puff pastry filled with sweetened cream cheese and glaze.'
+  },
+  { 
+    name: 'Cinnamon Roll', 
+    category: 'Pastries', 
+    price: 50.00, 
+    stock: 18, 
+    icon: '🥮', 
+    imageUrl: '/products/cinnamon-roll.jpg',
+    description: 'Soft swirl of Ceylon cinnamon brown sugar with vanilla glaze.'
+  },
+
+  // Tarts
+  { 
+    name: 'Egg Tart', 
+    category: 'Tarts', 
+    price: 35.00, 
+    stock: 24, 
+    icon: '🥧', 
+    imageUrl: '/products/egg-tart.jpg',
+    description: 'Silky smooth egg custard nestled in a flaky buttery pastry cup.'
+  },
+  { 
+    name: 'Blueberry Tart', 
+    category: 'Tarts', 
+    price: 75.00, 
+    stock: 10, 
+    icon: '🥧', 
+    imageUrl: '/products/blueberry-tart.jpg',
+    description: 'Crisp shortbread tart filled with vanilla pastry cream and fresh blueberries.'
+  },
+
+  // Pies
+  { 
+    name: 'Apple Pie Slice', 
+    category: 'Pies', 
+    price: 70.00, 
+    stock: 12, 
+    icon: '🥧', 
+    imageUrl: '/products/apple-pie-slice.jpg',
+    description: 'Tender spiced Granny Smith apples encased in a golden lattice crust.'
+  },
+
+  // Breads
+  { 
+    name: 'Banana Bread Slice', 
+    category: 'Breads', 
+    price: 40.00, 
+    stock: 20, 
+    icon: '🍞', 
+    imageUrl: '/products/banana-bread.jpg',
+    description: 'Homestyle moist banana loaf baked with ripe bananas and chocolate chips.'
+  },
+
+  // Filipino Pastries
+  { 
+    name: 'Ensaymada', 
+    category: 'Filipino Pastries', 
+    price: 35.00, 
+    stock: 30, 
+    icon: '🥖', 
+    imageUrl: '/products/ensaymada.jpg',
+    description: 'Traditional spiral brioche brushed with butter, sugar, and grated cheese.'
+  },
+  { 
+    name: 'Spanish Bread', 
+    category: 'Filipino Pastries', 
+    price: 15.00, 
+    stock: 40, 
+    icon: '🥖', 
+    imageUrl: '/products/spanish-bread.jpg',
+    description: 'Golden breadcrumbs-dusted rolls filled with sweet buttery paste.'
+  },
+  { 
+    name: 'Cheese Bread Roll', 
+    category: 'Filipino Pastries', 
+    price: 20.00, 
+    stock: 35, 
+    icon: '🥖', 
+    imageUrl: '/products/cheese-bread-roll.jpg',
+    description: 'Soft Filipino bakery roll loaded with sweet cheddar cheese filling.'
+  },
+
+  // Brownies
+  { 
+    name: 'Brownie', 
+    category: 'Brownies', 
+    price: 45.00, 
+    stock: 20, 
+    icon: '🍫', 
+    imageUrl: '/products/brownie.jpg',
+    description: 'Fudgy, dense Belgian chocolate square with crackly top and chocolate swirl.'
+  }
 ];
 const INITIAL_SALES = [];
 
@@ -118,7 +279,7 @@ class ShopManager {
     // One-time purge check: if the user's browser still has old mock/sample data, purge it cleanly
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
-        const PURGE_KEY = 'jens_pastry_sample_data_purged_v2';
+        const PURGE_KEY = 'bakeology_menu_photos_v6';
         if (localStorage.getItem(PURGE_KEY) !== 'true') {
           localStorage.removeItem('bakeology_products_v1');
           localStorage.removeItem('bakeology_sales_v1');
@@ -137,20 +298,11 @@ class ShopManager {
 
     if (storedProducts && Array.isArray(storedProducts) && storedProducts.length > 0) {
       // FACTORY PATTERN: Reconstruct product objects through the Factory
-      let prods = storedProducts.map(item => PastryProductFactory.createProduct({
+      this.products = storedProducts.map(item => PastryProductFactory.createProduct({
         minimumStock: item.minimumStock !== undefined ? item.minimumStock : 20,
         productionBatchSize: item.productionBatchSize !== undefined ? item.productionBatchSize : 30,
         ...item
       }));
-      const hasBeverage = prods.some(p => p.category?.toLowerCase() === 'beverage');
-      if (!hasBeverage) {
-        const beverageSeeds = INITIAL_PRODUCTS
-          .filter(p => p.category === 'Beverage')
-          .map((item, i) => PastryProductFactory.createProduct({ id: `seed-bev-${i + 1}`, ...item }));
-        prods = [...prods, ...beverageSeeds];
-        saveProducts(prods);
-      }
-      this.products = prods;
     } else {
       this.products = INITIAL_PRODUCTS.map((item, i) =>
         PastryProductFactory.createProduct({ id: `seed-${i + 1}`, ...item })
@@ -450,7 +602,9 @@ class ShopManager {
    */
   resetToDefaultData() {
     clearAllStorage();
-    this.products = [];
+    this.products = INITIAL_PRODUCTS.map((item, i) =>
+      PastryProductFactory.createProduct({ id: `seed-${i + 1}`, ...item })
+    );
     this.sales = [];
     saveProducts(this.products);
     saveSales(this.sales);

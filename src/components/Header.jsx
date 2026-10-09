@@ -43,7 +43,7 @@ export default function Header({ onResetData }) {
       <header className="mobile-header">
         <Link to="/" className="header-brand hover:opacity-95 transition-opacity" style={{ textDecoration: 'none' }}>
           <div className="header-logo-badge">
-            <Croissant className="header-icon" size={24} />
+            <img src="/logo.png" alt="BAKEOLOGY Logo" className="header-logo-img" />
           </div>
           <div className="header-titles">
             <h1 className="header-title">BAKEOLOGY</h1>

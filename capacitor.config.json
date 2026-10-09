@@ -1,5 +1,5 @@
 {
-  "appId": "com.jenspastry.app",
+  "appId": "com.bakeology.app",
   "appName": "BAKEOLOGY",
   "webDir": "dist",
   "bundledWebRuntime": false,

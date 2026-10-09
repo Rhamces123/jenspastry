@@ -1252,7 +1252,7 @@ export default function AdminDashboard() {
           <div className="admin-card" style={{ marginBottom: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid #EDE4DC', paddingBottom: '14px', marginBottom: '18px' }}>
               <Store size={22} style={{ color: '#9D174D' }} />
-              <h3 className="admin-card-title">Jen's Pastry Shop Official Details</h3>
+              <h3 className="admin-card-title">BAKEOLOGY Official Details</h3>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
@@ -1261,7 +1261,7 @@ export default function AdminDashboard() {
                 <input
                   type="text"
                   readOnly
-                  value="Jen's Pastry Shop (BAKEOLOGY)"
+                  value="BAKEOLOGY Pastry Shop"
                   className="admin-form-input"
                   style={{ background: '#FAF5F2', fontWeight: 700 }}
                 />
@@ -1399,7 +1399,7 @@ export default function AdminDashboard() {
                 <input
                   type="email"
                   required
-                  placeholder="e.g. cashier2@jenspastry.com"
+                  placeholder="e.g. cashier2@bakeology.com"
                   value={staffForm.email}
                   onChange={e => setStaffForm(prev => ({ ...prev, email: e.target.value }))}
                   className="admin-form-input"
