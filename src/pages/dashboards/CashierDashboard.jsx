@@ -427,7 +427,7 @@ export default function CashierDashboard() {
 
           {/* TAB 1: POS REGISTER CATALOG */}
           {activeTab === 'pos' && (
-            <div>
+            <div className="pos-catalog-scroll-area">
               {filteredProducts.length === 0 ? (
                 <div className="pos-catalog-empty">
                   <ShoppingBag size={40} className="mx-auto text-muted/60 mb-2" />
@@ -494,7 +494,7 @@ export default function CashierDashboard() {
 
           {/* TAB 2: PRODUCTION RECEIVING VIEW */}
           {activeTab === 'receiving' && (
-            <div className="space-y-4">
+            <div className="pos-catalog-scroll-area space-y-4">
               <div className="bg-white/80 backdrop-blur-md p-5 rounded-3xl border-2 border-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h3 className="font-extrabold text-base text-black flex items-center gap-2">
@@ -556,7 +556,7 @@ export default function CashierDashboard() {
 
           {/* TAB 3: SHIFT OVERVIEW & BALANCING */}
           {activeTab === 'overview' && (
-            <div className="space-y-4">
+            <div className="pos-catalog-scroll-area space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-white/80 backdrop-blur-md p-4 rounded-3xl border-2 border-white shadow-sm">
                   <span className="text-3xs font-black text-gray-500 uppercase tracking-wider block">Shift Revenue</span>
@@ -616,7 +616,7 @@ export default function CashierDashboard() {
 
           {/* TAB 4: RECEIPT ARCHIVE */}
           {activeTab === 'receipts' && (
-            <div className="bg-white/90 backdrop-blur-md p-5 rounded-3xl border-2 border-white shadow-sm space-y-3">
+            <div className="pos-catalog-scroll-area bg-white/90 backdrop-blur-md p-5 rounded-3xl border-2 border-white shadow-sm space-y-3">
               <h4 className="font-extrabold text-sm text-black">PAST TRANSACTION RECEIPTS ({allOrders.length})</h4>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
