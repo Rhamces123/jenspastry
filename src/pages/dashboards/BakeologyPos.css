@@ -1075,3 +1075,186 @@
   box-shadow: 0 2px 10px rgba(180, 80, 130, 0.22);
   color: #000000;
 }
+
+/* ==========================================================================
+   ENHANCED 100x COOLER BAKER WORKSTATION STYLES
+   ========================================================================== */
+
+/* Frosted glass container card used for sections and tab bodies */
+.baker-panel-card {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  border-radius: 28px;
+  padding: 22px;
+  box-shadow: 0 8px 24px rgba(180, 80, 130, 0.06);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Top KPI Glassmorphic Cards */
+.baker-kpi-card {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  border-radius: 24px;
+  padding: 16px 18px;
+  box-shadow: 0 6px 18px rgba(180, 80, 130, 0.06);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 110px;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.baker-kpi-card:hover {
+  transform: translateY(-3px);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 28px rgba(180, 80, 130, 0.12);
+  border-color: #ffffff;
+}
+
+/* Patisserie Oven Deck (Active & Idle) */
+.baker-oven-deck {
+  border-radius: 28px;
+  padding: 22px;
+  box-shadow: 0 10px 30px rgba(180, 80, 130, 0.07);
+  transition: all 0.25s ease;
+}
+
+.baker-oven-idle {
+  background: linear-gradient(135deg, rgba(255, 250, 245, 0.92) 0%, rgba(255, 245, 247, 0.92) 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(255, 225, 215, 0.9);
+}
+
+.baker-oven-baking {
+  background: linear-gradient(135deg, rgba(255, 247, 237, 0.95) 0%, rgba(254, 242, 242, 0.95) 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 2px solid #f97316;
+  box-shadow: 0 12px 36px rgba(249, 115, 22, 0.18);
+  animation: ovenGlowPulse 3s ease-in-out infinite alternate;
+}
+
+@keyframes ovenGlowPulse {
+  0% {
+    box-shadow: 0 10px 28px rgba(249, 115, 22, 0.14);
+  }
+  100% {
+    box-shadow: 0 14px 40px rgba(249, 115, 22, 0.28);
+  }
+}
+
+/* Low Stock Hero Pastry Cards */
+.baker-pastry-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(255, 255, 255, 0.96);
+  border-radius: 28px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(180, 80, 130, 0.06);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.baker-pastry-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 34px rgba(180, 80, 130, 0.14);
+  background: #ffffff;
+}
+
+.baker-pastry-card.is-cooking {
+  border-color: #f59e0b;
+  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.2);
+  background: linear-gradient(to bottom, rgba(255, 251, 235, 0.95), #ffffff);
+}
+
+.baker-pastry-card.is-ready {
+  border-color: #10b981;
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15);
+  background: linear-gradient(to bottom, rgba(236, 253, 245, 0.95), #ffffff);
+}
+
+/* Pastry Image Frame */
+.baker-pastry-img-wrap {
+  width: 100%;
+  height: 145px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fff1f5;
+  box-shadow: 0 4px 14px rgba(180, 80, 130, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.baker-pastry-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+
+.baker-pastry-card:hover .baker-pastry-img {
+  transform: scale(1.06);
+}
+
+/* Quantity Stepper Buttons */
+.baker-stepper-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid #fbcfe8;
+  color: #1f2937;
+  font-weight: 900;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.baker-stepper-btn:hover {
+  background: #fdf2f8;
+  border-color: #f472b6;
+  transform: scale(1.08);
+  color: #be185d;
+}
+
+.baker-preset-chip {
+  padding: 3px 9px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-family: monospace;
+  font-weight: 800;
+  border: 1px solid #fbcfe8;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.baker-preset-chip:hover {
+  background: #fdf2f8;
+  border-color: #f472b6;
+}
+
+.baker-preset-chip.active {
+  background: #f2a9d6;
+  color: #000000;
+  border-color: #ed95cc;
+  box-shadow: 0 2px 6px rgba(180, 80, 130, 0.2);
+}
+
