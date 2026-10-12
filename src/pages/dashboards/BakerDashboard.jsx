@@ -8,8 +8,6 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom';
 import { useShop } from '../../hooks/useShop.js';
 import { useAuth } from '../../context/useAuth.js';
-import { ROLES } from '../../constants/roles.js';
-import DashboardLayout from '../../components/DashboardLayout.jsx';
 import NotificationToast from '../../components/NotificationToast.jsx';
 import ManualProductionModal from '../../components/baker/ManualProductionModal.jsx';
 import { useBakeryWorkflow } from '../../hooks/useBakeryWorkflow.js';
@@ -22,19 +20,17 @@ import {
   AlertTriangle, 
   Layers, 
   ChefHat, 
-  Sparkles, 
   Play, 
   CheckCircle2, 
   Wheat, 
   BookOpen, 
-  Plus, 
   Package, 
   Search, 
-  TrendingDown,
-  Check,
-  Timer,
-  Bell,
-  Minus
+  TrendingDown, 
+  Check, 
+  Timer, 
+  Bell, 
+  LogOut 
 } from 'lucide-react';
 
 export default function BakerDashboard() {
