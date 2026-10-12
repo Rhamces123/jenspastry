@@ -157,8 +157,9 @@ export class PastryProductFactory {
 
     // Normalize payload
     const resolvedIcon = icon || CATEGORY_ICONS[normalizedCategory] || '🥐';
+    const fallbackId = `prod-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
     const payload = {
-      id: id || Date.now(),
+      id: id || fallbackId,
       name: name.trim(),
       category: normalizedCategory,
       price: parsedPrice,

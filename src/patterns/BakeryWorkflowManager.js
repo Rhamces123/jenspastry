@@ -352,6 +352,37 @@ export const INITIAL_RECIPES = [
       { ingredientId: 'ing-butter', ingredientName: 'Pure Unsalted Butter', quantity: 0.20, unit: 'kg' },
       { ingredientId: 'ing-milk', ingredientName: 'Fresh Whole Milk', quantity: 0.25, unit: 'L' }
     ]
+  },
+  {
+    id: 'recipe-red-velvet',
+    productId: 'red-velvet-cake-slice',
+    productName: 'Red Velvet Cake Slice',
+    baseQuantity: 10,
+    unit: 'pcs',
+    instructions: 'Velvety crimson cake filled with smooth cream cheese icing.',
+    ingredients: [
+      { ingredientId: 'ing-flour', ingredientName: 'All-Purpose Flour', quantity: 0.50, unit: 'kg' },
+      { ingredientId: 'ing-sugar', ingredientName: 'Granulated White Sugar', quantity: 0.35, unit: 'kg' },
+      { ingredientId: 'ing-eggs', ingredientName: 'Fresh Farm Eggs', quantity: 4, unit: 'pcs' },
+      { ingredientId: 'ing-butter', ingredientName: 'Pure Unsalted Butter', quantity: 0.20, unit: 'kg' },
+      { ingredientId: 'ing-cream', ingredientName: 'Heavy Whipping Cream', quantity: 0.25, unit: 'L' },
+      { ingredientId: 'ing-cheese', ingredientName: 'Cheddar Cheese Block', quantity: 0.15, unit: 'kg' }
+    ]
+  },
+  {
+    id: 'recipe-blueberry-cheesecake',
+    productId: 'blueberry-cheesecake',
+    productName: 'Blueberry Cheesecake',
+    baseQuantity: 10,
+    unit: 'pcs',
+    instructions: 'Creamy New York style cheesecake slice topped with wild blueberries.',
+    ingredients: [
+      { ingredientId: 'ing-cream', ingredientName: 'Heavy Whipping Cream', quantity: 0.40, unit: 'L' },
+      { ingredientId: 'ing-sugar', ingredientName: 'Granulated White Sugar', quantity: 0.30, unit: 'kg' },
+      { ingredientId: 'ing-eggs', ingredientName: 'Fresh Farm Eggs', quantity: 3, unit: 'pcs' },
+      { ingredientId: 'ing-butter', ingredientName: 'Pure Unsalted Butter', quantity: 0.15, unit: 'kg' },
+      { ingredientId: 'ing-flour', ingredientName: 'All-Purpose Flour', quantity: 0.10, unit: 'kg' }
+    ]
   }
 ];
 
@@ -426,7 +457,14 @@ class BakeryWorkflowManager {
       // 2. Recipes
       const storedRecipes = localStorage.getItem(STORAGE_KEYS.RECIPES);
       if (storedRecipes) {
-        this.recipes = JSON.parse(storedRecipes);
+        const loaded = JSON.parse(storedRecipes);
+        const existingNames = new Set(loaded.map(r => (r.productName || '').toLowerCase().trim()));
+        const missingDefaults = INITIAL_RECIPES.filter(r => !existingNames.has(r.productName.toLowerCase().trim())).map(r => ({
+          ...r,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }));
+        this.recipes = [...loaded, ...missingDefaults];
       } else {
         this.recipes = INITIAL_RECIPES.map(r => ({
           ...r,
@@ -438,11 +476,21 @@ class BakeryWorkflowManager {
 
       // 3. Production Requests
       const storedReqs = localStorage.getItem(STORAGE_KEYS.PRODUCTION_REQUESTS);
-      this.productionRequests = storedReqs ? JSON.parse(storedReqs) : [];
+      this.productionRequests = storedReqs ? JSON.parse(storedReqs).map(r => {
+        const safeId = (!r.productId || r.productId === 'undefined' || r.productId === 'null')
+          ? `prod-${String(r.productName || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+          : r.productId;
+        return { ...r, productId: safeId };
+      }) : [];
 
       // 4. Production Batches
       const storedBatches = localStorage.getItem(STORAGE_KEYS.PRODUCTION_BATCHES);
-      this.productionBatches = storedBatches ? JSON.parse(storedBatches) : [];
+      this.productionBatches = storedBatches ? JSON.parse(storedBatches).map(b => {
+        const safeId = (!b.productId || b.productId === 'undefined' || b.productId === 'null')
+          ? `prod-${String(b.productName || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+          : b.productId;
+        return { ...b, productId: safeId };
+      }) : [];
 
       // 5. Inventory Transactions
       const storedTx = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
@@ -761,12 +809,17 @@ class BakeryWorkflowManager {
   getRecipeForProduct(productOrName) {
     if (!productOrName) return null;
     const targetName = (typeof productOrName === 'string' ? productOrName : (productOrName.name || '')).trim().toLowerCase();
-    const targetId = typeof productOrName === 'object' && productOrName.id ? String(productOrName.id).toLowerCase() : '';
+    const targetId = typeof productOrName === 'object' && productOrName.id ? String(productOrName.id).trim().toLowerCase() : '';
 
-    return this.recipes.find(r => 
-      (r.productId && (r.productId.toLowerCase() === targetId || r.productId.toLowerCase() === targetName)) ||
-      (r.productName && r.productName.toLowerCase() === targetName)
-    ) || null;
+    return this.recipes.find(r => {
+      const rName = (r.productName || '').trim().toLowerCase();
+      const rId = (r.productId || '').trim().toLowerCase();
+      if (rName && rName === targetName) return true;
+      if (targetId && targetId !== 'undefined' && targetId !== 'null' && rId && rId === targetId) return true;
+      if (rId && rId === targetName) return true;
+      if (targetName && rName && (targetName.includes(rName) || rName.includes(targetName))) return true;
+      return false;
+    }) || null;
   }
 
   /**
@@ -888,12 +941,18 @@ class BakeryWorkflowManager {
     triggeredBy = 'Low Stock Automation',
     notes = ''
   }) {
-    // Check for active duplicate request
-    const activeStatuses = ['Pending', 'Accepted', 'Preparing', 'Completed', 'Ready for Cashier'];
-    const existingActive = this.productionRequests.find(r => 
-      (r.productId === productId || (r.productName && r.productName.toLowerCase() === productName.toLowerCase())) &&
-      activeStatuses.includes(r.status)
-    );
+    // Check for active duplicate request strictly matching THIS product
+    const normName = (productName || '').trim().toLowerCase();
+    const normId = productId !== undefined && productId !== null && String(productId) !== 'undefined' && String(productId) !== 'null' && String(productId) !== '' ? String(productId).trim().toLowerCase() : '';
+    const activeStatuses = ['Pending', 'Accepted', 'Preparing', 'Ready for Cashier'];
+
+    const existingActive = this.productionRequests.find(r => {
+      if (!activeStatuses.includes(r.status)) return false;
+      const rName = (r.productName || '').trim().toLowerCase();
+      if (normName && rName === normName) return true;
+      if (normId && r.productId && String(r.productId).trim().toLowerCase() === normId) return true;
+      return false;
+    });
 
     if (existingActive) {
       return existingActive; // Return existing active request, prevent duplicates!
@@ -901,10 +960,11 @@ class BakeryWorkflowManager {
 
     const nextNumber = this.productionRequests.length + 1;
     const id = `REQ-${String(nextNumber).padStart(3, '0')}`;
+    const safeProdId = normId || (normName ? `prod-${normName.replace(/[^a-z0-9]+/g, '-')}` : '');
     const newRequest = {
       id,
       requestNumber: id,
-      productId: String(productId),
+      productId: safeProdId,
       productName,
       requestedQuantity: Number(requestedQuantity) || 30,
       currentStock: Number(currentStock),

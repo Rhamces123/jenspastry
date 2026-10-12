@@ -336,15 +336,34 @@ export default function BakerDashboard() {
     });
   }, [now, preparingRequests, getSecondsLeft, completeProduction, bakerName, playOvenChime]);
 
-  // Helper to find existing active request for a product
-  const getActiveRequestForProduct = (product) => {
-    const prodId = String(product.id || '').toLowerCase();
-    const prodName = String(product.name || '').toLowerCase();
-    return productionRequests.find(r => 
-      (String(r.productId || '').toLowerCase() === prodId || String(r.productName || '').toLowerCase() === prodName) &&
-      ['Pending', 'Accepted', 'Preparing', 'Ready for Cashier'].includes(r.status)
-    );
-  };
+  // Helper to find existing active request strictly for this specific product
+  const getActiveRequestForProduct = useCallback((product) => {
+    if (!product) return null;
+    const prodName = String(product.name || '').trim().toLowerCase();
+    const prodId = product.id !== undefined && product.id !== null ? String(product.id).trim().toLowerCase() : '';
+    const activeStatuses = ['Pending', 'Accepted', 'Preparing', 'Ready for Cashier'];
+
+    // 1. Strict match by product name (primary and most reliable identifier)
+    if (prodName) {
+      const matchByName = productionRequests.find(r => 
+        r.productName && 
+        r.productName.trim().toLowerCase() === prodName &&
+        activeStatuses.includes(r.status)
+      );
+      if (matchByName) return matchByName;
+    }
+
+    // 2. Strict match by valid non-empty, non-undefined/null product ID
+    if (prodId && prodId !== 'undefined' && prodId !== 'null' && prodId !== '') {
+      return productionRequests.find(r => 
+        r.productId && 
+        String(r.productId).trim().toLowerCase() === prodId &&
+        activeStatuses.includes(r.status)
+      );
+    }
+
+    return null;
+  }, [productionRequests]);
 
   // Handlers for Request Actions
   const handleAcceptRequest = (requestId) => {
@@ -363,7 +382,8 @@ export default function BakerDashboard() {
       }
       completedRef.current.delete(requestId);
       startProduction(requestId, bakerName);
-      showToast('🔥 Oven started! 10-second baking countdown running.', 'success');
+      const req = productionRequests.find(r => r.id === requestId);
+      showToast(`🔥 Oven started for ${req?.productName || 'pastry'}! 10-second baking countdown running.`, 'success');
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -388,22 +408,30 @@ export default function BakerDashboard() {
   // Start Cooking a pastry directly from the Low Stock counter view or Monitor
   const handleCookPastry = (product, customQty = null) => {
     try {
+      if (!product) return;
+      const prodName = product.name;
       const batchSize = customQty !== null ? Math.max(1, Number(customQty) || 30) : getTargetQty(product);
-      const recipe = getRecipeForProduct({ id: product.id, name: product.name });
+      const recipe = getRecipeForProduct({ id: product.id, name: prodName });
       
       // Ingredient check for this exact quantity
       const check = checkIngredientsSufficiency(recipe, batchSize);
       if (!check.sufficient) {
         const missingMsg = check.shortages.map(s => `${s.ingredientName} (needs ${s.required} ${s.unit}, have ${s.available} ${s.unit})`).join(', ');
-        showToast(`Cannot cook ${batchSize} pcs ${product.name}: Insufficient ingredients in pantry. Missing: ${missingMsg}`, 'error');
+        showToast(`Cannot cook ${batchSize} pcs ${prodName}: Insufficient ingredients in pantry. Missing: ${missingMsg}`, 'error');
         return;
       }
 
       let req = getActiveRequestForProduct(product);
+      // Ensure req strictly matches THIS product
+      if (req && req.productName && req.productName.trim().toLowerCase() !== String(prodName || '').trim().toLowerCase()) {
+        req = null;
+      }
+
       if (!req) {
+        const safeProdId = product.id || `prod-${String(prodName).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
         req = createProductionRequest({
-          productId: product.id,
-          productName: product.name,
+          productId: safeProdId,
+          productName: prodName,
           requestedQuantity: batchSize,
           priority: product.stock === 0 ? 'Urgent' : 'High',
           currentStock: product.stock,
@@ -417,7 +445,7 @@ export default function BakerDashboard() {
       completedRef.current.delete(req.id);
       // Transition to Preparing ("Cooking in Oven" with 10s timer)
       startProduction(req.id, bakerName);
-      showToast(`🔥 Oven started for ${batchSize} pcs of ${product.name}! 10-second baking timer started.`, 'success');
+      showToast(`🔥 Oven started for ${batchSize} pcs of ${prodName}! 10-second baking timer started.`, 'success');
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -439,19 +467,14 @@ export default function BakerDashboard() {
     try {
       if (!product && !reqOrBatch) return;
       const prodName = product?.name || reqOrBatch?.productName;
-      const targetProduct = products.find(p => 
-        (product?.id && String(p.id) === String(product.id)) || 
-        (reqOrBatch?.productId && String(p.id) === String(reqOrBatch.productId)) ||
-        (prodName && p.name && p.name.toLowerCase() === prodName.toLowerCase())
-      ) || product;
+      const targetProduct = (prodName && products.find(p => p.name && p.name.trim().toLowerCase() === prodName.trim().toLowerCase())) ||
+        (product?.id && products.find(p => String(p.id) === String(product.id))) ||
+        product;
 
       // 1. Locate matching batch in productionBatches
       const batch = productionBatches.find(b => 
         (reqOrBatch?.id && (b.id === reqOrBatch.id || b.requestId === reqOrBatch.id)) ||
-        (b.status === 'Ready for Cashier' && (
-          (targetProduct?.id && String(b.productId) === String(targetProduct.id)) || 
-          (b.productName && prodName && b.productName.toLowerCase() === prodName.toLowerCase())
-        ))
+        (b.status === 'Ready for Cashier' && prodName && b.productName && b.productName.trim().toLowerCase() === prodName.trim().toLowerCase())
       );
 
       const qtyToAdd = Number(batch?.quantity || reqOrBatch?.requestedQuantity || reqOrBatch?.quantity || getTargetQty(targetProduct));
@@ -467,13 +490,13 @@ export default function BakerDashboard() {
         }
       }
 
-      // 3. Ensure any active request is marked Received so the baker pass empties
+      // 3. Ensure any active request for this exact product is marked Received so the baker pass empties
       const activeReq = getActiveRequestForProduct(targetProduct);
-      if (activeReq) {
+      if (activeReq && activeReq.productName && activeReq.productName.trim().toLowerCase() === String(prodName || '').trim().toLowerCase()) {
         updateProductionRequestStatus(activeReq.id, 'Received');
         completedRef.current.delete(activeReq.id);
       }
-      if (reqOrBatch?.id && reqOrBatch.id !== activeReq?.id && !reqOrBatch.batchNumber) {
+      if (reqOrBatch?.id && (!activeReq || reqOrBatch.id !== activeReq.id) && !reqOrBatch.batchNumber) {
         try {
           updateProductionRequestStatus(reqOrBatch.id, 'Received');
           completedRef.current.delete(reqOrBatch.id);

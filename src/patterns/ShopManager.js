@@ -298,11 +298,22 @@ class ShopManager {
 
     if (storedProducts && Array.isArray(storedProducts) && storedProducts.length > 0) {
       // FACTORY PATTERN: Reconstruct product objects through the Factory
-      this.products = storedProducts.map(item => PastryProductFactory.createProduct({
-        minimumStock: item.minimumStock !== undefined ? item.minimumStock : 20,
-        productionBatchSize: item.productionBatchSize !== undefined ? item.productionBatchSize : 30,
-        ...item
-      }));
+      const seenIds = new Set();
+      this.products = storedProducts.map((item, idx) => {
+        let safeId = item.id;
+        const fallbackSlug = `prod-${String(item.name || `item-${idx + 1}`).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+        if (!safeId || safeId === 'undefined' || safeId === 'null' || seenIds.has(String(safeId))) {
+          safeId = fallbackSlug;
+        }
+        seenIds.add(String(safeId));
+
+        return PastryProductFactory.createProduct({
+          minimumStock: item.minimumStock !== undefined ? item.minimumStock : 20,
+          productionBatchSize: item.productionBatchSize !== undefined ? item.productionBatchSize : 30,
+          ...item,
+          id: safeId
+        });
+      });
     } else {
       this.products = INITIAL_PRODUCTS.map((item, i) =>
         PastryProductFactory.createProduct({ id: `seed-${i + 1}`, ...item })
