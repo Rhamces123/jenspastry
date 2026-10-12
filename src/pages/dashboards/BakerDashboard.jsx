@@ -7,6 +7,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useShop } from '../../hooks/useShop.js';
+import ShopManager from '../../patterns/ShopManager.js';
 import { useAuth } from '../../context/useAuth.js';
 import NotificationToast from '../../components/NotificationToast.jsx';
 import ManualProductionModal from '../../components/baker/ManualProductionModal.jsx';
@@ -100,7 +101,7 @@ const getProductPhoto = (product) => {
 };
 
 export default function BakerDashboard() {
-  const { products } = useShop();
+  const { products, updateStock } = useShop();
   const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
   const { logout } = useAuth();
@@ -127,6 +128,7 @@ export default function BakerDashboard() {
     updateProductionRequestQuantity,
     startProduction,
     completeProduction,
+    receiveProductionBatch,
     addNotification,
     checkAndTriggerLowStock
   } = useBakeryWorkflow();
@@ -432,6 +434,108 @@ export default function BakerDashboard() {
     showToast(`Restock request for "${ingredientName}" sent to Store Owner / Admin!`, 'success');
   };
 
+  // Put finished cooked batch directly into Cashier Stock and empty the baker pass
+  const handlePutInCashierStock = (product, reqOrBatch, autoCookNext = false) => {
+    try {
+      if (!product && !reqOrBatch) return;
+      const prodName = product?.name || reqOrBatch?.productName;
+      const targetProduct = products.find(p => 
+        (product?.id && String(p.id) === String(product.id)) || 
+        (reqOrBatch?.productId && String(p.id) === String(reqOrBatch.productId)) ||
+        (prodName && p.name && p.name.toLowerCase() === prodName.toLowerCase())
+      ) || product;
+
+      // 1. Locate matching batch in productionBatches
+      const batch = productionBatches.find(b => 
+        (reqOrBatch?.id && (b.id === reqOrBatch.id || b.requestId === reqOrBatch.id)) ||
+        (b.status === 'Ready for Cashier' && (
+          (targetProduct?.id && String(b.productId) === String(targetProduct.id)) || 
+          (b.productName && prodName && b.productName.toLowerCase() === prodName.toLowerCase())
+        ))
+      );
+
+      const qtyToAdd = Number(batch?.quantity || reqOrBatch?.requestedQuantity || reqOrBatch?.quantity || getTargetQty(targetProduct));
+
+      // 2. Put into cashier stock via BakeryWorkflowManager or ShopManager
+      if (batch) {
+        receiveProductionBatch(batch.id, bakerName, ShopManager.getInstance());
+      } else {
+        const prevStock = Number(targetProduct?.stock) || 0;
+        const newStock = prevStock + qtyToAdd;
+        if (targetProduct?.id) {
+          ShopManager.getInstance().updateStock(targetProduct.id, newStock);
+        }
+      }
+
+      // 3. Ensure any active request is marked Received so the baker pass empties
+      const activeReq = getActiveRequestForProduct(targetProduct);
+      if (activeReq) {
+        updateProductionRequestStatus(activeReq.id, 'Received');
+        completedRef.current.delete(activeReq.id);
+      }
+      if (reqOrBatch?.id && reqOrBatch.id !== activeReq?.id && !reqOrBatch.batchNumber) {
+        try {
+          updateProductionRequestStatus(reqOrBatch.id, 'Received');
+          completedRef.current.delete(reqOrBatch.id);
+        } catch {
+          // ignore if reqOrBatch was a batch object without request ID
+        }
+      }
+
+      const updatedStock = (Number(targetProduct?.stock) || 0) + qtyToAdd;
+      showToast(`✓ Put ${qtyToAdd} pcs ${targetProduct?.name || prodName} into Cashier Stock! Counter stock is now ${updatedStock} pcs.`, 'success');
+
+      // 4. If requested, automatically start cooking a new batch with 10s timer
+      if (autoCookNext) {
+        setTimeout(() => {
+          handleCookPastry(targetProduct, qtyToAdd);
+        }, 120);
+      }
+    } catch (err) {
+      console.error("handlePutInCashierStock error:", err);
+      showToast(`Failed to put into cashier stock: ${err.message}`, 'error');
+    }
+  };
+
+  // Bulk put all ready batches into cashier stock
+  const handlePutAllReadyInCashierStock = () => {
+    try {
+      if (readyRequests.length === 0) return;
+      let totalPcs = 0;
+      readyRequests.forEach(req => {
+        const prod = products.find(p => 
+          String(p.id) === String(req.productId) || 
+          (p.name && p.name.toLowerCase() === req.productName.toLowerCase())
+        ) || { id: req.productId, name: req.productName };
+        
+        const qty = Number(req.requestedQuantity) || 30;
+        totalPcs += qty;
+
+        const batch = productionBatches.find(b => 
+          b.requestId === req.id || 
+          (b.status === 'Ready for Cashier' && (
+            String(b.productId) === String(prod.id) || 
+            (b.productName && b.productName.toLowerCase() === prod.name.toLowerCase())
+          ))
+        );
+
+        if (batch) {
+          receiveProductionBatch(batch.id, bakerName, ShopManager.getInstance());
+        } else {
+          const prev = Number(prod.stock) || 0;
+          ShopManager.getInstance().updateStock(prod.id, prev + qty);
+        }
+
+        updateProductionRequestStatus(req.id, 'Received');
+        completedRef.current.delete(req.id);
+      });
+
+      showToast(`✓ Transferred all ${readyRequests.length} batches (${totalPcs} pcs total) to Cashier Stock!`, 'success');
+    } catch (err) {
+      showToast(`Error transferring batches: ${err.message}`, 'error');
+    }
+  };
+
   // Navigation Items matching Cooking Station workflow
   const navItems = [
     { id: 'overview', label: 'Cooking Dashboard', icon: Flame, badge: preparingRequests.length > 0 ? `${preparingRequests.length} in oven` : null },
@@ -554,9 +658,6 @@ export default function BakerDashboard() {
               )}
             </button>
 
-            {/* Ghost Decorative Pill Placeholders from mockup */}
-            <div className="pos-nav-pill-placeholder"></div>
-
             {/* Storefront Link Pill */}
             <Link to="/" className="pos-nav-pill-btn" style={{ background: '#ffffff', color: '#1a1a1a' }}>
               <ChefHat size={15} />
@@ -565,9 +666,9 @@ export default function BakerDashboard() {
           </nav>
 
           {/* User Profile & Logout at Sidebar Bottom */}
-          <div className="mt-auto pt-4 border-t border-white/40 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-white text-[#9D174D] flex items-center justify-center font-black text-xs shadow-xs">
+          <div className="pos-sidebar-footer">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-white text-[#9D174D] flex items-center justify-center font-black text-xs shadow-xs shrink-0">
                 {bakerName[0]?.toUpperCase() || 'B'}
               </div>
               <div className="min-w-0">
@@ -578,7 +679,7 @@ export default function BakerDashboard() {
             <button
               type="button"
               onClick={handleLogout}
-              className="p-1.5 rounded-full text-gray-700 hover:text-rose-600 hover:bg-white/80 transition-colors"
+              className="p-1.5 rounded-full text-gray-700 hover:text-rose-600 hover:bg-white/80 transition-colors shrink-0"
               title="Log Out"
             >
               <LogOut size={16} />
@@ -626,84 +727,84 @@ export default function BakerDashboard() {
                         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Top 5 KPI Cards - Floating Frosted Glass Deck */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
-              <div className="baker-kpi-card group">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+              <div className="baker-kpi-card group min-w-0">
+                <div className="flex items-center justify-between mb-1 gap-1 min-w-0">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5 truncate">
                     In Oven
                   </span>
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-400 to-orange-400 flex items-center justify-center text-white shadow-2xs">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-400 to-orange-400 flex items-center justify-center text-white shadow-2xs shrink-0">
                     <Flame className="w-3.5 h-3.5 animate-pulse" />
                   </div>
                 </div>
                 <div className="text-3xl font-black text-amber-950 font-mono tracking-tight">{preparingRequests.length}</div>
-                <div className="flex items-center justify-between mt-0.5">
-                  <span className="text-[11px] font-bold text-amber-800/80">Currently baking</span>
-                  <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">Deck 1</span>
+                <div className="flex items-center justify-between mt-0.5 gap-1 min-w-0">
+                  <span className="text-[11px] font-bold text-amber-800/80 truncate">Currently baking</span>
+                  <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 shrink-0">Deck 1</span>
                 </div>
               </div>
 
-              <div className="baker-kpi-card group">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-rose-900 flex items-center gap-1.5">
+              <div className="baker-kpi-card group min-w-0">
+                <div className="flex items-center justify-between mb-1 gap-1 min-w-0">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-rose-900 flex items-center gap-1.5 truncate">
                     Cashier Low Stock
                   </span>
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-rose-400 to-pink-500 flex items-center justify-center text-white shadow-2xs">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-rose-400 to-pink-500 flex items-center justify-center text-white shadow-2xs shrink-0">
                     <TrendingDown className="w-3.5 h-3.5" />
                   </div>
                 </div>
                 <div className="text-3xl font-black text-rose-950 font-mono tracking-tight">{cashierLowStockPastries.length}</div>
-                <div className="flex items-center justify-between mt-0.5">
-                  <span className="text-[11px] font-bold text-rose-800/80">Needs baking</span>
-                  <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-800">Urgent</span>
+                <div className="flex items-center justify-between mt-0.5 gap-1 min-w-0">
+                  <span className="text-[11px] font-bold text-rose-800/80 truncate">Needs baking</span>
+                  <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-800 shrink-0">Urgent</span>
                 </div>
               </div>
 
-              <div className="baker-kpi-card group">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+              <div className="baker-kpi-card group min-w-0">
+                <div className="flex items-center justify-between mb-1 gap-1 min-w-0">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-blue-900 flex items-center gap-1.5 truncate">
                     Awaiting Oven
                   </span>
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-400 to-indigo-500 flex items-center justify-center text-white shadow-2xs">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-400 to-indigo-500 flex items-center justify-center text-white shadow-2xs shrink-0">
                     <Clock className="w-3.5 h-3.5" />
                   </div>
                 </div>
                 <div className="text-3xl font-black text-blue-950 font-mono tracking-tight">{pendingRequests.length + acceptedRequests.length}</div>
-                <div className="flex items-center justify-between mt-0.5">
-                  <span className="text-[11px] font-bold text-blue-800/80">Queued batches</span>
-                  <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800">In Line</span>
+                <div className="flex items-center justify-between mt-0.5 gap-1 min-w-0">
+                  <span className="text-[11px] font-bold text-blue-800/80 truncate">Queued batches</span>
+                  <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800 shrink-0">In Line</span>
                 </div>
               </div>
 
-              <div className="baker-kpi-card group">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+              <div className="baker-kpi-card group min-w-0">
+                <div className="flex items-center justify-between mb-1 gap-1 min-w-0">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-emerald-900 flex items-center gap-1.5 truncate">
                     Ready for Cashier
                   </span>
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-emerald-400 to-teal-500 flex items-center justify-center text-white shadow-2xs">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-emerald-400 to-teal-500 flex items-center justify-center text-white shadow-2xs shrink-0">
                     <CheckCircle className="w-3.5 h-3.5" />
                   </div>
                 </div>
                 <div className="text-3xl font-black text-emerald-950 font-mono tracking-tight">{readyRequests.length}</div>
-                <div className="flex items-center justify-between mt-0.5">
-                  <span className="text-[11px] font-bold text-emerald-800/80">Fresh on pass</span>
-                  <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Counter</span>
+                <div className="flex items-center justify-between mt-0.5 gap-1 min-w-0">
+                  <span className="text-[11px] font-bold text-emerald-800/80 truncate">Fresh on pass</span>
+                  <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0">Counter</span>
                 </div>
               </div>
 
-              <div className="baker-kpi-card group col-span-2 sm:col-span-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+              <div className="baker-kpi-card group col-span-2 sm:col-span-1 min-w-0">
+                <div className="flex items-center justify-between mb-1 gap-1 min-w-0">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-purple-900 flex items-center gap-1.5 truncate">
                     Today's Output
                   </span>
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-400 to-pink-500 flex items-center justify-center text-white shadow-2xs">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-400 to-pink-500 flex items-center justify-center text-white shadow-2xs shrink-0">
                     <Sparkles className="w-3.5 h-3.5" />
                   </div>
                 </div>
                 <div className="text-3xl font-black text-purple-950 font-mono tracking-tight">{totalBakedToday} <span className="text-sm font-bold text-purple-800">pcs</span></div>
-                <div className="flex items-center justify-between mt-0.5">
-                  <span className="text-[11px] font-bold text-purple-800/80">Fresh baked today</span>
-                  <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800">Audited</span>
+                <div className="flex items-center justify-between mt-0.5 gap-1 min-w-0">
+                  <span className="text-[11px] font-bold text-purple-800/80 truncate">Fresh baked today</span>
+                  <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800 shrink-0">Audited</span>
                 </div>
               </div>
             </div>
@@ -822,7 +923,7 @@ export default function BakerDashboard() {
                               </span>
                             </div>
                           </div>
-                          <span className="font-mono text-xs font-black text-orange-900 bg-orange-50 px-2 py-1 rounded-lg border border-orange-200 shrink-0">
+                          <span className="font-mono text-xs font-black text-orange-900 bg-orange-50 px-2 py-1 rounded-lg border border-orange-200 shrink-0 truncate max-w-[120px]" title={`#${req.id}`}>
                             #{req.id}
                           </span>
                         </div>
@@ -931,7 +1032,7 @@ export default function BakerDashboard() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {cashierLowStockPastries.map(product => {
                     const targetQty = getTargetQty(product);
                     const minStock = product.minimumStock !== undefined ? Number(product.minimumStock) : 20;
@@ -1015,9 +1116,9 @@ export default function BakerDashboard() {
                         {/* Stepper & Action Controls */}
                         <div className="space-y-2 pt-2 border-t border-gray-100/80">
                           {!isCooking && !isReady && (
-                            <div className="flex items-center justify-between gap-1.5">
-                              <span className="text-[11px] font-bold text-gray-600">Batch:</span>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5">
+                                <span className="text-[11px] font-bold text-gray-600">Batch:</span>
                                 <button
                                   type="button"
                                   onClick={() => adjustTargetQty(product, -5)}
@@ -1042,18 +1143,18 @@ export default function BakerDashboard() {
                                 >
                                   +
                                 </button>
-                                <div className="flex gap-1 ml-1">
-                                  {[20, 30, 50].map(preset => (
-                                    <button
-                                      key={preset}
-                                      type="button"
-                                      onClick={() => setTargetQty(product, preset)}
-                                      className={`baker-preset-chip ${targetQty === preset ? 'active' : ''}`}
-                                    >
-                                      {preset}
-                                    </button>
-                                  ))}
-                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {[20, 30, 50].map(preset => (
+                                  <button
+                                    key={preset}
+                                    type="button"
+                                    onClick={() => setTargetQty(product, preset)}
+                                    className={`baker-preset-chip ${targetQty === preset ? 'active' : ''}`}
+                                  >
+                                    {preset}
+                                  </button>
+                                ))}
                               </div>
                             </div>
                           )}
@@ -1084,12 +1185,31 @@ export default function BakerDashboard() {
                                 className="baker-pill-finish-btn"
                               >
                                 <CheckCircle className="w-3.5 h-3.5" />
-                                <span>{secondsLeft > 0 ? `⚡ Complete Now (${secondsLeft}s left)` : 'Finish Cooking & Pass'}</span>
+                                <span>{secondsLeft > 0 ? `⚡ Done (${secondsLeft}s)` : '✓ Finish & Pass'}</span>
                               </button>
                             </div>
                           ) : isReady ? (
-                            <div className="w-full py-2 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-xs font-black text-center">
-                              ✓ Baked & Ready on Pass
+                            <div className="space-y-1.5 w-full pt-0.5">
+                              <div className="w-full py-1 px-2 bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-xl text-[11px] font-black text-center flex items-center justify-center gap-1.5 shadow-2xs">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <span>Baked {activeReq?.requestedQuantity || targetQty} pcs • Ready on Pass</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handlePutInCashierStock(product, activeReq, false)}
+                                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                              >
+                                <Package className="w-4 h-4 shrink-0" />
+                                <span>Put in Stocks on Cashier (+{activeReq?.requestedQuantity || targetQty} pcs)</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handlePutInCashierStock(product, activeReq, true)}
+                                className="w-full py-2 bg-gradient-to-r from-[#D81B60] to-rose-600 hover:from-[#C2185B] hover:to-rose-700 active:scale-[0.98] text-white rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                              >
+                                <Flame className="w-3.5 h-3.5 text-amber-300 animate-pulse shrink-0" />
+                                <span>Put in Stock & Cook New One (10s)</span>
+                              </button>
                             </div>
                           ) : isPending ? (
                             <button
@@ -1109,7 +1229,7 @@ export default function BakerDashboard() {
                               className="baker-pill-cook-btn"
                             >
                               <Flame className="w-3.5 h-3.5" />
-                              <span>BAKE {targetQty} PCS (10s OVEN)</span>
+                              <span>BAKE {targetQty} PCS</span>
                             </button>
                           )}
                         </div>
@@ -1156,7 +1276,7 @@ export default function BakerDashboard() {
               </div>
 
               {/* Pastry Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
                 {filteredCashierPastries.slice(0, 18).map(product => {
                   const stock = Number(product.stock) || 0;
                   const minStock = product.minimumStock !== undefined ? Number(product.minimumStock) : 20;
@@ -1175,7 +1295,7 @@ export default function BakerDashboard() {
                   return (
                     <div 
                       key={product.id || product.name} 
-                      className={`p-3 rounded-2xl border flex flex-col justify-between transition-all bg-white/90 ${
+                      className={`p-3 rounded-2xl border flex flex-col justify-between transition-all bg-white/90 min-w-0 ${
                         isCooking ? 'border-amber-400 ring-2 ring-amber-100 shadow-sm' :
                         isReady ? 'border-emerald-300 ring-1 ring-emerald-100 shadow-2xs' :
                         isOut ? 'border-rose-300' :
@@ -1183,16 +1303,16 @@ export default function BakerDashboard() {
                         'border-pink-100 hover:border-pink-300'
                       }`}
                     >
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                      <div className="min-w-0">
+                        <div className="flex items-center justify-between mb-1 gap-1">
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${
                             isOut ? 'bg-rose-100 text-rose-800' :
                             isLow ? 'bg-amber-100 text-amber-800' :
                             'bg-emerald-100 text-emerald-800'
                           }`}>
                             {isOut ? 'Out' : isLow ? 'Low' : 'OK'}
                           </span>
-                          <span className="text-[10px] text-gray-400 font-bold">
+                          <span className="text-[10px] text-gray-400 font-bold truncate">
                             {formatCurrency(product.price)}
                           </span>
                         </div>
@@ -1209,7 +1329,7 @@ export default function BakerDashboard() {
                         </span>
                       </div>
 
-                      <div className="pt-2 mt-2 border-t border-gray-100 space-y-1.5">
+                      <div className="pt-2 mt-2 border-t border-gray-100 space-y-1.5 min-w-0">
                         <div className="flex items-baseline justify-between text-xs">
                           <span className="text-gray-500 text-[11px] font-bold">Stock:</span>
                           <span className={`font-mono font-black ${isLow ? 'text-rose-600' : 'text-gray-900'}`}>
@@ -1220,8 +1340,8 @@ export default function BakerDashboard() {
                         {isCooking ? (
                           <div className="w-full py-1.5 px-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-[10px] font-bold text-center flex flex-col items-center justify-center gap-1 shadow-2xs">
                             <div className="flex items-center gap-1">
-                              <Flame className="w-3 h-3 text-amber-600 animate-pulse" />
-                              <span>In Oven ({secondsLeft}s)</span>
+                              <Flame className="w-3 h-3 text-amber-600 animate-pulse shrink-0" />
+                              <span className="truncate">In Oven ({secondsLeft}s)</span>
                             </div>
                             <div className="w-full bg-amber-200/90 h-1 rounded-full overflow-hidden">
                               <div 
@@ -1231,15 +1351,31 @@ export default function BakerDashboard() {
                             </div>
                           </div>
                         ) : isReady ? (
-                          <div className="w-full py-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-[10px] font-bold text-center flex items-center justify-center gap-1 shadow-2xs">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>Ready on Pass</span>
+                          <div className="space-y-1 w-full pt-0.5">
+                            <button
+                              type="button"
+                              onClick={() => handlePutInCashierStock(product, activeReq, false)}
+                              className="w-full py-1.5 px-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black text-center flex items-center justify-center gap-1 shadow-2xs cursor-pointer transition-colors truncate"
+                              title="Put into Cashier Stock"
+                            >
+                              <Package className="w-3 h-3 shrink-0" />
+                              <span className="truncate">Put in Stock (+{activeReq?.requestedQuantity || targetQty})</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handlePutInCashierStock(product, activeReq, true)}
+                              className="w-full py-1 px-1 bg-gradient-to-r from-[#D81B60] to-rose-600 hover:from-[#C2185B] hover:to-rose-700 text-white rounded-lg text-[9.5px] font-black text-center flex items-center justify-center gap-1 shadow-2xs cursor-pointer transition-colors truncate"
+                              title="Put in Stock & Cook New One (10s)"
+                            >
+                              <Flame className="w-3 h-3 text-amber-300 animate-pulse shrink-0" />
+                              <span className="truncate">Put in & Cook (10s)</span>
+                            </button>
                           </div>
                         ) : (
-                          <div className="space-y-1.5 pt-1">
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="text-[10px] text-gray-500 font-bold">Cook:</span>
-                              <div className="flex items-center border border-pink-200 rounded-md overflow-hidden bg-white shadow-2xs">
+                          <div className="space-y-1.5 pt-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1 min-w-0">
+                              <span className="text-[10px] text-gray-500 font-bold shrink-0">Cook:</span>
+                              <div className="flex items-center border border-pink-200 rounded-md overflow-hidden bg-white shadow-2xs shrink-0">
                                 <button
                                   type="button"
                                   onClick={() => adjustTargetQty(product, -5)}
@@ -1254,7 +1390,7 @@ export default function BakerDashboard() {
                                   max="999"
                                   value={targetQty}
                                   onChange={(e) => setTargetQty(product, e.target.value)}
-                                  className="w-8 text-center font-mono font-bold text-[11px] py-0.5 border-x border-pink-200 focus:outline-none focus:ring-1 focus:ring-[#BE185D]"
+                                  className="w-7 text-center font-mono font-bold text-[10.5px] py-0.5 border-x border-pink-200 focus:outline-none focus:ring-1 focus:ring-[#BE185D]"
                                 />
                                 <button
                                   type="button"
@@ -1271,10 +1407,10 @@ export default function BakerDashboard() {
                               type="button"
                               disabled={!check.sufficient}
                               onClick={() => handleCookPastry(product, targetQty)}
-                              className="baker-pill-cook-btn text-[10.5px] py-1.5"
+                              className="baker-pill-cook-btn text-[10.5px] py-1.5 w-full justify-center"
                             >
-                              <Flame className="w-3 h-3 text-amber-500" />
-                              <span>Cook {targetQty} pcs</span>
+                              <Flame className="w-3 h-3 text-amber-500 shrink-0" />
+                              <span className="truncate">Cook {targetQty} pcs</span>
                             </button>
                           </div>
                         )}
@@ -1290,35 +1426,73 @@ export default function BakerDashboard() {
             {/* ========================================================= */}
             {readyRequests.length > 0 && (
               <div className="baker-panel-card bg-emerald-50/60 border-emerald-200/80 space-y-3">
-                <div className="flex items-center justify-between border-b border-emerald-200/60 pb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200/60 pb-2">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-emerald-600" />
-                    <h4 className="font-black text-emerald-950 text-sm">
-                      Freshly Baked Pastries on the Pass ({readyRequests.length} Batches)
-                    </h4>
+                    <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <div>
+                      <h4 className="font-black text-emerald-950 text-sm">
+                        Freshly Baked Pastries on the Pass ({readyRequests.length} Batches)
+                      </h4>
+                      <p className="text-[11px] text-emerald-700 font-bold">
+                        Ready to transfer into Cashier counter stock
+                      </p>
+                    </div>
                   </div>
-                  <span className="text-xs text-emerald-800 font-bold">
-                    Awaiting Cashier to receive into counter stock
-                  </span>
+                  <button
+                    type="button"
+                    onClick={handlePutAllReadyInCashierStock}
+                    className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-black flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+                  >
+                    <Package className="w-3.5 h-3.5" />
+                    <span>Put All ({readyRequests.length}) in Cashier Stock</span>
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {readyRequests.map(batch => (
-                    <div key={batch.id} className="bg-white p-3 rounded-xl border border-emerald-200 space-y-1 shadow-2xs">
-                      <div className="flex justify-between items-start">
-                        <h5 className="font-black text-gray-900 text-sm">{batch.productName}</h5>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
-                          Ready
-                        </span>
+                  {readyRequests.map(batch => {
+                    const prod = products.find(p => 
+                      String(p.id) === String(batch.productId) || 
+                      (p.name && p.name.toLowerCase() === batch.productName.toLowerCase())
+                    ) || { id: batch.productId, name: batch.productName };
+
+                    return (
+                      <div key={batch.id} className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-2 shadow-2xs flex flex-col justify-between">
+                        <div>
+                          <div className="flex justify-between items-start gap-1">
+                            <h5 className="font-black text-gray-900 text-sm truncate" title={batch.productName}>{batch.productName}</h5>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 shrink-0">
+                              Ready
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-600 font-mono mt-1">
+                            Quantity: <strong className="text-emerald-950">{batch.requestedQuantity} pcs</strong>
+                          </div>
+                          <span className="text-[10px] text-gray-400 block pt-0.5">
+                            Batch #{batch.id} • Completed by {bakerName}
+                          </span>
+                        </div>
+
+                        <div className="pt-2 border-t border-emerald-100 flex flex-col gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handlePutInCashierStock(prod, batch, false)}
+                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                          >
+                            <Package className="w-3.5 h-3.5 shrink-0" />
+                            <span>Put in Cashier Stock (+{batch.requestedQuantity} pcs)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handlePutInCashierStock(prod, batch, true)}
+                            className="w-full py-1.5 bg-gradient-to-r from-[#D81B60] to-rose-600 hover:from-[#C2185B] hover:to-rose-700 text-white rounded-lg text-[11px] font-black flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                          >
+                            <Flame className="w-3.5 h-3.5 text-amber-300 animate-pulse shrink-0" />
+                            <span>Put in Stock & Cook New One (10s)</span>
+                          </button>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-600 font-mono">
-                        Quantity: <strong className="text-emerald-950">{batch.requestedQuantity} pcs</strong>
-                      </div>
-                      <span className="text-[10px] text-gray-400 block pt-1">
-                        Batch #{batch.id} • Completed by {bakerName}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1445,7 +1619,7 @@ export default function BakerDashboard() {
           </div>
 
           {/* Grid of Pastries */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredCashierPastries.length === 0 ? (
               <div className="col-span-full bg-white rounded-xl border border-gray-100 p-12 text-center text-gray-400 space-y-2">
                 <Package className="w-10 h-10 mx-auto text-gray-300" />
@@ -1471,7 +1645,7 @@ export default function BakerDashboard() {
                 return (
                   <div
                     key={product.id || product.name}
-                    className={`bg-white rounded-xl border p-4 space-y-3 flex flex-col justify-between transition-all ${
+                    className={`bg-white rounded-xl border p-4 space-y-3 flex flex-col justify-between transition-all min-w-0 ${
                       isCooking
                         ? 'border-amber-300 ring-2 ring-amber-100 bg-amber-50/20'
                         : isReady
@@ -1483,19 +1657,19 @@ export default function BakerDashboard() {
                         : 'border-gray-100 hover:border-gray-200'
                     }`}
                   >
-                    <div className="space-y-2.5">
+                    <div className="space-y-2.5 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <div className="w-10 h-10 rounded-xl overflow-hidden shadow-2xs border border-pink-200 shrink-0 bg-pink-50"><img src={getProductPhoto(product)} alt={product.name} className="w-full h-full object-cover" /></div>
-                          <div>
-                            <h4 className="font-bold text-gray-900 text-sm">{product.name}</h4>
-                            <span className="text-[10px] text-gray-400 uppercase font-semibold">
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-gray-900 text-sm truncate" title={product.name}>{product.name}</h4>
+                            <span className="text-[10px] text-gray-400 uppercase font-semibold block truncate">
                               {product.category} • {formatCurrency(product.price)}
                             </span>
                           </div>
                         </div>
 
-                        <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                        <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full shrink-0 ${
                           isOut ? 'bg-rose-600 text-white' :
                           isLow ? 'bg-rose-100 text-rose-800' :
                           'bg-emerald-100 text-emerald-800'
@@ -1536,14 +1710,14 @@ export default function BakerDashboard() {
                         {check.sufficient ? (
                           <div className="flex items-center gap-1.5 text-[11px] font-medium">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            <span>Pantry ingredients ready ({targetQty} pcs)</span>
+                            <span className="truncate">Pantry ingredients ready ({targetQty} pcs)</span>
                           </div>
                         ) : (
                           <div className="space-y-0.5 text-[11px]">
                             <span className="font-bold text-rose-700 flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3 text-rose-600" /> Shortage:
+                              <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" /> Shortage:
                             </span>
-                            <div className="text-[10px] text-rose-800 font-mono">
+                            <div className="text-[10px] text-rose-800 font-mono break-words">
                               Missing {check.shortages.map(s => s.ingredientName).join(', ')}
                             </div>
                           </div>
@@ -1554,12 +1728,12 @@ export default function BakerDashboard() {
                       {activeReq && (
                         <div className="text-[11px] flex items-center justify-between px-1">
                           <span className="text-gray-400">Kitchen State:</span>
-                          <span className={`font-bold ${
+                          <span className={`font-bold truncate ${
                             isCooking ? 'text-amber-600 flex items-center gap-1' :
                             isReady ? 'text-emerald-600' :
                             'text-blue-600'
                           }`}>
-                            {isCooking && <Flame className="w-3 h-3 animate-pulse" />}
+                            {isCooking && <Flame className="w-3 h-3 animate-pulse shrink-0" />}
                             {isCooking ? `In Oven (${secondsLeft}s left)` : isReady ? 'Ready for Cashier' : activeReq.status}
                           </span>
                         </div>
@@ -1567,9 +1741,9 @@ export default function BakerDashboard() {
 
                       {/* Quantity Stepper (if not cooking and not ready) */}
                       {!isCooking && !isReady && (
-                        <div className="flex items-center justify-between gap-1.5 bg-gray-50 p-2 rounded-lg border border-gray-200">
-                          <span className="text-[11px] font-semibold text-gray-600">To cook:</span>
-                          <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white shadow-2xs">
+                        <div className="flex items-center justify-between gap-1.5 bg-gray-50 p-2 rounded-lg border border-gray-200 min-w-0">
+                          <span className="text-[11px] font-semibold text-gray-600 shrink-0">To cook:</span>
+                          <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white shadow-2xs shrink-0">
                             <button
                               type="button"
                               onClick={() => adjustTargetQty(product, -5)}
@@ -1584,7 +1758,7 @@ export default function BakerDashboard() {
                               max="999"
                               value={targetQty}
                               onChange={(e) => setTargetQty(product, e.target.value)}
-                              className="w-12 text-center font-mono font-bold text-xs py-0.5 border-x border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#D81B60]"
+                              className="w-10 text-center font-mono font-bold text-xs py-0.5 border-x border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#D81B60]"
                             />
                             <button
                               type="button"
@@ -1606,10 +1780,10 @@ export default function BakerDashboard() {
                           <div className="bg-amber-100 border border-amber-300 p-2 rounded-lg text-xs space-y-1">
                             <div className="flex items-center justify-between text-amber-900 font-bold">
                               <span className="flex items-center gap-1">
-                                <Flame className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-                                <span>Baking in Oven ({activeReq.requestedQuantity} pcs)</span>
+                                <Flame className="w-3.5 h-3.5 text-amber-600 animate-pulse shrink-0" />
+                                <span className="truncate">Baking ({activeReq.requestedQuantity} pcs)</span>
                               </span>
-                              <span className="font-mono text-sm bg-amber-200/90 px-1.5 py-0.5 rounded border border-amber-400">
+                              <span className="font-mono text-sm bg-amber-200/90 px-1.5 py-0.5 rounded border border-amber-400 shrink-0">
                                 00:{String(secondsLeft).padStart(2, '0')}
                               </span>
                             </div>
@@ -1625,13 +1799,28 @@ export default function BakerDashboard() {
                             onClick={() => handleCompleteProduction(activeReq)}
                             className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                           >
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            <span>{secondsLeft > 0 ? `⚡ Complete Now (${secondsLeft}s left)` : 'Finish Cooking & Send to Cashier'}</span>
+                            <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{secondsLeft > 0 ? `⚡ Complete Now (${secondsLeft}s left)` : 'Finish Cooking & Send to Cashier'}</span>
                           </button>
                         </div>
                       ) : isReady ? (
-                        <div className="w-full py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold text-center">
-                          ✓ Baked & Awaiting Cashier Pickup
+                        <div className="space-y-1.5 w-full">
+                          <button
+                            type="button"
+                            onClick={() => handlePutInCashierStock(product, activeReq, false)}
+                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                          >
+                            <Package className="w-3.5 h-3.5 shrink-0" />
+                            <span>Put in Cashier Stock (+{activeReq?.requestedQuantity || targetQty} pcs)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handlePutInCashierStock(product, activeReq, true)}
+                            className="w-full py-1.5 bg-gradient-to-r from-[#D81B60] to-rose-600 hover:from-[#C2185B] hover:to-rose-700 text-white rounded-lg text-[11px] font-black flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                          >
+                            <Flame className="w-3.5 h-3.5 shrink-0 text-amber-300 animate-pulse" />
+                            <span>Put in Stock & Cook New One (10s)</span>
+                          </button>
                         </div>
                       ) : isPending ? (
                         <button
@@ -1640,8 +1829,8 @@ export default function BakerDashboard() {
                           onClick={() => handleStartProduction(activeReq.id, targetQty)}
                           className="w-full py-2 bg-[#D81B60] hover:bg-[#C2185B] disabled:opacity-40 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                         >
-                          <Flame className="w-3.5 h-3.5" />
-                          <span>Start Cooking Batch ({targetQty} pcs)</span>
+                          <Flame className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">Start Cooking Batch ({targetQty} pcs)</span>
                         </button>
                       ) : (
                         <button
@@ -1650,8 +1839,8 @@ export default function BakerDashboard() {
                           onClick={() => handleCookPastry(product, targetQty)}
                           className="w-full py-2 bg-[#D81B60] hover:bg-[#C2185B] disabled:opacity-40 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                         >
-                          <Flame className="w-3.5 h-3.5" />
-                          <span>Cook Batch ({targetQty} pcs)</span>
+                          <Flame className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">Cook Batch ({targetQty} pcs)</span>
                         </button>
                       )}
                     </div>
@@ -1727,14 +1916,14 @@ export default function BakerDashboard() {
                   >
                     {/* Top Row: Pastry details & status badge */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div className="w-12 h-12 rounded-xl overflow-hidden shadow-xs border border-pink-200 shrink-0 bg-pink-50">
                           <img src={getProductPhoto({ name: req.productName })} alt={req.productName} className="w-full h-full object-cover" />
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-bold text-gray-900 text-base">{req.productName}</h4>
-                            <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-bold text-gray-900 text-base truncate" title={req.productName}>{req.productName}</h4>
+                            <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full shrink-0 ${
                               req.priority === 'Urgent' ? 'bg-rose-100 text-rose-800' :
                               req.priority === 'High' ? 'bg-amber-100 text-amber-800' :
                               'bg-blue-100 text-blue-800'
@@ -1742,13 +1931,13 @@ export default function BakerDashboard() {
                               {req.priority} Priority
                             </span>
                           </div>
-                          <span className="text-xs text-gray-500 font-mono">
+                          <span className="text-xs text-gray-500 font-mono block truncate">
                             Request #{req.id} • Triggered: {formatDateTime(req.createdAt)}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                           req.status === 'Pending' ? 'bg-blue-100 text-blue-800' :
                           req.status === 'Accepted' ? 'bg-indigo-100 text-indigo-800' :
@@ -1828,19 +2017,19 @@ export default function BakerDashboard() {
 
                         {/* Insufficient Shortage Banner */}
                         {!check.sufficient && (
-                          <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs flex items-center justify-between gap-2 mt-2">
-                            <div className="flex items-center gap-2">
-                              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                              <div>
+                          <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-2">
+                            <div className="flex items-start sm:items-center gap-2 min-w-0">
+                              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5 sm:mt-0" />
+                              <div className="min-w-0 break-words">
                                 <span className="font-bold">Insufficient ingredients. </span>
                                 <span>Cannot start production. Missing: </span>
-                                {check.shortages.map(s => `${s.ingredientName} (need ${s.required} ${s.unit}, available ${s.available} ${s.unit})`).join('; ')}
+                                <span className="font-mono">{check.shortages.map(s => `${s.ingredientName} (need ${s.required} ${s.unit}, available ${s.available} ${s.unit})`).join('; ')}</span>
                               </div>
                             </div>
                             <button
                               type="button"
                               onClick={() => handleSendAdminAlert(check.shortages.map(s => s.ingredientName).join(', '))}
-                              className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[11px] font-bold shrink-0 transition-colors"
+                              className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[11px] font-bold shrink-0 transition-colors self-start sm:self-auto cursor-pointer"
                             >
                               Alert Admin
                             </button>
@@ -1850,12 +2039,12 @@ export default function BakerDashboard() {
                     </div>
 
                     {/* Bottom Action Buttons */}
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
-                      <div className="text-gray-400">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-gray-100 text-xs">
+                      <div className="text-gray-400 min-w-0 truncate">
                         {req.notes && <span>Notes: {req.notes}</span>}
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center flex-wrap gap-2">
                         {/* Status: Pending */}
                         {req.status === 'Pending' && (
                           <>
@@ -1914,9 +2103,29 @@ export default function BakerDashboard() {
 
                         {/* Status: Ready for Cashier */}
                         {req.status === 'Ready for Cashier' && (
-                          <div className="flex items-center gap-2 text-emerald-700 font-bold bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
-                            <Check className="w-4 h-4 text-emerald-600" />
-                            <span>🟢 Ready for Cashier — Waiting for Cashier to receive</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const prod = products.find(p => String(p.id) === String(req.productId) || p.name.toLowerCase() === req.productName.toLowerCase());
+                                handlePutInCashierStock(prod || { id: req.productId, name: req.productName }, req, false);
+                              }}
+                              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm transition-colors"
+                            >
+                              <Package className="w-3.5 h-3.5" />
+                              <span>Put in Cashier Stock (+{req.requestedQuantity} pcs)</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const prod = products.find(p => String(p.id) === String(req.productId) || p.name.toLowerCase() === req.productName.toLowerCase());
+                                handlePutInCashierStock(prod || { id: req.productId, name: req.productName }, req, true);
+                              }}
+                              className="px-3.5 py-1.5 bg-gradient-to-r from-[#D81B60] to-rose-600 hover:from-[#C2185B] hover:to-rose-700 text-white rounded-lg text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm transition-colors"
+                            >
+                              <Flame className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                              <span>Put in & Cook New One (10s)</span>
+                            </button>
                           </div>
                         )}
 
@@ -1943,7 +2152,7 @@ export default function BakerDashboard() {
       {activeTab === 'ingredients' && (
         <div className="space-y-6">
           {/* Header Notice */}
-          <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-between gap-4">
+          <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Wheat className="w-6 h-6 text-blue-700 shrink-0" />
               <div>
@@ -1959,7 +2168,7 @@ export default function BakerDashboard() {
               <button
                 type="button"
                 onClick={() => handleSendAdminAlert(lowIngredients.map(i => i.name).join(', '))}
-                className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold shrink-0 transition-colors"
+                className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold shrink-0 transition-colors self-start sm:self-auto cursor-pointer"
               >
                 Request Restock from Admin
               </button>
@@ -1995,7 +2204,7 @@ export default function BakerDashboard() {
           {/* Ingredients Table */}
           <div className="baker-panel-card overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="w-full min-w-[620px] text-left text-sm">
                 <thead className="bg-gray-50/75 border-b border-gray-100 text-gray-600 font-semibold uppercase text-xs tracking-wider">
                   <tr>
                     <th className="py-3 px-4">Ingredient Name</th>
@@ -2122,26 +2331,28 @@ export default function BakerDashboard() {
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                   Target Production Quantity (pcs)
                 </label>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                   <input
                     type="number"
                     min="1"
                     value={scaleTargetQty}
                     onChange={(e) => setScaleTargetQty(Math.max(1, Number(e.target.value) || 1))}
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono font-bold focus:border-[#D81B60] outline-none"
+                    className="w-24 sm:flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono font-bold focus:border-[#D81B60] outline-none"
                   />
-                  {[10, 20, 30, 50, 100].map(q => (
-                    <button
-                      key={q}
-                      type="button"
-                      onClick={() => setScaleTargetQty(q)}
-                      className={`px-2.5 py-2 rounded-xl text-xs font-bold border transition-colors ${
-                        scaleTargetQty === q ? 'bg-[#D81B60] text-white border-[#D81B60]' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {q}
-                    </button>
-                  ))}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[10, 20, 30, 50, 100].map(q => (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => setScaleTargetQty(q)}
+                        className={`px-2.5 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                          scaleTargetQty === q ? 'bg-[#D81B60] text-white border-[#D81B60]' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2164,7 +2375,7 @@ export default function BakerDashboard() {
 
               {/* Table of ingredients */}
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
+                <table className="w-full min-w-[540px] text-left text-sm">
                   <thead className="bg-gray-50 border-b border-gray-100 text-gray-600 font-semibold uppercase text-xs">
                     <tr>
                       <th className="py-3 px-4">Ingredient Name</th>
@@ -2227,7 +2438,7 @@ export default function BakerDashboard() {
 
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="w-full min-w-[680px] text-left text-sm">
                 <thead className="bg-gray-50/75 border-b border-gray-100 text-gray-600 font-semibold uppercase text-xs tracking-wider">
                   <tr>
                     <th className="py-3 px-4">Batch #</th>
@@ -2308,10 +2519,10 @@ export default function BakerDashboard() {
       {activeTab === 'alerts' && (
         <div className="space-y-6">
           <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
+            <div className="min-w-0">
               <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
-                <AlertTriangle className="w-6 h-6 text-amber-600" />
-                Low Raw Ingredient Depletion Alerts
+                <AlertTriangle className="w-6 h-6 text-amber-600 shrink-0" />
+                <span>Low Raw Ingredient Depletion Alerts</span>
               </h3>
               <p className="text-xs text-gray-500 mt-1">
                 Ingredients currently at or below their configured minimum threshold in the bakery pantry.
@@ -2321,9 +2532,9 @@ export default function BakerDashboard() {
               <button
                 type="button"
                 onClick={() => handleSendAdminAlert(lowIngredients.map(i => i.name).join(', '))}
-                className="px-4 py-2 bg-[#D81B60] hover:bg-[#C2185B] text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
+                className="px-4 py-2 bg-[#D81B60] hover:bg-[#C2185B] text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
               >
-                <Bell className="w-4 h-4" />
+                <Bell className="w-4 h-4 shrink-0" />
                 <span>Send Emergency Restock Alert to Admin</span>
               </button>
             )}
@@ -2343,19 +2554,19 @@ export default function BakerDashboard() {
                 const deficit = Math.max(0, min - qty);
 
                 return (
-                  <div key={ing.id} className="bg-white p-5 rounded-xl border border-amber-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2.5 bg-amber-100 text-amber-700 rounded-xl">
+                  <div key={ing.id} className="bg-white p-4 sm:p-5 rounded-xl border border-amber-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="p-2.5 bg-amber-100 text-amber-700 rounded-xl shrink-0">
                         <Wheat className="w-6 h-6" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="font-bold text-gray-900 text-base">{ing.name}</h4>
-                          <span className="text-[11px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                          <span className="text-[11px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full shrink-0">
                             {ing.category}
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-gray-600 mt-1 font-mono">
+                        <div className="flex items-center gap-3 sm:gap-4 text-xs text-gray-600 mt-1 font-mono flex-wrap">
                           <span>Current: <strong className="text-rose-600 font-bold">{qty} {ing.unit}</strong></span>
                           <span>Minimum: <strong>{min} {ing.unit}</strong></span>
                           <span>Reorder Level: <strong>{ing.reorderLevel || min} {ing.unit}</strong></span>
@@ -2371,7 +2582,7 @@ export default function BakerDashboard() {
                     <button
                       type="button"
                       onClick={() => handleSendAdminAlert(ing.name)}
-                      className="px-4 py-2 bg-[#BE185D] hover:bg-[#9D174D] text-white rounded-full text-xs font-black shrink-0 transition-all shadow-xs cursor-pointer"
+                      className="px-4 py-2 bg-[#BE185D] hover:bg-[#9D174D] text-white rounded-full text-xs font-black shrink-0 transition-all shadow-xs cursor-pointer self-start sm:self-auto"
                     >
                       Alert Store Owner
                     </button>
@@ -2381,29 +2592,6 @@ export default function BakerDashboard() {
             )}
           </div>
         </div>
-      )}
-
-      {/* MANUAL BAKE MODAL */}
-      <ManualProductionModal
-        isOpen={isManualModalOpen}
-        onClose={() => setIsManualModalOpen(false)}
-        products={products}
-        onProductionStarted={(req, qty, directBatch) => {
-          if (directBatch) {
-            showToast(`✓ Fresh batch baked! ${qty} pcs ${directBatch.productName} completed & sent to Cashier.`, 'success');
-          } else {
-            showToast(`Batch for ${qty} pcs sent to oven queue!`, 'success');
-          }
-        }}
-      />
-
-      {/* NOTIFICATION TOAST */}
-      {toast.message && (
-        <NotificationToast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast({ message: '', type: 'success' })}
-        />
       )}
 
         </main>

@@ -184,7 +184,7 @@ export default function ManualProductionModal({ isOpen, onClose, products = [], 
 
           {/* Quantity Input */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
                 Production Quantity (pcs)
               </label>
@@ -217,7 +217,7 @@ export default function ManualProductionModal({ isOpen, onClose, products = [], 
           {/* Recipe Check Breakdown */}
           {recipe ? (
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2.5">
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-1 text-xs">
                 <span className="font-bold text-gray-700 flex items-center gap-1.5">
                   <Wheat className="w-4 h-4 text-amber-600" />
                   Recipe Requirements ({recipe.baseQuantity} base pcs)
@@ -231,9 +231,9 @@ export default function ManualProductionModal({ isOpen, onClose, products = [], 
 
               <div className="space-y-1.5 pt-1">
                 {sufficiency.breakdown.map((item) => (
-                  <div key={item.ingredientId} className="flex items-center justify-between text-xs py-1 border-b border-gray-100/75 last:border-0">
-                    <span className="text-gray-700 font-medium">{item.ingredientName}</span>
-                    <div className="flex items-center gap-2">
+                  <div key={item.ingredientId} className="flex items-center justify-between gap-2 text-xs py-1 border-b border-gray-100/75 last:border-0 min-w-0">
+                    <span className="text-gray-700 font-medium truncate min-w-0">{item.ingredientName}</span>
+                    <div className="flex items-center gap-2 shrink-0">
                       <span className="font-mono text-gray-600">
                         Req: <strong>{item.required} {item.unit}</strong>
                       </span>
@@ -282,7 +282,7 @@ export default function ManualProductionModal({ isOpen, onClose, products = [], 
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2.5">
+        <div className="p-4 bg-gray-50 border-t border-gray-100 flex flex-wrap sm:flex-nowrap items-center justify-end gap-2">
           <button
             type="button"
             disabled={loading}
@@ -309,7 +309,7 @@ export default function ManualProductionModal({ isOpen, onClose, products = [], 
             className="px-4 py-2 bg-[#D81B60] hover:bg-[#C2185B] disabled:opacity-40 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
           >
             <ChefHat className="w-3.5 h-3.5" />
-            <span>Bake & Complete (PR Output)</span>
+            <span>Bake & Complete</span>
           </button>
         </div>
       </div>
