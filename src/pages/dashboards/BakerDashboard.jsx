@@ -9,9 +9,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useShop } from '../../hooks/useShop.js';
 import { useAuth } from '../../context/useAuth.js';
 import { ROLES } from '../../constants/roles.js';
+import DashboardLayout from '../../components/DashboardLayout.jsx';
 import NotificationToast from '../../components/NotificationToast.jsx';
 import ManualProductionModal from '../../components/baker/ManualProductionModal.jsx';
 import { useBakeryWorkflow } from '../../hooks/useBakeryWorkflow.js';
+import './BakeologyPos.css';
 import { formatCurrency, formatDateTime } from '../../utils/formatters.js';
 import { 
   Flame, 
@@ -32,71 +34,23 @@ import {
   Check,
   Timer,
   Bell,
-  Minus,
-  LogOut,
-  RotateCcw,
-  ShoppingBag
+  Minus
 } from 'lucide-react';
-
-const PASTRY_PHOTOS = {
-  'chocolate cake': 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&auto=format&fit=crop',
-  'chocolate cake slice': 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&auto=format&fit=crop',
-  'red velvet cake': 'https://images.unsplash.com/photo-1586788680434-30d324b2d46f?w=500&auto=format&fit=crop',
-  'red velvet cake slice': 'https://images.unsplash.com/photo-1586788680434-30d324b2d46f?w=500&auto=format&fit=crop',
-  'blueberry cheesecake': 'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=500&auto=format&fit=crop',
-  'cheesecake': 'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=500&auto=format&fit=crop',
-  'chocolate cupcake': 'https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?w=500&auto=format&fit=crop',
-  'cupcake': 'https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?w=500&auto=format&fit=crop',
-  'croissant': 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=500&auto=format&fit=crop',
-  'almond croissant': 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=500&auto=format&fit=crop',
-  'chocolate croissant': 'https://images.unsplash.com/photo-1530610476181-d83430b64dcd?w=500&auto=format&fit=crop',
-  'pain au chocolat': 'https://images.unsplash.com/photo-1530610476181-d83430b64dcd?w=500&auto=format&fit=crop',
-  'pandesal': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500&auto=format&fit=crop',
-  'brownie': 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=500&auto=format&fit=crop',
-  'cinnamon roll': 'https://images.unsplash.com/photo-1509365465985-25d11c17e812?w=500&auto=format&fit=crop',
-  'apple pie': 'https://images.unsplash.com/photo-1568571780765-9276ac8b75a2?w=500&auto=format&fit=crop',
-  'danish': 'https://images.unsplash.com/photo-1621236378699-8597fee6a1ce?w=500&auto=format&fit=crop',
-  'macarons': 'https://images.unsplash.com/photo-1569864321390-bf38b1f5c6b9?w=500&auto=format&fit=crop',
-  'baguette': 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?w=500&auto=format&fit=crop',
-  'sourdough': 'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?w=500&auto=format&fit=crop',
-  'brioche': 'https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=500&auto=format&fit=crop',
-  'ensaymada': 'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?w=500&auto=format&fit=crop',
-  'ube ensaymada': 'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?w=500&auto=format&fit=crop',
-  'cookie': 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=500&auto=format&fit=crop',
-  'chocolate chip cookie': 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=500&auto=format&fit=crop',
-  'vanilla sponge cake': 'https://images.unsplash.com/photo-1535141192574-5d4897c13136?w=500&auto=format&fit=crop',
-  'carrot cake': 'https://images.unsplash.com/photo-1621303837174-89787a7d4729?w=500&auto=format&fit=crop',
-  'ube cake': 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=500&auto=format&fit=crop'
-};
-
-const getProductPhoto = (product) => {
-  if (product?.imageUrl && !product.imageUrl.endsWith('.svg')) {
-    return product.imageUrl;
-  }
-  const key = product?.name?.toLowerCase().trim();
-  if (key && PASTRY_PHOTOS[key]) return PASTRY_PHOTOS[key];
-  if (key) {
-    for (const [k, url] of Object.entries(PASTRY_PHOTOS)) {
-      if (key.includes(k)) return url;
-    }
-  }
-  return product?.imageUrl || 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500&auto=format&fit=crop';
-};
 
 export default function BakerDashboard() {
   const { products } = useShop();
-  const { currentUser, userProfile, logout } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
-  const bakerName = userProfile?.fullName || currentUser?.displayName || 'Baker Staff';
-
+  const { logout } = useAuth();
   const handleLogout = async () => {
     try {
-      await logout();
+      if (logout) await logout();
       navigate('/login');
     } catch (e) {
-      console.error("Logout error:", e);
+      navigate('/login');
     }
   };
+  const bakerName = userProfile?.fullName || currentUser?.displayName || 'Baker Staff';
 
   const { 
     ingredients, 
@@ -145,32 +99,6 @@ export default function BakerDashboard() {
       return stock <= minStock;
     });
   }, [cashierPastries]);
-
-  // POS Catalog & Bake Tray State (matching pink cashier layout)
-  const [posSearch, setPosSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('ALL');
-  const [selectedPastry, setSelectedPastry] = useState(null);
-  const [batchNote, setBatchNote] = useState('');
-  const [bakeStrategy, setBakeStrategy] = useState('standard');
-  const [selectedMethod, setSelectedMethod] = useState('CASH');
-
-  const categories = ['ALL', 'CAKE', 'PASTRY', 'COOKIES', 'BREAD'];
-
-  const filteredPosPastries = useMemo(() => {
-    return (products || []).filter(p => {
-      if (p.category === 'Beverage') return false; // Kitchen focuses on baked goods
-      const matchesSearch = !posSearch.trim() || p.name.toLowerCase().includes(posSearch.toLowerCase());
-      const cat = (p.category || '').toUpperCase();
-      const matchesCat = selectedCategory === 'ALL'
-        ? true
-        : selectedCategory === 'COOKIES'
-        ? (cat === 'COOKIES' || cat === 'DESSERT' || p.name.toLowerCase().includes('cookie') || p.name.toLowerCase().includes('cupcake') || p.name.toLowerCase().includes('brownie') || p.name.toLowerCase().includes('macaron'))
-        : selectedCategory === 'BREAD'
-        ? (cat === 'BREAD' || p.name.toLowerCase().includes('bread') || p.name.toLowerCase().includes('pandesal') || p.name.toLowerCase().includes('baguette') || p.name.toLowerCase().includes('brioche') || p.name.toLowerCase().includes('loaf'))
-        : cat === selectedCategory;
-      return matchesSearch && matchesCat;
-    });
-  }, [products, posSearch, selectedCategory]);
 
   // Filter for cashier stock monitor tab/section
   const [cashierCategoryFilter, setCashierCategoryFilter] = useState('ALL');
@@ -344,21 +272,6 @@ export default function BakerDashboard() {
     });
   }, [now, preparingRequests, getSecondsLeft, completeProduction, bakerName, playOvenChime]);
 
-  // POS Tray Tender & Net Calculations
-  const [tenderAmount, setTenderAmount] = useState('');
-
-  const currentSubtotal = useMemo(() => {
-    if (!selectedPastry) return 0;
-    const qty = getTargetQty(selectedPastry);
-    return (selectedPastry.price || 85) * qty;
-  }, [selectedPastry, getTargetQty]);
-
-  const currentNetTotal = useMemo(() => {
-    if (!selectedPastry) return 0;
-    const discountRate = bakeStrategy === 'staff' ? 0.10 : bakeStrategy === 'bulk' ? 0.15 : 0;
-    return Math.round(currentSubtotal * (1 - discountRate));
-  }, [currentSubtotal, bakeStrategy, selectedPastry]);
-
   // Helper to find existing active request for a product
   const getActiveRequestForProduct = (product) => {
     const prodId = String(product.id || '').toLowerCase();
@@ -468,192 +381,904 @@ export default function BakerDashboard() {
     { id: 'alerts', label: 'Low Ingredient Alerts', icon: AlertTriangle, badge: lowIngredientsCount > 0 ? lowIngredientsCount : null }
   ];
 
-  const activePreparingBatch = preparingRequests[0] || null;
-
   return (
-    <div className="station-pos-root">
-      {/* 1. LEFT SIDEBAR */}
-      <aside className="station-pos-sidebar">
-        <div>
-          {/* Circular Logo Badge */}
-          <div className="station-pos-logo-wrap">
-            <div className="station-pos-logo-circle">
+    <div className="bakeology-pos-root">
+      {/* 1. FLOATING DECORATIONS LAYER (Crisp Transparent PNGs from Cashier) */}
+      <div className="pos-decorations-layer" aria-hidden="true">
+        <img src="/decorations/pretzel.png" alt="" className="pos-decor-item decor-pretzel-top" />
+        <img src="/decorations/croissant.png" alt="" className="pos-decor-item decor-croissant-top" />
+        <img src="/decorations/cookie.png" alt="" className="pos-decor-item decor-cookie-center" />
+        <img src="/decorations/brownie.png" alt="" className="pos-decor-item decor-brownie-bottom" />
+        <img src="/decorations/pretzel.png" alt="" className="pos-decor-item decor-pretzel-bottom" />
+        <img src="/decorations/croissant.png" alt="" className="pos-decor-item decor-croissant-bottom" />
+      </div>
+
+      {/* 2. 2-COLUMN BAKEOLOGY BAKER WORKSTATION */}
+      <div className="bakeology-baker-grid">
+        
+        {/* =========================================================
+            LEFT COLUMN: BRAND & PILL NAVIGATION BUTTONS
+            ========================================================= */}
+        <aside className="pos-sidebar-col">
+          <Link to="/" className="pos-brand-wrap" title="Back to Storefront">
+            <div className="pos-brand-logo-disc">
               <img 
-                src="/icon-192.png" 
+                src="/logo.png" 
                 alt="Bakeology" 
-                className="station-pos-logo-img" 
-                onError={(e) => { 
-                  e.target.onerror = null;
-                  e.target.src = '/favicon.png';
-                }} 
+                className="pos-brand-logo-img" 
+                onError={(e) => { e.target.onerror = null; e.target.src = '/icon-192.png'; }} 
               />
             </div>
-            <span className="station-pos-logo-title">BAKEOLOGY EST 2026</span>
-          </div>
+            <span className="pos-brand-caption">BAKEOLOGY EST 2026</span>
+          </Link>
 
-          {/* Navigation Pill Buttons */}
-          <nav className="station-pos-nav-list">
+          {/* Pill Navigation Buttons */}
+          <nav className="pos-nav-pill-list">
             <button
               type="button"
-              className={`station-pos-nav-btn ${activeTab === 'overview' ? 'active' : ''}`}
+              className={`pos-nav-pill-btn ${activeTab === 'overview' ? 'active' : ''}`}
               onClick={() => setActiveTab('overview')}
             >
-              <span>POS REGISTER</span>
+              <Flame size={15} />
+              <span>OVEN STATION</span>
+              {preparingRequests.length > 0 && (
+                <span className="pos-nav-badge" style={{ background: '#BE185D' }}>{preparingRequests.length}</span>
+              )}
             </button>
 
             <button
               type="button"
-              className={`station-pos-nav-btn ${activeTab === 'cashierStock' ? 'active' : ''}`}
+              className={`pos-nav-pill-btn ${activeTab === 'cashierStock' ? 'active' : ''}`}
               onClick={() => setActiveTab('cashierStock')}
             >
-              <span>PRODUCTION RECEIVING</span>
+              <Package size={15} />
+              <span>CASHIER STOCK</span>
               {cashierLowStockPastries.length > 0 && (
-                <span className="station-pos-badge badge-green">{cashierLowStockPastries.length}</span>
+                <span className="pos-nav-badge" style={{ background: '#BE185D' }}>{cashierLowStockPastries.length}</span>
               )}
             </button>
 
             <button
               type="button"
-              className={`station-pos-nav-btn ${activeTab === 'queue' ? 'active' : ''}`}
+              className={`pos-nav-pill-btn ${activeTab === 'queue' ? 'active' : ''}`}
               onClick={() => setActiveTab('queue')}
             >
-              <span>SHIFT OVERVIEW</span>
+              <Clock size={15} />
+              <span>BAKING QUEUE</span>
               {activeQueueCount > 0 && (
-                <span className="station-pos-badge badge-pink">{activeQueueCount}</span>
+                <span className="pos-nav-badge" style={{ background: '#059669' }}>{activeQueueCount}</span>
               )}
             </button>
 
             <button
               type="button"
-              className={`station-pos-nav-btn ${activeTab === 'ingredients' ? 'active' : ''}`}
+              className={`pos-nav-pill-btn ${activeTab === 'ingredients' ? 'active' : ''}`}
               onClick={() => setActiveTab('ingredients')}
             >
-              <span>RECEIPT ARCHIVE</span>
+              <Wheat size={15} />
+              <span>PANTRY INVENTORY</span>
               {lowIngredientsCount > 0 && (
-                <span className="station-pos-badge badge-pink">{lowIngredientsCount}</span>
+                <span className="pos-nav-badge" style={{ background: '#BE185D' }}>{lowIngredientsCount}</span>
               )}
             </button>
 
             <button
               type="button"
-              className={`station-pos-nav-btn ${activeTab === 'recipes' ? 'active' : ''}`}
+              className={`pos-nav-pill-btn ${activeTab === 'recipes' ? 'active' : ''}`}
               onClick={() => setActiveTab('recipes')}
             >
-              <span>RECIPES & SCALER</span>
+              <BookOpen size={15} />
+              <span>RECIPES & SPECS</span>
             </button>
 
             <button
               type="button"
-              className={`station-pos-nav-btn ${activeTab === 'history' ? 'active' : ''}`}
+              className={`pos-nav-pill-btn ${activeTab === 'history' ? 'active' : ''}`}
               onClick={() => setActiveTab('history')}
             >
-              <span>PRODUCTION HISTORY</span>
+              <Layers size={15} />
+              <span>BAKE HISTORY</span>
             </button>
 
-            {/* Ghost Decorative Pills from Screenshot */}
-            <div className="station-pos-ghost-pill"></div>
-            <div className="station-pos-ghost-pill"></div>
+            <button
+              type="button"
+              className={`pos-nav-pill-btn ${activeTab === 'alerts' ? 'active' : ''}`}
+              onClick={() => setActiveTab('alerts')}
+            >
+              <AlertTriangle size={15} />
+              <span>PANTRY ALERTS</span>
+              {lowIngredientsCount > 0 && (
+                <span className="pos-nav-badge" style={{ background: '#BE185D' }}>{lowIngredientsCount}</span>
+              )}
+            </button>
 
-            {/* Storefront Link */}
-            <Link to="/" className="station-pos-storefront-btn">
-              STOREFRONT VIEW
+            {/* Ghost Decorative Pill Placeholders from mockup */}
+            <div className="pos-nav-pill-placeholder"></div>
+
+            {/* Storefront Link Pill */}
+            <Link to="/" className="pos-nav-pill-btn" style={{ background: '#ffffff', color: '#1a1a1a' }}>
+              <ChefHat size={15} />
+              <span>STOREFRONT VIEW</span>
             </Link>
           </nav>
-        </div>
 
-        {/* Sidebar Footer User Info & Logout */}
-        <div className="pt-4 border-t border-white/30 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-white text-[#9D174D] flex items-center justify-center font-black text-xs shadow-xs">
-              {bakerName[0]?.toUpperCase() || 'B'}
+          {/* User Profile & Logout at Sidebar Bottom */}
+          <div className="mt-auto pt-4 border-t border-white/40 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-white text-[#9D174D] flex items-center justify-center font-black text-xs shadow-xs">
+                {bakerName[0]?.toUpperCase() || 'B'}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-black text-gray-900 truncate">{bakerName}</p>
+                <span className="text-[10px] font-bold text-gray-600 block leading-tight">Master Baker</span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-black text-gray-900 truncate">{bakerName}</p>
-              <span className="text-[10px] font-bold text-gray-600 block leading-tight">Baker Station</span>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="p-1.5 rounded-full text-gray-700 hover:text-rose-600 hover:bg-white/80 transition-colors"
+              title="Log Out"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        </aside>
+
+        {/* =========================================================
+            RIGHT COLUMN: MAIN BAKER WORKSTATION (Frosted Glass Panel)
+            ========================================================= */}
+        <main className="baker-main-workstation">
+          {/* Header Card with Title and Pill + Manual Bake Batch Button */}
+          <div className="baker-header-card">
+            <div>
+              <h2 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                {activeTab === 'overview' && '🍳 Baker Cooking & Oven Workstation'}
+                {activeTab === 'cashierStock' && '📦 Cashier Finished Pastry Stock Monitor'}
+                {activeTab === 'queue' && '⏱️ Kitchen Production Queue'}
+                {activeTab === 'ingredients' && '🌾 Raw Ingredient Pantry & Stock Levels'}
+                {activeTab === 'recipes' && '📖 Bakery Recipes & Batch Yield Scaler'}
+                {activeTab === 'history' && '📜 Audited Production & Baking History'}
+                {activeTab === 'alerts' && '⚠️ Raw Material Depletion Alerts'}
+              </h2>
+              <p className="text-xs font-bold text-gray-600 mt-0.5">
+                {activeTab === 'overview' && 'Real-time oven cooking, batch baking, and low-stock cashier pastry replenishment'}
+                {activeTab === 'cashierStock' && 'Live finished pastry stock levels at the cashier counter needing baking'}
+                {activeTab === 'queue' && 'Fulfill cashier low-stock requests with automated ingredient checking'}
+                {activeTab === 'ingredients' && 'Available raw ingredients and supplies for baking'}
+                {activeTab === 'recipes' && 'Formulations, base yields, and dynamic batch scaling calculations'}
+                {activeTab === 'history' && 'Audited records of completed pastry batches and ingredient consumption'}
+                {activeTab === 'alerts' && 'Pantry shortages requiring Store Owner / Admin purchase orders'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="baker-pill-action-btn"
+              onClick={() => setIsManualModalOpen(true)}
+            >
+              <ChefHat size={16} />
+              <span>+ MANUAL BAKE BATCH</span>
+            </button>
+          </div>
+
+                {activeTab === 'overview' && (
+        <div className="space-y-6">
+          {/* Top KPI Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+            <div className="bg-card p-4 rounded-xl border border-amber-200 bg-amber-50/50 shadow-2xs">
+              <span className="text-2xs font-bold text-amber-800 block uppercase tracking-wider flex items-center gap-1">
+                <Flame className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                In Oven (Cooking)
+              </span>
+              <span className="text-2xl font-black text-amber-600 block mt-1">{preparingRequests.length}</span>
+              <span className="text-xs text-amber-700 block mt-0.5">Currently baking</span>
+            </div>
+
+            <div className="bg-card p-4 rounded-xl border border-rose-200 bg-rose-50/50 shadow-2xs">
+              <span className="text-2xs font-bold text-rose-800 block uppercase tracking-wider flex items-center gap-1">
+                <TrendingDown className="w-3.5 h-3.5 text-rose-600" />
+                Cashier Low Stock
+              </span>
+              <span className="text-2xl font-black text-rose-600 block mt-1">{cashierLowStockPastries.length}</span>
+              <span className="text-xs text-rose-700 block mt-0.5">Pastries need baking</span>
+            </div>
+
+            <div className="bg-card p-4 rounded-xl border border-border-light shadow-2xs">
+              <span className="text-2xs font-bold text-muted block uppercase tracking-wider flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-blue-600" />
+                Awaiting Oven
+              </span>
+              <span className="text-2xl font-black text-blue-600 block mt-1">{pendingRequests.length + acceptedRequests.length}</span>
+              <span className="text-xs text-muted block mt-0.5">Queued batches</span>
+            </div>
+
+            <div className="bg-card p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 shadow-2xs">
+              <span className="text-2xs font-bold text-emerald-800 block uppercase tracking-wider flex items-center gap-1">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                Ready for Cashier
+              </span>
+              <span className="text-2xl font-black text-emerald-600 block mt-1">{readyRequests.length}</span>
+              <span className="text-xs text-emerald-700 block mt-0.5">Fresh on counter pass</span>
+            </div>
+
+            <div className="bg-card p-4 rounded-xl border border-border-light shadow-2xs col-span-2 sm:col-span-1">
+              <span className="text-2xs font-bold text-muted block uppercase tracking-wider">Today's Output</span>
+              <span className="text-2xl font-black text-gray-800 block mt-1">{totalBakedToday} pcs</span>
+              <span className="text-xs text-muted block mt-0.5">Fresh baked today</span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="p-1.5 rounded-lg text-gray-600 hover:text-rose-600 hover:bg-white/50 transition-colors"
-            title="Log Out"
-          >
-            <LogOut size={16} />
-          </button>
-        </div>
-      </aside>
 
-      {/* 2. CENTER CONTENT AREA */}
-      <main className="station-pos-center">
-      {/* ================================================= */}
-      {/* 1. DASHBOARD OVERVIEW — COOKING & CASHIER LOW STOCK */}
-      {/* ================================================= */}
-      {activeTab === 'overview' && (
-        <div className="flex flex-col gap-5">
-          {/* Top Search & Category Filter Pills */}
-          <div className="station-pos-topbar">
-            <input
-              type="text"
-              placeholder="SEARCH"
-              value={posSearch}
-              onChange={(e) => setPosSearch(e.target.value)}
-              className="station-pos-search"
-            />
-            <div className="station-pos-categories">
-              {categories.map((cat) => (
+          {/* Low Ingredient Warning Banner if any */}
+          {lowIngredientsCount > 0 && (
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-lg text-amber-700">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-amber-900">
+                    {lowIngredientsCount} Raw {lowIngredientsCount === 1 ? 'Ingredient is' : 'Ingredients are'} Running Low in Pantry
+                  </h4>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    {lowIngredients.map(i => `${i.name} (${i.quantity} ${i.unit} left)`).join(' • ')}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('alerts')}
+                className="px-4 py-1.5 bg-[#BE185D] hover:bg-[#9D174D] text-white rounded-full text-xs font-black shrink-0 transition-all shadow-xs cursor-pointer"
+              >
+                View Alerts & Notify Admin →
+              </button>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* 1. ACTIVE COOKING WORKSTATION (IN OVEN)                   */}
+          {/* ========================================================= */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-amber-600 animate-pulse" />
+                  Active Cooking Station (In Oven)
+                </h3>
+                <p className="text-xs text-gray-500">Batches currently baking — click "Finish Cooking" when ready to deduct ingredients and send to cashier</p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                {preparingRequests.length} Active in Oven
+              </span>
+            </div>
+
+            {preparingRequests.length === 0 ? (
+              <div className="bg-gradient-to-r from-amber-50/60 to-orange-50/60 rounded-xl p-6 border border-amber-200/70 text-center space-y-3">
+                <div className="w-12 h-12 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto">
+                  <ChefHat className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-gray-800 text-sm">Oven Station is Ready for Next Batch</h4>
+                  <p className="text-xs text-gray-600 max-w-md mx-auto mt-1">
+                    No batches are currently baking in the oven. Check the Cashier Low-Stock Pastries section below to cook a fresh replenishment batch!
+                  </p>
+                </div>
                 <button
-                  key={cat}
                   type="button"
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`station-pos-cat-pill ${selectedCategory === cat ? 'active' : ''}`}
+                  onClick={() => setIsManualModalOpen(true)}
+                  className="px-4 py-2 bg-[#D81B60] hover:bg-[#C2185B] text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer"
                 >
-                  {cat}
+                  + Start Custom Bake Batch
                 </button>
-              ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {preparingRequests.map(req => {
+                  const recipe = getRecipeForProduct({ id: req.productId, name: req.productName });
+                  const check = checkIngredientsSufficiency(recipe, req.requestedQuantity);
+                  const secondsLeft = getSecondsLeft(req);
+                  const progressPercent = Math.min(100, Math.round(((10 - secondsLeft) / 10) * 100));
+
+                  return (
+                    <div 
+                      key={req.id} 
+                      className="bg-amber-50/80 border-2 border-amber-400 rounded-xl p-4 space-y-3 shadow-xs relative overflow-hidden"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 inline-flex items-center gap-1 mb-1">
+                            <Flame className="w-3 h-3 text-amber-700 animate-pulse" />
+                            Cooking in Oven (Preparing)
+                          </span>
+                          <h4 className="font-bold text-gray-900 text-lg flex items-center gap-1.5">
+                            {req.productName}
+                          </h4>
+                          <span className="text-xs text-gray-700">
+                            Batch Quantity: <strong className="text-amber-900 font-mono font-bold">{req.requestedQuantity} pcs</strong>
+                          </span>
+                        </div>
+                        <span className="font-mono text-xs font-bold text-amber-900 bg-white/90 px-2 py-1 rounded border border-amber-300">
+                          {req.id}
+                        </span>
+                      </div>
+
+                      <div className="bg-white/90 p-3 rounded-lg border border-amber-200 text-xs text-gray-700 space-y-1.5">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Cashier Current Counter Stock:</span>
+                          <strong className="text-rose-600 font-bold">{req.currentStock} pcs remaining</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Cooked By:</span>
+                          <span className="font-medium text-gray-800">{bakerName}</span>
+                        </div>
+                        {recipe && (
+                          <div className="pt-1.5 border-t border-amber-100">
+                            <span className="text-[10px] uppercase font-bold text-gray-500 block mb-1">
+                              Ingredients to Deduct Upon Completion:
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {check.breakdown.map(b => (
+                                <span key={b.ingredientId} className="px-1.5 py-0.5 bg-amber-100/70 text-amber-900 rounded text-[11px] font-mono">
+                                  {b.ingredientName}: {b.required} {b.unit}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 10-Second Oven Baking Timer Display */}
+                      <div className="bg-gradient-to-r from-amber-100 to-orange-100 border border-amber-300 rounded-xl p-3 space-y-2 shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Timer className="w-5 h-5 text-amber-700 animate-spin" style={{ animationDuration: '4s' }} />
+                            <div>
+                              <span className="text-[10px] uppercase font-black text-amber-900 block leading-tight">
+                                Oven Baking Timer (10 Seconds)
+                              </span>
+                              <span className="text-xs font-bold text-amber-800">
+                                {secondsLeft > 0 ? `${secondsLeft}s left until done` : '✓ Baking Complete! Ready to Send'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-mono text-2xl font-black text-amber-950 block leading-none">
+                              00:{String(secondsLeft).padStart(2, '0')}
+                            </span>
+                            <span className="text-[10px] text-amber-700 font-semibold">
+                              {progressPercent}% baked
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Animated Baking Progress Bar */}
+                        <div className="w-full bg-amber-200/90 h-2 rounded-full overflow-hidden shadow-inner">
+                          <div 
+                            className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 transition-all duration-300 ease-linear rounded-full"
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCompleteProduction(req)}
+                        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer hover:shadow-md"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        <span>{secondsLeft > 0 ? `⚡ Complete Now (${secondsLeft}s left)` : 'Finish Cooking & Send to Cashier'}</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ========================================================= */}
+          {/* 2. CASHIER PASTRIES RUNNING LOW IN STOCK (NEEDS COOKING) */}
+          {/* ========================================================= */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
+                  <TrendingDown className="w-5 h-5 text-rose-600" />
+                  Cashier Pastries Running Low in Stock (Needs Cooking)
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Live finished pastry stock alerts from Cashier POS — click "Start Cooking" to bake a replenishment batch
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                  cashierLowStockPastries.length > 0 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {cashierLowStockPastries.length} Low Stock {cashierLowStockPastries.length === 1 ? 'Pastry' : 'Pastries'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('cashierStock')}
+                  className="text-xs font-bold text-[#D81B60] hover:underline cursor-pointer"
+                >
+                  View All Cashier Stocks →
+                </button>
+              </div>
+            </div>
+
+            {cashierLowStockPastries.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 space-y-2 bg-emerald-50/40 rounded-xl border border-emerald-100 p-6">
+                <CheckCircle2 className="w-10 h-10 mx-auto text-emerald-500" />
+                <h4 className="font-bold text-gray-800 text-sm">All Cashier Pastry Stocks are Healthy!</h4>
+                <p className="text-xs text-gray-600 max-w-md mx-auto">
+                  Every finished pastry at the cashier counter is currently above its minimum stock threshold. You can still cook ahead anytime using the full catalog monitor below.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {cashierLowStockPastries.map(product => {
+                  const targetQty = getTargetQty(product);
+                  const minStock = product.minimumStock !== undefined ? Number(product.minimumStock) : 20;
+                  const recipe = getRecipeForProduct({ id: product.id, name: product.name });
+                  const check = checkIngredientsSufficiency(recipe, targetQty);
+                  const activeReq = getActiveRequestForProduct(product);
+                  const isCooking = activeReq && activeReq.status === 'Preparing';
+                  const isReady = activeReq && activeReq.status === 'Ready for Cashier';
+                  const isPending = activeReq && (activeReq.status === 'Pending' || activeReq.status === 'Accepted');
+                  const isOutOfStock = Number(product.stock) === 0;
+                  const secondsLeft = isCooking ? getSecondsLeft(activeReq) : 0;
+                  const progressPercent = isCooking ? Math.min(100, Math.round(((10 - secondsLeft) / 10) * 100)) : 0;
+
+                  return (
+                    <div 
+                      key={product.id || product.name} 
+                      className={`bg-white rounded-xl border p-4 space-y-3 transition-all ${
+                        isCooking 
+                          ? 'border-amber-300 ring-2 ring-amber-100 bg-amber-50/20' 
+                          : isReady 
+                          ? 'border-emerald-300 ring-2 ring-emerald-50 bg-emerald-50/20'
+                          : isOutOfStock
+                          ? 'border-rose-300 ring-2 ring-rose-50 shadow-xs'
+                          : 'border-rose-200 shadow-xs'
+                      }`}
+                    >
+                      {/* Top Header of Card */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-2xl" role="img" aria-label={product.name}>
+                            {product.icon || '🥐'}
+                          </span>
+                          <div>
+                            <h4 className="font-bold text-gray-900 text-sm leading-tight">{product.name}</h4>
+                            <span className="text-[10px] text-gray-500 uppercase font-semibold">
+                              {product.category}
+                            </span>
+                          </div>
+                        </div>
+
+                        <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                          isOutOfStock ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-800'
+                        }`}>
+                          {isOutOfStock ? 'Out of Stock' : 'Low Stock'}
+                        </span>
+                      </div>
+
+                      {/* Stock Situation & Progress Bar */}
+                      <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-100 space-y-1.5 text-xs">
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-gray-500 font-medium">Cashier Counter Stock:</span>
+                          <div>
+                            <span className={`font-mono font-extrabold text-base ${isOutOfStock ? 'text-rose-600' : 'text-rose-600'}`}>
+                              {product.stock}
+                            </span>
+                            <span className="text-gray-400 text-xs ml-1">/ min {minStock} pcs</span>
+                          </div>
+                        </div>
+
+                        {/* Visual stock bar */}
+                        <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full ${isOutOfStock ? 'bg-rose-600' : 'bg-rose-500'}`}
+                            style={{ width: `${Math.min(100, Math.round(((Number(product.stock) || 0) / (minStock || 20)) * 100))}%` }}
+                          />
+                        </div>
+
+                        <div className="flex justify-between text-[11px] text-gray-500 pt-0.5">
+                          <span>Target to Bake:</span>
+                          <strong className="text-gray-800 font-mono font-bold">{targetQty} pcs</strong>
+                        </div>
+                      </div>
+
+                      {/* Recipe & Pantry Ingredients Check */}
+                      <div className={`p-2 rounded-lg text-xs ${
+                        check.sufficient ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
+                      }`}>
+                        {check.sufficient ? (
+                          <div className="flex items-center gap-1.5 text-[11px] font-medium">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>Pantry ingredients ready for {targetQty} pcs</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-0.5 text-[11px]">
+                            <span className="font-bold flex items-center gap-1 text-rose-700">
+                              <AlertTriangle className="w-3 h-3 text-rose-600" /> Insufficient ingredients:
+                            </span>
+                            {check.shortages.map(s => (
+                              <div key={s.ingredientId} className="text-[10px] pl-4 text-rose-800 font-mono">
+                                • {s.ingredientName}: needs {s.required} {s.unit}, have {s.available} {s.unit}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Status indicator if active in queue */}
+                      {activeReq && (
+                        <div className="text-[11px] text-gray-600 flex items-center justify-between px-1">
+                          <span className="text-gray-400">Status in Kitchen:</span>
+                          <span className={`font-bold ${
+                            isCooking ? 'text-amber-600 flex items-center gap-1' :
+                            isReady ? 'text-emerald-600' :
+                            'text-blue-600'
+                          }`}>
+                            {isCooking && <Flame className="w-3 h-3 animate-pulse" />}
+                            {isCooking ? `In Oven (${secondsLeft}s left)` : isReady ? 'Ready for Cashier' : activeReq.status}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Quantity Stepper (if not currently cooking) */}
+                      {!isCooking && !isReady && (
+                        <div className="flex items-center justify-between gap-1.5 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                          <span className="text-[11px] font-semibold text-gray-600">Batch Quantity:</span>
+                          <div className="flex items-center gap-1">
+                            <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white shadow-2xs">
+                              <button
+                                type="button"
+                                onClick={() => adjustTargetQty(product, -5)}
+                                className="px-2 py-0.5 text-gray-700 hover:bg-gray-100 font-bold text-xs cursor-pointer"
+                                title="Decrease 5"
+                              >
+                                -
+                              </button>
+                              <input
+                                type="number"
+                                min="1"
+                                max="999"
+                                value={targetQty}
+                                onChange={(e) => setTargetQty(product, e.target.value)}
+                                className="w-12 text-center font-mono font-bold text-xs py-0.5 border-x border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#D81B60]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => adjustTargetQty(product, 5)}
+                                className="px-2 py-0.5 text-gray-700 hover:bg-gray-100 font-bold text-xs cursor-pointer"
+                                title="Increase 5"
+                              >
+                                +
+                              </button>
+                            </div>
+                            <div className="flex gap-0.5">
+                              {[20, 30, 50].map(preset => (
+                                <button
+                                  key={preset}
+                                  type="button"
+                                  onClick={() => setTargetQty(product, preset)}
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border cursor-pointer ${
+                                    targetQty === preset 
+                                      ? 'bg-[#D81B60] text-white border-[#D81B60]' 
+                                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {preset}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Button & 10s Countdown */}
+                      <div>
+                        {isCooking ? (
+                          <div className="space-y-1.5">
+                            <div className="bg-amber-100 border border-amber-300 p-2 rounded-lg text-xs space-y-1">
+                              <div className="flex items-center justify-between text-amber-900 font-bold">
+                                <span className="flex items-center gap-1">
+                                  <Flame className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                                  <span>Baking in Oven ({activeReq.requestedQuantity} pcs)</span>
+                                </span>
+                                <span className="font-mono text-sm bg-amber-200/90 px-1.5 py-0.5 rounded border border-amber-400">
+                                  00:{String(secondsLeft).padStart(2, '0')}
+                                </span>
+                              </div>
+                              <div className="w-full bg-amber-200 h-1.5 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300"
+                                  style={{ width: `${progressPercent}%` }}
+                                />
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleCompleteProduction(activeReq)}
+                              className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              <span>{secondsLeft > 0 ? `⚡ Complete Now (${secondsLeft}s left)` : 'Finish Cooking & Send to Cashier'}</span>
+                            </button>
+                          </div>
+                        ) : isReady ? (
+                          <div className="w-full py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold text-center">
+                            ✓ Baked & Ready on Pass
+                          </div>
+                        ) : isPending ? (
+                          <button
+                            type="button"
+                            disabled={!check.sufficient}
+                            onClick={() => handleStartProduction(activeReq.id, targetQty)}
+                            className="w-full py-2 bg-[#D81B60] hover:bg-[#C2185B] disabled:opacity-40 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                          >
+                            <Flame className="w-3.5 h-3.5" />
+                            <span>Start Cooking Batch ({targetQty} pcs)</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={!check.sufficient}
+                            onClick={() => handleCookPastry(product, targetQty)}
+                            className="w-full py-2 bg-[#D81B60] hover:bg-[#C2185B] disabled:opacity-40 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                          >
+                            <Flame className="w-3.5 h-3.5" />
+                            <span>Cook Batch Now ({targetQty} pcs)</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ========================================================= */}
+          {/* 3. CASHIER FINISHED PASTRY STOCK MONITOR (ALL ITEMS)     */}
+          {/* ========================================================= */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
+                  <Package className="w-5 h-5 text-gray-700" />
+                  All Cashier Pastry Stock Monitor
+                </h3>
+                <p className="text-xs text-gray-500">Live finished inventory at the cashier counter — bake any pastry ahead of rushes</p>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { id: 'ALL', label: `All (${cashierPastries.length})` },
+                  { id: 'LOW_STOCK', label: `Low Stock (${cashierLowStockPastries.length})` },
+                  { id: 'Bread', label: 'Bread' },
+                  { id: 'Pastry', label: 'Pastry' },
+                  { id: 'Cake', label: 'Cake' },
+                  { id: 'Dessert', label: 'Dessert' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setCashierCategoryFilter(tab.id)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                      cashierCategoryFilter === tab.id
+                        ? 'bg-gray-900 text-white shadow-xs'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Pastry Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {filteredCashierPastries.slice(0, 18).map(product => {
+                const stock = Number(product.stock) || 0;
+                const minStock = product.minimumStock !== undefined ? Number(product.minimumStock) : 20;
+                const isLow = stock <= minStock;
+                const isOut = stock === 0;
+                const targetQty = getTargetQty(product);
+                const recipe = getRecipeForProduct({ id: product.id, name: product.name });
+                const check = checkIngredientsSufficiency(recipe, targetQty);
+                const activeReq = getActiveRequestForProduct(product);
+                const isCooking = activeReq && activeReq.status === 'Preparing';
+                const isReady = activeReq && activeReq.status === 'Ready for Cashier';
+                const secondsLeft = isCooking ? getSecondsLeft(activeReq) : 0;
+                const progressPercent = isCooking ? Math.min(100, Math.round(((10 - secondsLeft) / 10) * 100)) : 0;
+
+                return (
+                  <div 
+                    key={product.id || product.name} 
+                    className={`p-3 rounded-xl border flex flex-col justify-between transition-all ${
+                      isCooking ? 'border-amber-400 ring-2 ring-amber-100 bg-amber-50/30' :
+                      isReady ? 'border-emerald-300 ring-1 ring-emerald-100 bg-emerald-50/20' :
+                      isOut ? 'border-rose-300 bg-rose-50/30' :
+                      isLow ? 'border-amber-300 bg-amber-50/20' :
+                      'border-gray-100 bg-gray-50/50 hover:border-gray-200'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xl">{product.icon || '🥐'}</span>
+                        <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded ${
+                          isOut ? 'bg-rose-100 text-rose-800' :
+                          isLow ? 'bg-amber-100 text-amber-800' :
+                          'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {isOut ? 'Out' : isLow ? 'Low' : 'OK'}
+                        </span>
+                      </div>
+                      <h5 className="font-bold text-gray-900 text-xs truncate" title={product.name}>
+                        {product.name}
+                      </h5>
+                      <span className="text-[10px] text-gray-400 block truncate">
+                        {product.category} • {formatCurrency(product.price)}
+                      </span>
+                    </div>
+
+                    <div className="pt-2 mt-2 border-t border-gray-100 space-y-1.5">
+                      <div className="flex items-baseline justify-between text-xs">
+                        <span className="text-gray-500 text-[11px]">Stock:</span>
+                        <span className={`font-mono font-extrabold ${isLow ? 'text-rose-600' : 'text-gray-900'}`}>
+                          {stock} <span className="text-[10px] text-gray-400">/ {minStock}</span>
+                        </span>
+                      </div>
+
+                      {isCooking ? (
+                        <div className="w-full py-1.5 px-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-[10px] font-bold text-center flex flex-col items-center justify-center gap-1 shadow-2xs">
+                          <div className="flex items-center gap-1">
+                            <Flame className="w-3 h-3 text-amber-600 animate-pulse" />
+                            <span>In Oven ({secondsLeft}s)</span>
+                          </div>
+                          <div className="w-full bg-amber-200/90 h-1 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300"
+                              style={{ width: `${progressPercent}%` }}
+                            />
+                          </div>
+                        </div>
+                      ) : isReady ? (
+                        <div className="w-full py-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-[10px] font-bold text-center flex items-center justify-center gap-1 shadow-2xs">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Ready on Pass</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[10px] text-gray-500 font-semibold">Cook:</span>
+                            <div className="flex items-center border border-gray-200 rounded-md overflow-hidden bg-white shadow-2xs">
+                              <button
+                                type="button"
+                                onClick={() => adjustTargetQty(product, -5)}
+                                className="px-1.5 py-0.5 text-gray-600 hover:bg-gray-100 text-xs font-bold leading-none cursor-pointer"
+                                title="Decrease 5"
+                              >
+                                -
+                              </button>
+                              <input
+                                type="number"
+                                min="1"
+                                max="999"
+                                value={targetQty}
+                                onChange={(e) => setTargetQty(product, e.target.value)}
+                                className="w-8 text-center font-mono font-bold text-[11px] py-0.5 border-x border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#D81B60]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => adjustTargetQty(product, 5)}
+                                className="px-1.5 py-0.5 text-gray-600 hover:bg-gray-100 text-xs font-bold leading-none cursor-pointer"
+                                title="Increase 5"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={!check.sufficient}
+                            onClick={() => handleCookPastry(product, targetQty)}
+                            className="w-full py-1.5 bg-[#D81B60] hover:bg-[#C2185B] disabled:opacity-40 text-white rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-xs"
+                          >
+                            <Flame className="w-3 h-3 text-amber-300" />
+                            <span>Cook {targetQty} pcs</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* 2-Column Pastry Cards Grid matching Cashier Screenshot */}
-          <div className="station-pos-grid">
-            {filteredPosPastries.map((p) => {
-              const isSelected = selectedPastry?.id === p.id;
-              const isLowStock = (p.stock || 0) <= (p.minimumStock !== undefined ? p.minimumStock : 10);
+          {/* ========================================================= */}
+          {/* 4. FRESHLY BAKED — WAITING FOR CASHIER PICKUP            */}
+          {/* ========================================================= */}
+          {readyRequests.length > 0 && (
+            <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-5 space-y-3">
+              <div className="flex items-center justify-between border-b border-emerald-200/60 pb-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                  <h4 className="font-bold text-emerald-950 text-sm">
+                    Freshly Baked Pastries on the Pass ({readyRequests.length} Batches)
+                  </h4>
+                </div>
+                <span className="text-xs text-emerald-700 font-medium">
+                  Awaiting Cashier to receive into counter stock
+                </span>
+              </div>
 
-              return (
-                <div
-                  key={p.id}
-                  className={`station-pos-card ${isSelected ? 'selected' : ''}`}
-                  onClick={() => setSelectedPastry(p)}
-                >
-                  <div className="station-pos-card-header">
-                    <span className="station-pos-card-price">{p.price || 85}</span>
-                    <span className={`station-pos-card-stock ${isLowStock ? 'text-rose-600 font-black' : ''}`}>
-                      {p.stock !== undefined ? `${p.stock} left` : '19 left'}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {readyRequests.map(batch => (
+                  <div key={batch.id} className="bg-white p-3 rounded-lg border border-emerald-200 space-y-1">
+                    <div className="flex justify-between items-start">
+                      <h5 className="font-bold text-gray-900 text-sm">{batch.productName}</h5>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                        Ready
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600 font-mono">
+                      Quantity: <strong>{batch.requestedQuantity} pcs</strong>
+                    </div>
+                    <span className="text-[10px] text-gray-400 block pt-1">
+                      Batch #{batch.id} • Completed by {bakerName}
                     </span>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                  <div className="station-pos-card-img-wrap">
-                    <img
-                      src={getProductPhoto(p)}
-                      alt={p.name}
-                      className="station-pos-card-img"
-                      loading="lazy"
-                    />
+          {/* ========================================================= */}
+          {/* 5. PANTRY HEALTH GLANCE                                   */}
+          {/* ========================================================= */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
+                  <Wheat className="w-5 h-5 text-amber-600" />
+                  Pantry Reserves & Ingredients Available
+                </h3>
+                <p className="text-xs text-gray-500">Raw materials managed by Store Owner and ready for kitchen use</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('ingredients')}
+                className="text-xs font-bold text-[#D81B60] hover:underline cursor-pointer"
+              >
+                View Full Ingredient Inventory →
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+              {ingredients.slice(0, 6).map(ing => {
+                const isLow = (Number(ing.quantity) || 0) <= (Number(ing.minimumStock) || 0);
+                return (
+                  <div key={ing.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-gray-400 block truncate">{ing.category}</span>
+                    <h5 className="font-bold text-gray-800 text-xs truncate" title={ing.name}>{ing.name}</h5>
+                    <div className="flex items-baseline gap-1 pt-1">
+                      <span className={`text-base font-extrabold font-mono ${isLow ? 'text-rose-600' : 'text-gray-900'}`}>
+                        {ing.quantity}
+                      </span>
+                      <span className="text-xs text-gray-500">{ing.unit}</span>
+                    </div>
+                    <span className={`text-[10px] font-bold block ${isLow ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      {isLow ? '⚠️ Low Stock' : '✓ Available'}
+                    </span>
                   </div>
-
-                  <button
-                    type="button"
-                    className="station-pos-card-pill-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedPastry(p);
-                    }}
-                  >
-                    {p.name}
-                  </button>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -1663,7 +2288,7 @@ export default function BakerDashboard() {
                     <button
                       type="button"
                       onClick={() => handleSendAdminAlert(ing.name)}
-                      className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shrink-0 transition-colors cursor-pointer"
+                      className="px-4 py-2 bg-[#BE185D] hover:bg-[#9D174D] text-white rounded-full text-xs font-black shrink-0 transition-all shadow-xs cursor-pointer"
                     >
                       Alert Store Owner
                     </button>
@@ -1675,248 +2300,31 @@ export default function BakerDashboard() {
         </div>
       )}
 
-      </main>
+      {/* MANUAL BAKE MODAL */}
+      <ManualProductionModal
+        isOpen={isManualModalOpen}
+        onClose={() => setIsManualModalOpen(false)}
+        products={products}
+        onProductionStarted={(req, qty, directBatch) => {
+          if (directBatch) {
+            showToast(`✓ Fresh batch baked! ${qty} pcs ${directBatch.productName} completed & sent to Cashier.`, 'success');
+          } else {
+            showToast(`Batch for ${qty} pcs sent to oven queue!`, 'success');
+          }
+        }}
+      />
 
-      {/* 3. RIGHT PANEL ("REGISTER TRAY" / Oven Station) */}
-      <aside className="station-pos-tray">
-        {/* Tray Header Pill */}
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedPastry(null);
-            setBatchNote('');
-            setTenderAmount('');
-          }}
-          className="station-pos-tray-pill-header"
-          title="Click to clear tray"
-        >
-          REGISTER TRAY
-        </button>
-
-        {/* Tray Content Box */}
-        {activePreparingBatch ? (
-          // In Oven (Active 10-Second Cooking Workstation)
-          <div className="station-pos-tray-active-card border-2 border-amber-300">
-            <div className="flex items-center justify-between">
-              <span className="text-2xs font-extrabold text-amber-700 uppercase tracking-wider flex items-center gap-1">
-                <Flame className="w-4 h-4 text-amber-600 animate-pulse" />
-                BAKING IN OVEN
-              </span>
-              <span className="text-xs font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                00:0{getSecondsLeft(activePreparingBatch)}s
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <img
-                src={getProductPhoto({ name: activePreparingBatch.productName })}
-                alt={activePreparingBatch.productName}
-                className="w-14 h-14 rounded-2xl object-cover shadow-xs"
-              />
-              <div className="min-w-0 flex-1">
-                <h4 className="text-xs font-black text-gray-900 truncate">{activePreparingBatch.productName}</h4>
-                <p className="text-[11px] font-bold text-gray-600 mt-0.5">Batch: {activePreparingBatch.requestedQuantity} pcs</p>
-                <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1.5 overflow-hidden">
-                  <div
-                    className="bg-amber-500 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, (10 - getSecondsLeft(activePreparingBatch)) * 10)}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => handleCompleteProduction(activePreparingBatch)}
-              className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-black transition-transform active:scale-95 shadow-xs flex items-center justify-center gap-1.5"
-            >
-              <Check size={14} />
-              <span>Finish Baking & Send to Cashier</span>
-            </button>
-          </div>
-        ) : selectedPastry ? (
-          // Selected Pastry Batch Setup
-          <div className="station-pos-tray-active-card">
-            <div className="flex items-center justify-between">
-              <span className="text-2xs font-extrabold text-pink-700 uppercase tracking-wider">
-                SELECTED FOR BAKE
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedPastry(null)}
-                className="text-gray-400 hover:text-rose-600 text-xs font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <img
-                src={getProductPhoto(selectedPastry)}
-                alt={selectedPastry.name}
-                className="w-14 h-14 rounded-2xl object-cover shadow-xs"
-              />
-              <div className="min-w-0 flex-1">
-                <h4 className="text-xs font-black text-gray-900 truncate">{selectedPastry.name}</h4>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs font-black text-gray-800">₱{selectedPastry.price || 85}</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                    {selectedPastry.stock || 0} in shop
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Stepper for Batch Size */}
-            <div className="bg-pink-50/60 p-2.5 rounded-2xl border border-pink-100">
-              <div className="flex items-center justify-between text-2xs font-bold text-gray-700 mb-1.5">
-                <span>BATCH YIELD (PCS)</span>
-                <span className="font-extrabold text-[#9D174D]">{getTargetQty(selectedPastry)} pcs</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => adjustTargetQty(selectedPastry, -5)}
-                  className="w-8 h-8 rounded-full bg-white border border-pink-200 text-gray-700 font-black flex items-center justify-center hover:bg-pink-100 transition-colors"
-                >
-                  <Minus size={14} />
-                </button>
-                <input
-                  type="number"
-                  min="1"
-                  max="500"
-                  value={getTargetQty(selectedPastry)}
-                  onChange={(e) => setTargetQty(selectedPastry, e.target.value)}
-                  className="flex-1 text-center font-black text-sm bg-white border border-pink-200 rounded-full py-1 text-gray-900 outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => adjustTargetQty(selectedPastry, 5)}
-                  className="w-8 h-8 rounded-full bg-white border border-pink-200 text-gray-700 font-black flex items-center justify-center hover:bg-pink-100 transition-colors"
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
-            </div>
-
-            {/* Sufficiency Check */}
-            {(() => {
-              const recipe = getRecipeForProduct({ id: selectedPastry.id, name: selectedPastry.name });
-              const check = checkIngredientsSufficiency(recipe, getTargetQty(selectedPastry));
-              return (
-                <div>
-                  <div className={`text-[10px] font-bold px-2 py-1 rounded-lg text-center ${check.sufficient ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                    {check.sufficient ? '✓ All pantry ingredients available' : `⚠️ Pantry shortage: ${check.shortages[0]?.ingredientName || 'Ingredients'}`}
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={!check.sufficient}
-                    onClick={() => handleCookPastry(selectedPastry, getTargetQty(selectedPastry))}
-                    className="w-full mt-2 py-2.5 bg-[#BE185D] hover:bg-[#9D174D] disabled:opacity-50 text-white rounded-full text-xs font-black transition-transform active:scale-95 shadow-xs flex items-center justify-center gap-1.5"
-                  >
-                    <Flame size={14} />
-                    <span>START 10-SEC OVEN BAKE</span>
-                  </button>
-                </div>
-              );
-            })()}
-          </div>
-        ) : (
-          // Idle Empty Box matching screenshot
-          <div className="station-pos-tray-empty-box">
-            <span className="station-pos-tray-empty-text">TRAY IS EMPTY.</span>
-          </div>
-        )}
-
-        {/* Customer / Table Input */}
-        <input
-          type="text"
-          placeholder="CUSTOMER NAME / TABLE #"
-          value={batchNote}
-          onChange={(e) => setBatchNote(e.target.value)}
-          className="station-pos-tray-input"
+      {/* NOTIFICATION TOAST */}
+      {toast.message && (
+        <NotificationToast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast({ message: '', type: 'success' })}
         />
+      )}
 
-        {/* Discount Strategy Select */}
-        <div>
-          <label className="station-pos-tray-label">DISCOUNT STRATEGY</label>
-          <select
-            value={bakeStrategy}
-            onChange={(e) => setBakeStrategy(e.target.value)}
-            className="station-pos-tray-select"
-          >
-            <option value="standard">STANDARD RETAIL</option>
-            <option value="staff">STAFF DISCOUNT (10%)</option>
-            <option value="bulk">BULK WHOLESALE (15%)</option>
-            <option value="rush">RUSH DEMAND BAKE</option>
-          </select>
-        </div>
-
-        {/* Payment / Method Row */}
-        <div>
-          <label className="station-pos-tray-label">PAYMENT METHOD:</label>
-          <div className="station-pos-tray-methods">
-            {['CASH', 'GCASH', 'CARD'].map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setSelectedMethod(m)}
-                className={`station-pos-tray-method-btn ${selectedMethod === m ? 'active' : ''}`}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Quick Amount Buttons (2 rows of 3) */}
-        <div className="station-pos-tray-quick-grid">
-          {['Exact', '₱50', '₱100', '₱200', '₱500', '₱1,000'].map((btn) => (
-            <button
-              key={btn}
-              type="button"
-              onClick={() => {
-                if (btn === 'Exact') {
-                  setTenderAmount(String(currentNetTotal));
-                } else {
-                  setTenderAmount(btn.replace('₱', '').replace(',', ''));
-                }
-              }}
-              className="station-pos-tray-quick-btn"
-            >
-              {btn}
-            </button>
-          ))}
-        </div>
-
-        {/* Tender & Subtotal Rows */}
-        <div className="station-pos-tray-row">
-          <span>TENDER: ₱</span>
-          <span>{Number(tenderAmount || 0).toFixed(2)}</span>
-        </div>
-
-        <div className="station-pos-tray-row">
-          <span>SUBTOTAL ({selectedPastry ? 1 : 0} ITEMS):</span>
-          <span>₱{currentSubtotal}</span>
-        </div>
-
-        {/* Net Total Due Pill Bar */}
-        <div className="bg-white rounded-full px-5 py-3 flex items-center justify-between shadow-2xs">
-          <span className="text-xs font-black uppercase text-gray-900">NET TOTAL DUE:</span>
-          <span className="station-pos-tray-total-val">{currentNetTotal}</span>
-        </div>
-
-        {/* Manual Bake Batch Button */}
-        <button
-          type="button"
-          onClick={() => setIsManualModalOpen(true)}
-          className="w-full py-3 bg-white/80 hover:bg-white text-[#9D174D] border-2 border-white rounded-full text-xs font-black uppercase tracking-wider shadow-sm transition-all hover:scale-[1.02] flex items-center justify-center gap-1.5"
-        >
-          <Plus size={15} />
-          <span>+ MANUAL BAKE BATCH</span>
-        </button>
-      </aside>
+        </main>
+      </div>
 
       {/* MANUAL BAKE MODAL */}
       <ManualProductionModal
