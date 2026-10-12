@@ -109,6 +109,7 @@ export function useBakeryWorkflow() {
     productionRequests,
     productionBatches,
     inventoryTransactions,
+    transactions: inventoryTransactions,
     notifications,
     addIngredient,
     updateIngredient,

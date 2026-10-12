@@ -17,7 +17,13 @@ import { useBakeryWorkflow } from '../../hooks/useBakeryWorkflow.js';
 import { formatDateTime } from '../../utils/formatters.js';
 
 export default function InventoryHistoryTab() {
-  const { transactions } = useBakeryWorkflow();
+  const { inventoryTransactions, transactions: rawTx } = useBakeryWorkflow();
+
+  const transactions = useMemo(() => {
+    if (Array.isArray(inventoryTransactions)) return inventoryTransactions;
+    if (Array.isArray(rawTx)) return rawTx;
+    return [];
+  }, [inventoryTransactions, rawTx]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
@@ -30,27 +36,28 @@ export default function InventoryHistoryTab() {
     return transactions.filter(tx => {
       // Category filter
       if (selectedCategory !== 'all') {
-        const itemType = tx.itemType || (tx.type?.includes('ingredient') ? 'ingredient' : 'product');
+        const itemType = tx.inventoryType || tx.itemType || (String(tx.type || '').toLowerCase().includes('ingredient') ? 'ingredient' : 'product');
         if (selectedCategory === 'ingredient' && itemType !== 'ingredient') return false;
         if (selectedCategory === 'product' && itemType !== 'product') return false;
       }
 
       // Transaction Type filter
       if (selectedType !== 'all') {
-        if (selectedType === 'restock' && !tx.type?.includes('restock')) return false;
-        if (selectedType === 'production' && !tx.type?.includes('production')) return false;
-        if (selectedType === 'received' && !tx.type?.includes('received')) return false;
-        if (selectedType === 'sale' && !tx.type?.includes('sale')) return false;
-        if (selectedType === 'adjustment' && !tx.type?.includes('adjustment')) return false;
+        const t = String(tx.type || '').toLowerCase();
+        if (selectedType === 'restock' && !t.includes('restock') && !t.includes('supplier') && !t.includes('delivery')) return false;
+        if (selectedType === 'production' && !t.includes('production') && !t.includes('deduction') && !t.includes('baker')) return false;
+        if (selectedType === 'received' && !t.includes('received') && !t.includes('receiving')) return false;
+        if (selectedType === 'sale' && !t.includes('sale')) return false;
+        if (selectedType === 'adjustment' && !t.includes('adjustment')) return false;
       }
 
       // Search term
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase();
-        const itemName = (tx.itemName || tx.productName || tx.ingredientName || '').toLowerCase();
-        const reason = (tx.reason || tx.notes || '').toLowerCase();
-        const performedBy = (tx.performedByName || tx.performedBy || '').toLowerCase();
-        const refId = (tx.referenceId || tx.batchId || tx.id || '').toLowerCase();
+        const itemName = String(tx.itemName || tx.productName || tx.ingredientName || '').toLowerCase();
+        const reason = String(tx.reason || tx.notes || '').toLowerCase();
+        const performedBy = String(tx.performedByName || tx.performedBy || '').toLowerCase();
+        const refId = String(tx.referenceId || tx.batchId || tx.id || '').toLowerCase();
         if (!itemName.includes(q) && !reason.includes(q) && !performedBy.includes(q) && !refId.includes(q)) {
           return false;
         }
@@ -75,12 +82,12 @@ export default function InventoryHistoryTab() {
     let totalAdditions = 0;
 
     transactions.forEach(tx => {
-      const isIng = tx.itemType === 'ingredient' || tx.type?.includes('ingredient');
+      const isIng = tx.inventoryType === 'ingredient' || tx.itemType === 'ingredient' || String(tx.type || '').toLowerCase().includes('ingredient');
       if (isIng) ingredientOps++;
       else pastryOps++;
 
-      if (tx.quantityChange > 0) totalAdditions++;
-      else if (tx.quantityChange < 0) totalDeductions++;
+      if (Number(tx.quantityChange) > 0) totalAdditions++;
+      else if (Number(tx.quantityChange) < 0) totalDeductions++;
     });
 
     return {
@@ -94,25 +101,23 @@ export default function InventoryHistoryTab() {
 
   // Format badge helper
   const getTypeBadge = (type) => {
-    switch (type) {
-      case 'ingredient_restock':
-      case 'stock_added':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800"><ArrowDownLeft className="w-3 h-3 text-emerald-600" /> Restock / Delivery</span>;
-      case 'ingredient_deduction':
-      case 'production_deduction':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800"><ArrowUpRight className="w-3 h-3 text-amber-600" /> Baker Consumed</span>;
-      case 'production_finished':
-      case 'production_completed':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800"><Wheat className="w-3 h-3 text-purple-600" /> Production Output</span>;
-      case 'production_received':
-      case 'stock_received':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"><ShoppingBag className="w-3 h-3 text-blue-600" /> Cashier Received</span>;
-      case 'sale_deduction':
-      case 'customer_sale':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800"><ArrowUpRight className="w-3 h-3 text-rose-600" /> POS Sale</span>;
-      default:
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">{type?.replace(/_/g, ' ') || 'Transaction'}</span>;
+    const t = String(type || '').toLowerCase();
+    if (t.includes('restock') || t.includes('supplier') || t.includes('delivery')) {
+      return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800"><ArrowDownLeft className="w-3 h-3 text-emerald-600" /> Restock / Delivery</span>;
     }
+    if (t.includes('deduction') || t.includes('consumed')) {
+      return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800"><ArrowUpRight className="w-3 h-3 text-amber-600" /> Baker Consumed</span>;
+    }
+    if (t.includes('output') || t.includes('finished') || t.includes('completed')) {
+      return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800"><Wheat className="w-3 h-3 text-purple-600" /> Production Output</span>;
+    }
+    if (t.includes('received') || t.includes('receiving')) {
+      return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"><ShoppingBag className="w-3 h-3 text-blue-600" /> Cashier Received</span>;
+    }
+    if (t.includes('sale')) {
+      return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800"><ArrowUpRight className="w-3 h-3 text-rose-600" /> POS Sale</span>;
+    }
+    return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">{type?.replace(/_/g, ' ') || 'Transaction'}</span>;
   };
 
   return (
