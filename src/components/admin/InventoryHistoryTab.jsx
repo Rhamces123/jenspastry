@@ -20,9 +20,8 @@ export default function InventoryHistoryTab() {
   const { inventoryTransactions, transactions: rawTx } = useBakeryWorkflow();
 
   const transactions = useMemo(() => {
-    if (Array.isArray(inventoryTransactions)) return inventoryTransactions;
-    if (Array.isArray(rawTx)) return rawTx;
-    return [];
+    const list = Array.isArray(inventoryTransactions) ? inventoryTransactions : (Array.isArray(rawTx) ? rawTx : []);
+    return list.filter(tx => tx && typeof tx === 'object');
   }, [inventoryTransactions, rawTx]);
 
   const [searchTerm, setSearchTerm] = useState('');

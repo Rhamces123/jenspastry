@@ -19,6 +19,7 @@ import InventoryOverviewSection from '../../components/admin/InventoryOverviewSe
 import IngredientInventoryTab from '../../components/admin/IngredientInventoryTab.jsx';
 import ProductionManagementTab from '../../components/admin/ProductionManagementTab.jsx';
 import InventoryHistoryTab from '../../components/admin/InventoryHistoryTab.jsx';
+import ErrorBoundary from '../../components/common/ErrorBoundary.jsx';
 import RecipeModal from '../../components/admin/RecipeModal.jsx';
 import { 
   LayoutDashboard, 
@@ -1011,7 +1012,9 @@ export default function AdminDashboard() {
 
       {/* TAB: INVENTORY HISTORY & AUDIT LOG */}
       {activeTab === 'inventory-history' && (
-        <InventoryHistoryTab />
+        <ErrorBoundary>
+          <InventoryHistoryTab />
+        </ErrorBoundary>
       )}
 
       {/* TAB 5: USER & STAFF MANAGEMENT */}
